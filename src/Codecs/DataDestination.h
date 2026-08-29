@@ -93,8 +93,7 @@ namespace QuickFAST{
             << std::hex << std::setw(2) << std::setfill('0')
             << static_cast<unsigned short>(byte)
             << std::setfill(' ') << std::dec << ' ';
-          static size_t mod = 0; // keep the lines from getting too long
-          if(++mod % 16 == 0) (*verboseOut_) << std::endl;
+          if(++verboseMod_ % 16 == 0) (*verboseOut_) << std::endl;
         }
       }
 
@@ -317,6 +316,8 @@ namespace QuickFAST{
       BufferVector buffers_;
       /// @brief Where to write noisy/debug output.
       std::ostream * verboseOut_;
+      /// @brief Wrap verbose hex dumps every 16 bytes.
+      size_t verboseMod_ = 0;
 
     };
   }

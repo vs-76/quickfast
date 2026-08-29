@@ -117,12 +117,11 @@ namespace QuickFAST
     /// @returns true if big-endian.
     static bool isBigEndian()
     {
-      static BigEndian nativeBigEndian;
-      return nativeBigEndian();
+      return nativeBigEndian_();
     }
 
   private:
-
+    inline static BigEndian nativeBigEndian_;
     bool swap_;
   };
 
