@@ -37,6 +37,30 @@ namespace QuickFAST
 
       virtual ~PacketSequencingAssembler();
 
+      /// @brief Give up on a gap after this many consecutive recovery timeouts.
+      ///
+      /// Zero, the default, means never give up, which is the historical
+      /// behaviour: a gap the feed keeps promising to fill is re-polled every
+      /// ten milliseconds for as long as it says so.
+      ///
+      /// @param limit is the number of consecutive timeouts to tolerate.
+      ///
+      /// @par Example
+      /// @code
+      /// assembler.setGapTimeoutLimit(100); // escalate after about a second
+      /// @endcode
+      void setGapTimeoutLimit(size_t limit)
+      {
+        gapTimeoutLimit_ = limit;
+      }
+
+      /// @brief How many consecutive recovery timeouts the current gap has seen.
+      /// @returns the count, reset to zero whenever recovery data arrives.
+      size_t consecutiveGapTimeouts() const
+      {
+        return consecutiveGapTimeouts_;
+      }
+
       ///////////////////////////////////////
       // Implement Remaining Assembler method
       virtual bool serviceQueue(Communication::Receiver & receiver);
@@ -73,6 +97,8 @@ namespace QuickFAST
       sequence_t nextSequenceNumber_;
       bool gapWait_;
       sequence_t gapEnd_;
+      size_t gapTimeoutLimit_ = 0;
+      size_t consecutiveGapTimeouts_ = 0;
 
       Communication::BufferQueue deferredQueue_;
       Communication::BufferQueue recoveryIncoming_;
