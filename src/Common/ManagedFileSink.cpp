@@ -836,15 +836,28 @@ managed_file_sink_mt::list_managed_finished_unlocked_() const
 std::uint64_t
 managed_file_sink_mt::managed_bytes_unlocked_() const
 {
+  // file_size reports failure by returning uintmax_t(-1), so an unchecked
+  // error_code would wrap the total and make retention evict good logs.  A
+  // file vanishing under us is routine: the compress worker removes files
+  // outside the sink mutex.
+  const auto add_size = [](std::uint64_t & running, const fs::path & path) {
+    std::error_code sizeEc;
+    const auto size = fs::file_size(path, sizeEc);
+    if(!sizeEc)
+    {
+      running += static_cast<std::uint64_t>(size);
+    }
+  };
+
   std::uint64_t total = 0;
   std::error_code ec;
   if(fs::exists(cfg_.base_path, ec))
   {
-    total += static_cast<std::uint64_t>(fs::file_size(cfg_.base_path, ec));
+    add_size(total, cfg_.base_path);
   }
   for(const auto & p : list_managed_finished_unlocked_())
   {
-    total += static_cast<std::uint64_t>(fs::file_size(p, ec));
+    add_size(total, p);
   }
   return total;
 }
