@@ -69,6 +69,26 @@ DecoderConnection::configure(
   Messages::ValueMessageBuilder & builder,
   Application::DecoderConfiguration &configuration)
 {
+  // DecoderConfiguration documents, three times, that
+  // bufferCount * bufferSize must equal or exceed the maximum message size.
+  // Zero times anything is zero, so a zero here violates the stated
+  // precondition. Nothing checked it: the receiver reported a successful
+  // start and the event loop then waited forever for a read that a pool of
+  // no bytes could never satisfy. A hang is the worst answer to a typo,
+  // because it looks like progress.
+  if(configuration.bufferSize() == 0)
+  {
+    throw UsageError(
+      "Invalid configuration",
+      "Buffer size must be greater than zero.");
+  }
+  if(configuration.bufferCount() == 0)
+  {
+    throw UsageError(
+      "Invalid configuration",
+      "Buffer count must be greater than zero.");
+  }
+
   if(!configuration.asynchReads() && !configuration.fastFileName().empty())
   {
 #ifndef _WIN32
