@@ -21,11 +21,22 @@ FieldInstructionSequence::FieldInstructionSequence(
   const std::string & name,
   const std::string & fieldNamespace)
   : FieldInstruction(name, fieldNamespace)
+  , defaultLengthInstruction_(new FieldInstructionUInt32)
 {
+  defaultLengthInstruction_->setPresence(isMandatory());
 }
 
 FieldInstructionSequence::FieldInstructionSequence()
+  : defaultLengthInstruction_(new FieldInstructionUInt32)
 {
+  defaultLengthInstruction_->setPresence(isMandatory());
+}
+
+void
+FieldInstructionSequence::setPresence(bool mandatory)
+{
+  FieldInstruction::setPresence(mandatory);
+  defaultLengthInstruction_->setPresence(mandatory);
 }
 
 FieldInstructionSequence::~FieldInstructionSequence()
@@ -74,9 +85,7 @@ FieldInstructionSequence::decodeNop(
   }
   else
   {
-    FieldInstructionUInt32 defaultLengthInstruction;
-    defaultLengthInstruction.setPresence(isMandatory());
-    defaultLengthInstruction.decode(source, pmap, decoder, lengthSet);
+    defaultLengthInstruction_->decode(source, pmap, decoder, lengthSet);
   }
   if(lengthSet.isSet())
   {
@@ -137,10 +146,8 @@ FieldInstructionSequence::encodeNop(
     }
     else
     {
-       FieldInstructionUInt32 defaultLengthInstruction;
-       defaultLengthInstruction.setPresence(isMandatory());
-       Messages::SingleFieldAccessor accessor(defaultLengthInstruction.getIdentity(), lengthField);
-       defaultLengthInstruction.encode(destination, pmap, encoder, accessor);
+       Messages::SingleFieldAccessor accessor(defaultLengthInstruction_->getIdentity(), lengthField);
+       defaultLengthInstruction_->encode(destination, pmap, encoder, accessor);
     }
 
     for(size_t pos = 0; pos < length; ++pos)
