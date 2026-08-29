@@ -464,13 +464,25 @@ namespace QuickFAST{
 
       /// @brief Encode a string that's nullable, but not null.
       /// @param destination to which the string will be written.
+      /// @param context reports a value the ascii encoding cannot carry.
       /// @param value to be written.
-      static void encodeNullableAscii(DataDestination & destination, const StringBuffer & value);
+      /// @param name of the field, for the error message.
+      static void encodeNullableAscii(
+        DataDestination & destination,
+        Context & context,
+        const StringBuffer & value,
+        const std::string & name);
 
       /// @brief Encode a string.
       /// @param destination to which the string will be written.
+      /// @param context reports a value the ascii encoding cannot carry.
       /// @param value to be written.
-      static void encodeAscii(DataDestination & destination, const StringBuffer & value);
+      /// @param name of the field, for the error message.
+      static void encodeAscii(
+        DataDestination & destination,
+        Context & context,
+        const StringBuffer & value,
+        const std::string & name);
 
       /// @brief Helper routine to encode a blob represented as a string; into a destination
       /// @param destination to which the data will be written
