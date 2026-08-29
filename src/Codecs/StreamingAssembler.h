@@ -69,6 +69,13 @@ namespace QuickFAST
       }
 
     private:
+      /// @brief Report a framing failure and abandon the stream.
+      /// @param receiver owns the buffer that has to be handed back.
+      /// @param what describes the failure for the message builder.
+      void reportHeaderFailure(
+        Communication::Receiver & receiver,
+        const std::string & what);
+
       StreamingAssembler & operator = (const StreamingAssembler &);
       StreamingAssembler(const StreamingAssembler &);
       StreamingAssembler();
