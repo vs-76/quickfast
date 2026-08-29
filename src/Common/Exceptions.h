@@ -10,8 +10,26 @@
 #error Please include <Application/QuickFAST.h> preferably as a precompiled header file.
 #endif //QUICKFAST_HEADERS
 
+#include <cstdio>
+
 //#include <Common/QuickFAST_Export.h>
 namespace QuickFAST{
+  namespace {
+    inline const char * formatExceptionMessage(
+      const char * errorType,
+      const char * description)
+    {
+      thread_local static char buffer[1024];
+      std::snprintf(
+        buffer,
+        sizeof(buffer),
+        "%s: %s",
+        errorType ? errorType : "",
+        description ? description : "");
+      return buffer;
+    }
+  }
+
   /// @brief Exception to be thrown when an attempt is made to convert a value to an incompatable type.
   class /* QuickFAST_Export */ UnsupportedConversion : public std::domain_error{
   public:
@@ -94,13 +112,8 @@ namespace QuickFAST{
     /// @param errorType the type of problem. (Coding Error, Internal Error, etc.)
     /// @param description the actual problem.
     UsageError(const char * errorType, const char * description)
-    try
-      : std::invalid_argument(std::string(errorType) + ": " + description)
+      : std::invalid_argument(formatExceptionMessage(errorType, description))
     {
-    }
-    catch(...)
-    {
-      throw std::invalid_argument(errorType ? errorType : "UsageError");
     }
   };
 
@@ -111,13 +124,8 @@ namespace QuickFAST{
     /// @param errorType the type of problem. (Coding Error, Internal Error, etc.)
     /// @param description the actual problem.
     InternalError(const char * errorType, const char * description)
-    try
-      : std::logic_error(std::string(errorType) + ": " + description)
+      : std::logic_error(formatExceptionMessage(errorType, description))
     {
-    }
-    catch(...)
-    {
-      throw std::logic_error(errorType ? errorType : "InternalError");
     }
   };
 }
