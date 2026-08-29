@@ -43,9 +43,9 @@ namespace QuickFAST
 
     private:
       /// @brief Initial processing of incoming packet from any source.
-      void capturePacket(Communication::LinkedBuffer * buffer);
+      bool capturePacket(Communication::LinkedBuffer * buffer);
       /// @brief Ready to decode a packet
-      void processPacket(Communication::LinkedBuffer * buffer);
+      bool processPacket(Communication::LinkedBuffer * buffer);
       /// @brief Packet is no longer needed.  Return it to from whence it came.
       void releasePacket(Communication::LinkedBuffer * buffer);
       /// @brief Packet is beyond the look-ahead array.   Hang on to it for later.
