@@ -48,6 +48,12 @@ Release
 *.log
 cachegrind.out*
 
+# libFuzzer crash / artifact files if run from the source tree
+crash-*
+leak-*
+timeout-*
+oom-*
+
 #helper/customized commands
 # (use single letter names and don't add to repo)
 ?.cmd
