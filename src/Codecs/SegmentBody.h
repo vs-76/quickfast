@@ -165,7 +165,7 @@ namespace QuickFAST{
       /// @brief the maximum number of presence map bits needed to encode these fields
       size_t presenceMapBits_;
       /// @brief How many fields will be Xcoded by this segment
-      size_t fieldCount_;
+      size_t fieldCount_ = 0;
       /// @brief the number of presence map bits before any fields are added.
       size_t initialPresenceMapBits_;
       /// @brief the container type for instructions

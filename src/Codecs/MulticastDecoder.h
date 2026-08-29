@@ -183,7 +183,7 @@ namespace QuickFAST{
       NoHeaderAnalyzer messageHeaderAnalyzer_;
       TemplateRegistryPtr templateRegistry_;
       Codecs::MessagePerPacketAssemblerPtr assembler_;
-      Messages::ValueMessageBuilder * builder_;
+      Messages::ValueMessageBuilder * builder_ = nullptr;
       size_t messageLimit_;
       bool strict_;
       std::ostream * verboseOut_;

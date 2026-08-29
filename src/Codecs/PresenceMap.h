@@ -122,7 +122,7 @@ namespace QuickFAST{
       uchar bitMask_;
       size_t bytePosition_;
       size_t byteCapacity_;
-      uchar internalBuffer_[defaultByteCapacity_];
+      uchar internalBuffer_[defaultByteCapacity_] = {};
       std::unique_ptr<uchar[]> externalBuffer_;
       uchar * bits_;
       std::ostream * vout_;

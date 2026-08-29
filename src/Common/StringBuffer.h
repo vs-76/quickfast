@@ -587,7 +587,7 @@ namespace QuickFAST
     }
 
   private:
-    unsigned char internalBuffer_[INTERNAL_CAPACITY + 1];
+    unsigned char internalBuffer_[INTERNAL_CAPACITY + 1] = {};
     unsigned char * heapBuffer_;
     size_t size_;
     size_t capacity_;

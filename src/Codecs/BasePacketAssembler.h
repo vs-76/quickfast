@@ -105,9 +105,9 @@ namespace QuickFAST
       Messages::ValueMessageBuilder & builder_;
 
       /// the current buffer being decoded.
-      const unsigned char * currentBuffer_;
+      const unsigned char * currentBuffer_ = nullptr;
       /// the size of the current buffer.
-      size_t currentSize_;
+      size_t currentSize_ = 0;
 
       /// How many buffers have been decoded.
       size_t messageCount_;

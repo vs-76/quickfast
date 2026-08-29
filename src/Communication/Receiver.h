@@ -462,7 +462,7 @@ namespace QuickFAST
 
     protected:
       /// The assembler to receive full buffers
-      Assembler * assembler_;
+      Assembler * assembler_ = nullptr;
       /// Manage the buffers' lifetimes
       BufferLifetimeManager bufferLifetimes_;
 

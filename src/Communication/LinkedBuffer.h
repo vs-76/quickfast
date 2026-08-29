@@ -215,7 +215,7 @@ namespace QuickFAST
       size_t capacity_;
       size_t used_;
       void * extra_;
-      uint32 flags_;
+      uint32 flags_ = 0;
     };
 
   }

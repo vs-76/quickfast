@@ -72,7 +72,7 @@ namespace QuickFAST
 
     private:
       std::istream & stream_;
-      bool needService_;
+      bool needService_ = false;
     };
   }
 }
