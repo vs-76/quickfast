@@ -11,6 +11,7 @@
 #include <Common/QuickFAST_Export.h>
 #include <Common/Types.h>
 #include <Common/WorkingBuffer.h>
+#include <Common/Exceptions.h>
 #include <asio.hpp>
 namespace QuickFAST{
   namespace Codecs{
@@ -112,6 +113,13 @@ namespace QuickFAST{
       /// @param handle is the handle as returned by startBuffer() or getBuffer()
       void selectBuffer(BufferHandle handle)
       {
+        // BufferHandle is a bare size_t with no generation counter, so a
+        // handle obtained before a clear() is indistinguishable from a live
+        // one. Accepting it steered putByte into a slot outside the current
+        // message, where toString used to find it and send it. Checking
+        // against used_ rather than the pool size is what makes "the current
+        // message" mean something.
+        rangeCheck(handle, "selectBuffer");
         active_ = handle;
       }
 
@@ -171,14 +179,18 @@ namespace QuickFAST{
       /// @param result is the Strubg into which the data will be copied.
       void toString(std::string & result)const
       {
+        // used_, not buffers_.size(). The pool keeps the buffers from the
+        // longest cycle so far, and walking all of them reported slots that
+        // belong to no message -- disagreeing with size() and with the
+        // iterator pair, which have always counted what is in use.
         size_t size = 0;
-        for(size_t pos = 0; pos < buffers_.size(); ++pos)
+        for(size_t pos = 0; pos < used_; ++pos)
         {
           size += buffers_[pos].size();
         }
         result.clear();
         result.reserve(size);
-        for(size_t pos = 0; pos < buffers_.size(); ++pos)
+        for(size_t pos = 0; pos < used_; ++pos)
         {
           result.append(reinterpret_cast<const char *>(buffers_[pos].begin()),
             buffers_[pos].size());
@@ -191,12 +203,12 @@ namespace QuickFAST{
       void toWorkingBuffer(WorkingBuffer & result) const
       {
         size_t size = 0;
-        for(size_t pos = 0; pos < buffers_.size(); ++pos)
+        for(size_t pos = 0; pos < used_; ++pos)
         {
           size += buffers_[pos].size();
         }
         result.clear(false, size);
-        for(size_t pos = 0; pos < buffers_.size(); ++pos)
+        for(size_t pos = 0; pos < used_; ++pos)
         {
           result.append(buffers_[pos]);
         }
@@ -299,10 +311,25 @@ namespace QuickFAST{
       /// @param index should be < size()
       const WorkingBuffer & operator[](size_t index)const
       {
+        rangeCheck(index, "operator[]");
         return buffers_[index];
       }
 
     private:
+      /// @brief Refuse a handle that is not part of the current message.
+      /// @param index is the handle or index to check.
+      /// @param what names the caller for the error message.
+      void rangeCheck(size_t index, const char * what) const
+      {
+        if(index >= used_)
+        {
+          std::stringstream msg;
+          msg << "DataDestination::" << what << " given buffer " << index
+              << " when only " << used_ << " are in use.";
+          throw UsageError("Invalid buffer handle", msg.str().c_str());
+        }
+      }
+
       DataDestination & operator = (const DataDestination &); // forbidden assignment
       DataDestination(const DataDestination &); // forbidden copy constructor
 
