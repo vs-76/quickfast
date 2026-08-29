@@ -94,8 +94,13 @@ namespace QuickFAST{
     /// @param errorType the type of problem. (Coding Error, Internal Error, etc.)
     /// @param description the actual problem.
     UsageError(const char * errorType, const char * description)
-      : std::invalid_argument((std::string(errorType) + ": " +  description).c_str())
+    try
+      : std::invalid_argument(std::string(errorType) + ": " + description)
     {
+    }
+    catch(...)
+    {
+      throw std::invalid_argument(errorType ? errorType : "UsageError");
     }
   };
 
@@ -106,8 +111,13 @@ namespace QuickFAST{
     /// @param errorType the type of problem. (Coding Error, Internal Error, etc.)
     /// @param description the actual problem.
     InternalError(const char * errorType, const char * description)
-      : std::logic_error((std::string(errorType) +  ": " + description).c_str())
+    try
+      : std::logic_error(std::string(errorType) + ": " + description)
     {
+    }
+    catch(...)
+    {
+      throw std::logic_error(errorType ? errorType : "InternalError");
     }
   };
 }
