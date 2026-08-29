@@ -52,6 +52,11 @@
 #include <fstream>
 #include <cstdlib>
 
+// Define BOOST_BIND_GLOBAL_PLACEHOLDERS before boost/bind to keep legacy placeholder use.
+#ifndef BOOST_BIND_GLOBAL_PLACEHOLDERS
+# define BOOST_BIND_GLOBAL_PLACEHOLDERS
+#endif
+
 #include <boost/date_time/gregorian/gregorian_types.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/shared_ptr.hpp>
@@ -67,7 +72,7 @@
 #include <boost/thread.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/cstdint.hpp>
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 
 ////////////////////////
 // Doxygen documentation

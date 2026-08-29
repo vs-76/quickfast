@@ -24,7 +24,7 @@ AsynchFileSender::AsynchFileSender(
 {
 }
 AsynchFileSender::AsynchFileSender(
-  boost::asio::io_service & ioService,
+  boost::asio::io_context & ioService,
   BufferRecycler & recycler,
   const char * fileName,
   unsigned long additionalAttributes)

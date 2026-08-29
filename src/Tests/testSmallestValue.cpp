@@ -5,6 +5,7 @@
 
 #define BOOST_TEST_NO_MAIN QuickFASTTest
 #include <boost/test/unit_test.hpp>
+#include <Tests/TestPaths.h>
 #include <boost/filesystem.hpp>
 
 #include <Codecs/XMLTemplateParser.h>
@@ -563,8 +564,7 @@ BOOST_AUTO_TEST_CASE(TestSmallestValue)
   // This check makes the reason for the failure more obvious (defective compiler I think)
   // Fortunately the number doesn't show up all that often.
   BOOST_CHECK_EQUAL(INT64_SINGULARITY, -INT64_SINGULARITY);
-  std::string xml (std::getenv ("QUICKFAST_ROOT"));
-  xml += "/src/Tests/resources/smallest_value.xml";
+  std::string xml = QuickFAST::TestPaths::resource("/src/Tests/resources/smallest_value.xml");
   smallest_value_test (xml);
 }
 

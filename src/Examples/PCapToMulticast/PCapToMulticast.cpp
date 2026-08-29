@@ -166,7 +166,7 @@ PCapToMulticast::applyArgs()
     }
     ok = ok && pcapReader_.open(dataFileName_.c_str());// for debugging dump to->, &std::cout);
 
-    multicastAddress_ = boost::asio::ip::address::from_string(sendAddress_);
+    multicastAddress_ = boost::asio::ip::make_address(sendAddress_);
     endpoint_ = boost::asio::ip::udp::endpoint(multicastAddress_, portNumber_);
     socket_.open(endpoint_.protocol());
     std::cout << "Opening multicast group: " << endpoint_.address().to_string() << ':' << endpoint_.port() << std::endl;
@@ -189,8 +189,8 @@ PCapToMulticast::run()
       std::cout << " Configuring multicast: " << multicastAddress_ << '|' << sendAddress_ << ':' << portNumber_ << std::endl;
     }
 
-    strand_.dispatch(
-        strand_.wrap(boost::bind(&PCapToMulticast::sendBurst, this)));
+    boost::asio::dispatch(strand_,
+        boost::bind(&PCapToMulticast::sendBurst, this));
     StopWatch lapse;
     this->ioService_.run();
     unsigned long sendLapse = lapse.freeze();
@@ -228,9 +228,10 @@ PCapToMulticast::sendBurst()
     // set the next timeout
     if(sendMicroseconds_ != 0)
     {
-      timer_.expires_from_now(boost::posix_time::microseconds(sendMicroseconds_));
+      timer_.expires_after(std::chrono::microseconds(sendMicroseconds_));
       timer_.async_wait(
-        strand_.wrap(boost::bind(&PCapToMulticast::sendBurst, this))
+        boost::asio::bind_executor(strand_,
+          boost::bind(&PCapToMulticast::sendBurst, this))
         );
     }
 

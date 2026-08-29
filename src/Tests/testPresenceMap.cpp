@@ -19,7 +19,7 @@ BOOST_AUTO_TEST_CASE(testPmapDecoding)
     BOOST_CHECK(!pmap.checkNextField());
   }
 
-  uchar oneBytePMAP[] = {'\xFF'};
+  uchar oneBytePMAP[] = {static_cast<uchar>(0xFFu)};
   pmap.setRaw(oneBytePMAP, 1);
 
   for(size_t n = 0; n < 7; ++n) // The first 7 should be present
@@ -43,7 +43,7 @@ BOOST_AUTO_TEST_CASE(testPmapDecoding)
     BOOST_CHECK(!pmap.checkNextField());
   }
 
-  uchar everyOtherOne[] = {'\x55', '\xAA'};
+  uchar everyOtherOne[] = {static_cast<uchar>(0x55u), static_cast<uchar>(0xAAu)};
   BOOST_CHECK_EQUAL(sizeof(everyOtherOne), 2);
   pmap.setRaw(everyOtherOne, sizeof(everyOtherOne));
   size_t ones = 0;

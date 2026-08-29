@@ -36,10 +36,10 @@ namespace QuickFAST
           )
         : parent_(parent)
         , name_(name)
-        , listenInterface_(boost::asio::ip::address::from_string(listenInterfaceIP))
+        , listenInterface_(boost::asio::ip::make_address(listenInterfaceIP))
         , portNumber_(portNumber)
-        , multicastGroup_(boost::asio::ip::address::from_string(multicastGroupIP))
-        , bindAddress_(boost::asio::ip::address::from_string(bindIP))
+        , multicastGroup_(boost::asio::ip::make_address(multicastGroupIP))
+        , bindAddress_(boost::asio::ip::make_address(bindIP))
         , endpoint_(listenInterface_, portNumber)
         , socket_(ioService)
         , joined_(false)
@@ -227,7 +227,7 @@ namespace QuickFAST
       }
 
       /// @brief construct given shared io_service
-      MulticastReceiver(boost::asio::io_service & ioService)
+      MulticastReceiver(boost::asio::io_context & ioService)
         : AsynchReceiver(ioService)
       {
       }
@@ -263,7 +263,7 @@ namespace QuickFAST
       /// @param bindIP the IP to be used to bind the socket.
       /// @param portNumber port number
       MulticastReceiver(
-        boost::asio::io_service & ioService,
+        boost::asio::io_context & ioService,
         const std::string & multicastGroupIP,
         const std::string & listenInterfaceIP,
         const std::string & bindIP,

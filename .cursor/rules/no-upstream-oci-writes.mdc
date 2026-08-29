@@ -1,0 +1,38 @@
+---
+description: Never commit, push, or open PRs against objectcomputing/quickfast
+alwaysApply: true
+---
+
+# Forbidden remote: objectcomputing/quickfast
+
+**Never** commit, push, force-push, create branches on, or open pull requests against [objectcomputing/quickfast](https://github.com/objectcomputing/quickfast) (OCI upstream).
+
+## Hard bans
+
+- Do **not** set `origin` (or any push remote) to `https://github.com/objectcomputing/quickfast` or `git@github.com:objectcomputing/quickfast.git`
+- Do **not** `git push` / `git push -u` to any remote whose URL contains `objectcomputing/quickfast`
+- Do **not** `gh pr create` targeting `objectcomputing/quickfast` (base or head repo)
+- Do **not** suggest opening a PR, syncing writable remotes, or “contributing upstream” to that repo unless the user explicitly overrides in the current message
+
+## Allowed remotes
+
+Work only against this fork (or other remotes the user names):
+
+- [vs-76/quickfast](https://github.com/vs-76/quickfast) — default `origin`
+
+Upstream may be added **read-only** for fetch/rebase if needed:
+
+```bash
+# ✅ fetch-only mirror (no push)
+git remote add upstream https://github.com/objectcomputing/quickfast.git
+git remote set-url --push upstream DISABLE
+```
+
+```bash
+# ❌ never
+git push origin ...   # if origin is objectcomputing/quickfast
+git push upstream ...
+gh pr create --repo objectcomputing/quickfast ...
+```
+
+If a command would touch that repo for write, **stop**, warn the user, and use `vs-76/quickfast` instead.

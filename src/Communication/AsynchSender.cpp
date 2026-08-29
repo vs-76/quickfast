@@ -15,19 +15,19 @@ AsynchSender::AsynchSender(
     : Sender(recycler)
     , name_(name)
     , ioService_()
-    , keepAlive_(new boost::asio::io_service::work(ioService_))
+    , keepAlive_(new WorkGuard(ioService_.get_executor()))
 {
   //std::cout << "Asynch Sender {" << (void *)this << "} keeping ioService " << (void*) &ioService_ << " alive." << std::endl;
 }
 
 AsynchSender::AsynchSender(
-  boost::asio::io_service & ioService,
+  boost::asio::io_context & ioService,
   BufferRecycler & recycler,
   const char * name)
     : Sender(recycler)
     , name_(name)
     , ioService_(ioService)
-    , keepAlive_(new boost::asio::io_service::work(ioService_))
+    , keepAlive_(new WorkGuard(ioService_.get_executor()))
 {
 //  std::cout << "Asynch Sender {" << (void *)this << "} keeping shared ioService " << (void*) &ioService_ << " alive." << std::endl;
 }

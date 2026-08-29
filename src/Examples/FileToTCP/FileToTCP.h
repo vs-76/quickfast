@@ -52,7 +52,7 @@ namespace QuickFAST{
       bool verbose_;
       bool hack_;
 
-      boost::asio::io_service io_service_;
+      boost::asio::io_context io_service_;
       Application::CommandArgParser commandArgParser_;
     };
   }

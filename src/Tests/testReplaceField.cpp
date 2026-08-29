@@ -5,6 +5,7 @@
 
 #define BOOST_TEST_NO_MAIN QuickFASTTest
 #include <boost/test/unit_test.hpp>
+#include <Tests/TestPaths.h>
 #include <boost/filesystem.hpp>
 
 #include <Codecs/XMLTemplateParser.h>
@@ -36,8 +37,7 @@ using namespace QuickFAST;
 
 BOOST_AUTO_TEST_CASE(TestReplaceField)
 {
-  std::string xml (std::getenv ("QUICKFAST_ROOT"));
-  xml += "/src/Tests/resources/unittest_optional.xml";
+  std::string xml = QuickFAST::TestPaths::resource("/src/Tests/resources/unittest_optional.xml");
 
   std::ifstream templateStream(xml.c_str(), std::ifstream::binary);
 

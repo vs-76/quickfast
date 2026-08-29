@@ -42,7 +42,10 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/operators.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/bind.hpp>
+#ifndef BOOST_BIND_GLOBAL_PLACEHOLDERS
+# define BOOST_BIND_GLOBAL_PLACEHOLDERS
+#endif
+#include <boost/bind/bind.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/cstdint.hpp>

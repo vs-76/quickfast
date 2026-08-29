@@ -8,6 +8,29 @@ Because FAST not specific to market data or the financial industry, there are op
 QuickFAST is written to be portable to many platforms. It is routinely tested on Windows and Linux. The project also includes a .NET wrapper 
 which supports using QuickFAST in the .NET environment. Ask if you want support for other platforms.
 
+### Linux build (CMake + Boost 1.90)
+
+Dependencies (Ubuntu/Debian example):
+
+```bash
+sudo apt-get install -y cmake build-essential \
+  libboost-dev libboost-filesystem-dev libboost-thread-dev \
+  libboost-chrono-dev libboost-date-time-dev libboost-test-dev \
+  libxerces-c-dev
+```
+
+Configure and build:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+ctest --test-dir build --output-on-failure
+```
+
+Optional flags: `-DQUICKFAST_BUILD_TESTS=OFF`, `-DQUICKFAST_BUILD_EXAMPLES=OFF`.
+
+The legacy MPC/`setup.sh` flow remains available for older toolchains; prefer CMake on modern Linux.
+
 Instructions for [getting started with QuickFAST are here](https://github.com/objectcomputing/quickfast/wiki/GettingStarted)
 
 QuickFAST was developed by Object Computing Inc.(OCI) St. Louis Missouri USA. OCI has made QuickFAST available as open source software 

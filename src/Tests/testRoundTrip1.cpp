@@ -5,6 +5,7 @@
 
 #define BOOST_TEST_NO_MAIN QuickFASTTest
 #include <boost/test/unit_test.hpp>
+#include <Tests/TestPaths.h>
 #include <boost/filesystem.hpp>
 
 #include <Codecs/XMLTemplateParser.h>
@@ -550,15 +551,13 @@ namespace{
 
 BOOST_AUTO_TEST_CASE(TestRoundTripMandatory)
 {
-  std::string xml (std::getenv ("QUICKFAST_ROOT"));
-  xml += "/src/Tests/resources/unittest_mandatory.xml";
+  std::string xml = QuickFAST::TestPaths::resource("/src/Tests/resources/unittest_mandatory.xml");
   test (xml);
 }
 
 BOOST_AUTO_TEST_CASE(TestRoundTripOptional)
 {
-  std::string xml (std::getenv ("QUICKFAST_ROOT"));
-  xml += "/src/Tests/resources/unittest_optional.xml";
+  std::string xml = QuickFAST::TestPaths::resource("/src/Tests/resources/unittest_optional.xml");
   test (xml);
 }
 

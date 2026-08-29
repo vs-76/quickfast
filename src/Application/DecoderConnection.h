@@ -171,7 +171,7 @@ namespace QuickFAST{
       bool ownVerboseFile_;
 
       Codecs::TemplateRegistryPtr registry_;
-      boost::scoped_ptr<boost::asio::io_service> ioService_;
+      boost::scoped_ptr<boost::asio::io_context> ioService_;
       boost::scoped_ptr<Codecs::HeaderAnalyzer> packetHeaderAnalyzer_;
       boost::scoped_ptr<Codecs::HeaderAnalyzer> messageHeaderAnalyzer_;
       boost::scoped_ptr<Communication::Assembler> assembler_;

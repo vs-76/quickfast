@@ -62,12 +62,12 @@ namespace QuickFAST{
       size_t packetChecksumSize_;
       bool verbose_;
 
-      boost::asio::io_service ioService_;
+      boost::asio::io_context ioService_;
       boost::asio::ip::address multicastAddress_;
       boost::asio::ip::udp::endpoint endpoint_;
       boost::asio::ip::udp::socket socket_;
-      boost::asio::strand strand_;
-      boost::asio::deadline_timer timer_;
+      boost::asio::io_context::strand strand_;
+      boost::asio::steady_timer timer_;
 
       Application::CommandArgParser commandArgParser_;
 //      FILE * dataFile_;

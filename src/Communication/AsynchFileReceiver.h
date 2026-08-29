@@ -44,7 +44,7 @@ namespace QuickFAST
       /// @param fileName the file to read
       /// @param additionalAttributes for use in the Windows CreateFile function
       AsynchFileReceiver(
-        boost::asio::io_service & ioService,
+        boost::asio::io_context & ioService,
         const std::string & fileName,
         uint32 additionalAttributes = 0
         )
@@ -186,7 +186,7 @@ namespace QuickFAST
       /// @param fileName the file to read
       /// @param additionalAttributes for use in the Windows CreateFile function
       AsynchFileReceiver(
-        boost::asio::io_service & ioService,
+        boost::asio::io_context & ioService,
         const std::string & fileName,
         uint32 additionalAttributes = 0
         )

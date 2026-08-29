@@ -263,8 +263,8 @@ FileToMulticast::run()
         << "Largest is " << bufferSize_ << " bytes." << std::endl;
     }
 
-    strand_.dispatch(
-        strand_.wrap(boost::bind(&FileToMulticast::sendBurst, this)));
+    boost::asio::dispatch(strand_,
+        boost::bind(&FileToMulticast::sendBurst, this));
     StopWatch lapse;
     this->ioService_.run();
     unsigned long sendLapse = lapse.freeze();
@@ -302,9 +302,10 @@ FileToMulticast::sendBurst()
     // set the next timeout
     if(sendMicroseconds_ != 0)
     {
-      timer_.expires_from_now(boost::posix_time::microseconds(sendMicroseconds_));
+      timer_.expires_after(std::chrono::microseconds(sendMicroseconds_));
       timer_.async_wait(
-        strand_.wrap(boost::bind(&FileToMulticast::sendBurst, this))
+        boost::asio::bind_executor(strand_,
+          boost::bind(&FileToMulticast::sendBurst, this))
         );
     }
 

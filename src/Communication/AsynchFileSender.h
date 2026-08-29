@@ -32,7 +32,7 @@ namespace QuickFAST
       /// @param fileName is the name of the file to be written
       /// @param additionalAttributes will be used in the Windows CreateFile call.
       AsynchFileSender(
-        boost::asio::io_service & ioService,
+        boost::asio::io_context & ioService,
         BufferRecycler & recycler,
         const char * fileName,
         unsigned long additionalAttributes = 0);

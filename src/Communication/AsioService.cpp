@@ -8,7 +8,7 @@
 using namespace QuickFAST;
 using namespace Communication;
 
-boost::asio::io_service AsioService::sharedIoService_;
+boost::asio::io_context AsioService::sharedIoService_;
 AtomicCounter AsioService::sharedRunningThreadCount_;
 
 AsioService::AsioService()
@@ -22,7 +22,7 @@ AsioService::AsioService()
 //  std::cout << "Create ASIO service(shared): " << (void *) this << std::endl;
 }
 
-AsioService::AsioService(boost::asio::io_service & ioService)
+AsioService::AsioService(boost::asio::io_context & ioService)
   : stopping_(false)
   , threadCount_(0)
   , threadCapacity_(0)

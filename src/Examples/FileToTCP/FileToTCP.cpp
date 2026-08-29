@@ -126,7 +126,7 @@ FileToTCP::run()
       {
         std::cout << "Listening" << std::endl;
       }
-      acceptor.accept(*stream.rdbuf());
+      acceptor.accept(stream.socket());
       if(verbose_)
       {
         std::cout << "Accepting" << std::endl;

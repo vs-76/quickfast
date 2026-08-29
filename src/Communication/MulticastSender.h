@@ -43,7 +43,7 @@ namespace QuickFAST
       /// @param sendAddress multicast address as a text string
       /// @param portNumber port number
       MulticastSender(
-        boost::asio::io_service & ioService,
+        boost::asio::io_context & ioService,
         BufferRecycler & recycler,
         const std::string & sendAddress,
         unsigned short portNumber
@@ -62,7 +62,7 @@ namespace QuickFAST
       ///@brief Prepare the sender to be used
       bool initializeSender()
       {
-        multicastAddress_ = boost::asio::ip::address::from_string(sendAddress_);
+        multicastAddress_ = boost::asio::ip::make_address(sendAddress_);
         endpoint_ = boost::asio::ip::udp::endpoint(multicastAddress_, portNumber_);
         socket_.open(endpoint_.protocol());
         return true;

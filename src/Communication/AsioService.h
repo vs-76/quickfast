@@ -31,7 +31,7 @@ namespace QuickFAST
       AsioService();
 
       /// @brief Construct using an external io service
-      AsioService(boost::asio::io_service & ioService);
+      AsioService(boost::asio::io_context & ioService);
 
       ~AsioService();
 
@@ -66,9 +66,15 @@ namespace QuickFAST
       }
 
       /// @brief Allow external access (thereby blowing encapsulization)
-      boost::asio::io_service & ioService()
+      boost::asio::io_context & ioService()
       {
         return ioService_;
+      }
+
+      /// @brief Expose the underlying executor so Asio sockets/timers accept AsioService.
+      boost::asio::io_context::executor_type get_executor() noexcept
+      {
+        return ioService_.get_executor();
       }
 
       /// @brief create additional threads to run the event loop
@@ -87,15 +93,15 @@ namespace QuickFAST
       /// should be called after joinThreads before calling run*, poll*, etc. again.
       void resetService()
       {
-        ioService_.reset();
+        ioService_.restart();
         stopping_ = false;
       }
 
       /// @brief stop the ioservice
       void stopService();
 
-      /// @brief allow implicit cast to io_service
-      operator boost::asio::io_service &()
+      /// @brief allow implicit cast to io_context
+      operator boost::asio::io_context &()
       {
         return ioService_;
       }
@@ -105,7 +111,7 @@ namespace QuickFAST
       template<typename CompletionHandler>
       void post(CompletionHandler handler)
       {
-        ioService_.post(handler);
+        boost::asio::post(ioService_, handler);
       }
 
       /// @brief Attempt to determine how many threads are available to ASIO
@@ -122,7 +128,7 @@ namespace QuickFAST
     private:
       // if no io_service is specified, this one
       // will be used (shared among all users)
-      static boost::asio::io_service sharedIoService_;
+      static boost::asio::io_context sharedIoService_;
       static AtomicCounter sharedRunningThreadCount_;
 
       /// Pointer to a boost thread
@@ -133,7 +139,7 @@ namespace QuickFAST
       size_t threadCapacity_;
 
       AtomicCounter runningThreadCount_;
-      boost::asio::io_service & ioService_;
+      boost::asio::io_context & ioService_;
       bool usingSharedService_;
       Common::Logger * logger_;
     };

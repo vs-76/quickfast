@@ -28,7 +28,7 @@ namespace QuickFAST
 
       /// @brief construct given shared io_service
       /// @param ioService an ioService to be shared with other objects
-      AsynchReceiver(boost::asio::io_service & ioService)
+      AsynchReceiver(boost::asio::io_context & ioService)
         : ioService_(ioService)
       {
       }

@@ -6,6 +6,7 @@
 
 #define BOOST_TEST_NO_MAIN QuickFASTTest
 #include <boost/test/unit_test.hpp>
+#include <Tests/TestPaths.h>
 #include <boost/filesystem.hpp>
 
 #include <Communication/BufferRecycler.h>
@@ -123,7 +124,7 @@ namespace
 
 BOOST_AUTO_TEST_CASE(TestAsynchFileWriter)
 {
-  std::string root (std::getenv ("QUICKFAST_ROOT"));
+  std::string root = QuickFAST::TestPaths::root();
   std::string workingDirectory = root + "/src/Tests/resources/";
   std::string inputFile = workingDirectory + "fileCopyTest.dat";
   std::string outputFile = workingDirectory + "fileCopyTest.out";

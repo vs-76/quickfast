@@ -252,7 +252,7 @@ InterpretApplication::run()
         "r"
 #endif
         );
-      if(bufferFile <= 0)
+      if(bufferFile == 0)
       {
         std::cerr << "Can't open file " << bufferFilename_ << std::endl;
         return -1;

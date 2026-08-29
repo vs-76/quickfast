@@ -5,6 +5,7 @@
 
 #define BOOST_TEST_NO_MAIN QuickFASTTest
 #include <boost/test/unit_test.hpp>
+#include <Tests/TestPaths.h>
 #include <boost/filesystem.hpp>
 
 #include <Codecs/XMLTemplateParser.h>
@@ -565,8 +566,7 @@ BOOST_AUTO_TEST_CASE(TestBiggestValue)
 //  std::string biggestUInt64 = "9223372036854775808";
 //  uint64 boostGenerated = boost::lexical_cast<unsigned long long>(biggestUInt64);
 
-  std::string xml (std::getenv ("QUICKFAST_ROOT"));
-  xml += "/src/Tests/resources/biggest_value.xml";
+  std::string xml = QuickFAST::TestPaths::resource("/src/Tests/resources/biggest_value.xml");
 
   std::string str;
   string_generate (str, 1000);

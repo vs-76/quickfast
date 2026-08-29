@@ -39,7 +39,7 @@ namespace QuickFAST
       /// @param hostName is the name or dotted IP to connect to
       /// @param port port service name or number
       TCPReceiver(
-        boost::asio::io_service & ioService,
+        boost::asio::io_context & ioService,
         const std::string & hostName,
         const std::string & port
         )
@@ -60,18 +60,17 @@ namespace QuickFAST
         bool ok = true;
         // generate a collection of possible endpoints for this host:port
         boost::asio::ip::tcp::resolver resolver(ioService_);
-        boost::asio::ip::tcp::resolver::query query( hostName_, port_);
-        boost::asio::ip::tcp::resolver::iterator iterator = resolver.resolve(query);
+        boost::asio::ip::tcp::resolver::results_type endpoints = resolver.resolve(hostName_, port_);
 
         // then iterate thru the collection until we find one that works.
         boost::system::error_code error;
-        boost::asio::ip::tcp::resolver::iterator endIterator;
         bool connected = false;
-        while(!connected && iterator != endIterator)
+        for(boost::asio::ip::tcp::resolver::results_type::iterator iterator = endpoints.begin();
+            !connected && iterator != endpoints.end();
+            ++iterator)
         {
           socket_.connect(*iterator, error);
           connected = !error;
-          ++iterator;
         }
         if(!connected)
         {
