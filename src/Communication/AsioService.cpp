@@ -68,18 +68,18 @@ AsioService::runThreads(size_t threadCount /*= 0*/, bool useThisThread /* = true
 {
   if(threadCount > threadCapacity_)
   {
-    std::unique_ptr<ThreadPtr[]> newThreads(new ThreadPtr[threadCount]);
+    auto newThreads = std::make_unique<ThreadPtr[]>(threadCount);
     for(size_t nThread = 0; nThread < threadCount_; ++nThread)
     {
       newThreads[nThread] = threads_[nThread];
     }
-    threads_.swap(newThreads);
+    threads_ = std::move(newThreads);
     threadCapacity_ = threadCount;
   }
   while(threadCount_ < threadCount)
   {
-    threads_[threadCount_].reset(
-      new std::thread([this]{ this->run(); }));
+    threads_[threadCount_] = std::make_shared<std::thread>(
+      [this]{ this->run(); });
     ++threadCount_;
   }
   if(useThisThread)
