@@ -19,6 +19,7 @@
 #include <Codecs/FieldInstructionTemplateRef.h>
 #include <Codecs/FieldInstructionGroup.h>
 #include <Codecs/FieldInstructionSequence.h>
+#include <Codecs/SegmentBody.h>
 #include <Codecs/FieldOpConstant.h>
 #include <Codecs/FieldOpCopy.h>
 #include <Codecs/FieldOpDefault.h>
@@ -2550,4 +2551,36 @@ TEST(QuickFAST, testByteVectorOfHonestLengthStillDecodes)
     decoder, source, "blob", buffer, payloadLength);
   EXPECT_EQ((buffer.size()), (payloadLength));
   EXPECT_EQ((std::string(reinterpret_cast<const char *>(buffer.begin()), buffer.size())), (payload));
+}
+
+TEST(QuickFAST, testSequenceLengthIsNotPreallocated)
+{
+  // A sequence length arrives on the wire and goes straight into
+  // Messages::Sequence, which reserved that many shared_ptr slots before a
+  // single entry had been parsed.  A four byte field could ask for tens of
+  // gigabytes; the decode must fail as a decode error, not as bad_alloc.
+  Codecs::FieldInstructionSequence instruction("seq", "");
+  Codecs::SegmentBodyPtr segment(new Codecs::SegmentBody(0));
+  Codecs::FieldInstructionPtr entryField(
+    new Codecs::FieldInstructionUInt32("value", ""));
+  segment->addInstruction(entryField);
+  instruction.setSegmentBody(segment);
+
+  Codecs::DictionaryIndexer indexer;
+  instruction.indexDictionaries(indexer, "global", "", "");
+  Codecs::TemplateRegistryPtr registry(
+    new Codecs::TemplateRegistry(3, 3, indexer.size()));
+  instruction.finalize(*registry);
+
+  // Length 4294967295 followed by no entry data whatsoever.
+  Codecs::DataSourceString source(std::string("\x0F\x7F\x7F\x7F\xFF", 5));
+  Codecs::PresenceMap pmap(1);
+  Codecs::Decoder decoder(registry);
+  Codecs::SingleMessageConsumer consumer;
+  Codecs::GenericMessageBuilder builder(consumer);
+  builder.startMessage("UNIT_TEST", "", 10);
+
+  EXPECT_THROW(
+    instruction.decode(source, pmap, decoder, builder),
+    EncodingError);
 }
