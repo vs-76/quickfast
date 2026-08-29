@@ -2620,3 +2620,70 @@ TEST(QuickFAST, testCompleteAsciiStringStillDecodes)
   ASSERT_TRUE(bool(value));
   EXPECT_EQ((value->toAscii()), ("ABC"));
 }
+
+namespace
+{
+  // Same helper as decodeSingleIntegerField, but lets the caller relax the
+  // decoder's strictness first.
+  template<typename InstructionType>
+  Messages::FieldCPtr decodeSingleFieldNonStrict(const std::string & wire)
+  {
+    Codecs::DataSourceString source(wire);
+    Codecs::DictionaryIndexer indexer;
+    Codecs::PresenceMap pmap(1);
+
+    InstructionType field("Value", "");
+    field.indexDictionaries(indexer, "global", "", "");
+    Codecs::TemplateRegistryPtr registry(
+      new Codecs::TemplateRegistry(3, 3, indexer.size()));
+    field.finalize(*registry);
+
+    Codecs::Decoder decoder(registry);
+    decoder.setStrict(false);
+    Codecs::SingleMessageConsumer consumer;
+    Codecs::GenericMessageBuilder builder(consumer);
+
+    builder.startMessage("UNIT_TEST", "", 10);
+    field.decode(source, pmap, decoder, builder);
+    builder.endMessage(builder);
+
+    Messages::Message & fieldSet = consumer.message();
+    if(fieldSet.size() != 1)
+    {
+      return Messages::FieldCPtr();
+    }
+    return fieldSet.begin()->getField();
+  }
+}
+
+TEST(QuickFAST, testSetStrictSuppressesOverflowErrors)
+{
+  // Context.h documents that non-strict mode ignores conditions such as
+  // integer overflow.  Every [ERR D2] site names a field, so the flag has to
+  // be honoured by the overloads that take a name, not just the bare one.
+  Messages::FieldCPtr relaxed =
+    decodeSingleFieldNonStrict<Codecs::FieldInstructionUInt32>(
+      std::string("\x10\x00\x00\x00\x80", 5));
+  ASSERT_TRUE(bool(relaxed));
+  EXPECT_EQ((relaxed->toUInt32()), (0UL));
+
+  Messages::FieldCPtr relaxedSigned =
+    decodeSingleFieldNonStrict<Codecs::FieldInstructionInt32>(
+      std::string("\x10\x00\x00\x00\x80", 5));
+  ASSERT_TRUE(bool(relaxedSigned));
+
+  // Strict mode, the default, still rejects the same input.
+  EXPECT_THROW(
+    decodeSingleIntegerField<Codecs::FieldInstructionUInt32>(
+      std::string("\x10\x00\x00\x00\x80", 5)),
+    EncodingError);
+}
+
+TEST(QuickFAST, testSetStrictDoesNotSuppressOtherErrors)
+{
+  // Relaxing strictness must not turn a truncated field into a valid one.
+  EXPECT_THROW(
+    decodeSingleFieldNonStrict<Codecs::FieldInstructionAscii>(
+      std::string("\x41\x42", 2)),
+    EncodingError);
+}
