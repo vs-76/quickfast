@@ -7,6 +7,7 @@
 #include <Codecs/PresenceMap.h>
 #include <Codecs/DataSourceString.h>
 #include <Codecs/DataDestination.h>
+#include <Common/Exceptions.h>
 
 using namespace QuickFAST;
 
@@ -144,4 +145,33 @@ TEST(QuickFAST, testPmapEncoding2)
   EXPECT_EQ((result.length()), (1));
   const char expected[] = "\x80";
   EXPECT_TRUE(result == expected);
+}
+
+TEST(QuickFAST, testPresenceMapBufferDecodeIsBounded)
+{
+  // The buffer overload scans for a stop bit with no idea how long the buffer
+  // is, so input without one runs off the end.  Run under -fsanitize=address.
+  const uchar noStopBit[] = {0x6f, 0x62, 0x20};
+  Codecs::PresenceMap pmap(1);
+  size_t offset = 0;
+  EXPECT_THROW(
+    pmap.decode(noStopBit, sizeof(noStopBit), offset),
+    EncodingError);
+
+  // A well formed map still decodes, and reports where it stopped.
+  const uchar withStopBit[] = {0x6f, 0x62, 0xa0};
+  Codecs::PresenceMap good(1);
+  size_t goodOffset = 0;
+  good.decode(withStopBit, sizeof(withStopBit), goodOffset);
+  EXPECT_EQ((goodOffset), (sizeof(withStopBit)));
+  EXPECT_TRUE(good.checkNextField());
+  EXPECT_TRUE(good.checkNextField());
+  EXPECT_TRUE(!good.checkNextField());
+
+  // Decoding is allowed to start part way into a larger buffer.
+  const uchar embedded[] = {0xff, 0x6f, 0x62, 0xa0, 0xff};
+  Codecs::PresenceMap partial(1);
+  size_t partialOffset = 1;
+  partial.decode(embedded, sizeof(embedded), partialOffset);
+  EXPECT_EQ((partialOffset), (4u));
 }
