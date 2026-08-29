@@ -189,15 +189,19 @@ namespace QuickFAST
     {
       if(delegateString_ != 0)
       {
-        if (size() < length)
-        {
-          append(length - size(), fill);
-        }
-        else if (size() > length)
-        {
-          getBuffer()[length] = 0;
-          size_ = length;
-        }
+        // The bytes belong to the delegate. The check used to select this case
+        // for the body below, so the only buffer resize would act on was the
+        // one it cannot write, and a writable buffer fell through untouched.
+        throw std::logic_error("StringBufferT cannot resize delegated string.");
+      }
+      if (size() < length)
+      {
+        append(length - size(), fill);
+      }
+      else if (size() > length)
+      {
+        getBuffer()[length] = 0;
+        size_ = length;
       }
     }
 
@@ -220,8 +224,10 @@ namespace QuickFAST
     /// @brief assign a single character.
     StringBufferT<INTERNAL_CAPACITY>& operator=(unsigned char rhs)
     {
-      StringBufferT temp(rhs, 1);
-      swap(temp);
+      // temp(rhs, 1) cannot match (const unsigned char *, size_t), so overload
+      // resolution chose (size_t length, unsigned char c) and built a run of
+      // `rhs` bytes of 0x01: assigning 'A' produced 65 bytes rather than one.
+      assign(&rhs, 1);
       return *this;
     }
 
@@ -433,7 +439,21 @@ namespace QuickFAST
     void erase()
     {
       size_ = 0;
-      delegateString_ = 0;
+      if(delegateString_ != 0)
+      {
+        // The delegating constructor reports zero capacity because the bytes
+        // belong to someone else. Dropping the delegate hands the buffer back
+        // to internalBuffer_, and leaving capacity_ at zero made the object
+        // claim no room while owning INTERNAL_CAPACITY bytes of it: the first
+        // append went to the heap, and reserve's growth factor started from
+        // zero instead of from the inline capacity.
+        delegateString_ = 0;
+        if(heapBuffer_ == 0)
+        {
+          capacity_ = INTERNAL_CAPACITY;
+          internalBuffer_[0] = 0;
+        }
+      }
     }
 
     /// @brief discard contents, thereby making this an empty StringBufferT.
