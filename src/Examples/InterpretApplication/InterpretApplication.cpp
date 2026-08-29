@@ -99,8 +99,17 @@ InterpretApplication::parseSingleArg(int argc, char * argv[])
   catch (std::exception & ex)
   {
     // because the lexical cast can throw
-    std::cerr << ex.what() << " while interpreting " << opt << std::endl;
-    consumed = 0;
+    //
+    // Returning 0 here used to make the parser announce "Unknown argument"
+    // for an option that exists and is spelled correctly, immediately above
+    // the usage dump. Say what was actually wrong instead.
+    std::cerr << opt;
+    if(argc > 1)
+    {
+      std::cerr << " \"" << argv[1] << "\"";
+    }
+    std::cerr << ": " << ex.what() << std::endl;
+    consumed = Application::CommandArgHandler::ARGUMENT_VALUE_ERROR;
   }
   return consumed;
 }
