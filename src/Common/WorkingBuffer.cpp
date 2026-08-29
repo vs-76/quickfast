@@ -127,11 +127,11 @@ WorkingBuffer::grow()
 void
 WorkingBuffer::grow(size_t newCapacity)
 {
-  size_t oldCapacity = capacity_;
   if(newCapacity == 0)
   {
     newCapacity = initialCapacity;
   }
+  size_t oldCapacity = capacity_;
   std::unique_ptr<uchar[]> newBuffer(new uchar[newCapacity]);
   size_t delta = 0;
   if(reverse_)

@@ -288,11 +288,10 @@ PacketSequencingAssembler::promoteDeferred()
 void
 PacketSequencingAssembler::handleGap()
 {
-  sequence_t newGapEnd = findGapEnd();
   // If this is a new gap
   if(nextSequenceNumber_ >= gapEnd_)
   {
-    gapEnd_ = newGapEnd;
+    gapEnd_ = findGapEnd();
     gapWait_ = false;
     if(recoveryFeed_)
     {
@@ -302,6 +301,7 @@ PacketSequencingAssembler::handleGap()
   }
   else
   {
+    sequence_t newGapEnd = findGapEnd();
     if(newGapEnd < gapEnd_)
     {
       gapEnd_ = newGapEnd;

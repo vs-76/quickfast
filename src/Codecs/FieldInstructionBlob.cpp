@@ -238,13 +238,12 @@ FieldInstructionBlob::decodeDelta(
       previousValue = fieldOp_->getValue();
     }
   }
-  size_t previousLength = previousValue.size();
-
   if( deltaLength < 0)
   {
     // operate on front of string
     // compensete for the excess -1 encoding that allows -0 != +0
     deltaLength = -(deltaLength + 1);
+    const size_t previousLength = previousValue.size();
     // don't chop more than is there
     if(static_cast<unsigned long>(deltaLength) > previousLength)
     {
@@ -261,6 +260,7 @@ FieldInstructionBlob::decodeDelta(
   }
   else
   { // operate on end of string
+    const size_t previousLength = previousValue.size();
     // don't chop more than is there
     if(static_cast<size_t>(deltaLength) > previousLength)
     {
