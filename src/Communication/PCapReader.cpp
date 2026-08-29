@@ -210,6 +210,33 @@ namespace
 
 #pragma pack(pop)
 
+  /// An IPv4 header is at least five 4 byte words.
+  static const size_t minimumIpHeaderLength = 20;
+
+  /// Refuse to slurp a capture larger than this; see PCapReader::open.
+  static const size_t maximumCaptureFileSize = size_t(4) * 1024 * 1024 * 1024;
+
+  /// @brief Copy a packed header out of the capture buffer.
+  ///
+  /// The link-layer scan advances one byte at a time, so casting a packed
+  /// struct onto buffer + pos is both an unaligned load and a strict-aliasing
+  /// violation. memcpy is neither, and compiles to the same load once inlined.
+  ///
+  /// @returns false if the header does not lie wholly within [pos, limit).
+  template<typename HeaderType>
+  bool copyHeader(
+    const unsigned char * buffer,
+    size_t limit,
+    size_t pos,
+    HeaderType & header)
+  {
+    if(pos > limit || limit - pos < sizeof(HeaderType))
+    {
+      return false;
+    }
+    std::memcpy(&header, buffer + pos, sizeof(HeaderType));
+    return true;
+  }
 }
 
 PCapReader::PCapReader()
@@ -231,8 +258,30 @@ PCapReader::open(const char * filename, std::ostream * dumpFile)
   ok_ = file != 0;
   if(ok_)
   {
-    fseek(file, 0, SEEK_END);
-    fileSize_ = ftell(file);
+    // ftell yields -1L for a directory, a pipe, or a seek error, and assigning
+    // that to a size_t asks new[] for SIZE_MAX bytes -- a length_error thrown
+    // out of a function whose contract is to report failure by returning false.
+    long fileSize = -1;
+    if(fseek(file, 0, SEEK_END) == 0)
+    {
+      fileSize = ftell(file);
+    }
+    if(fileSize < 0)
+    {
+      std::cerr << "Cannot determine the size of " << filename << '.' << std::endl;
+      fclose(file);
+      ok_ = false;
+      return ok_;
+    }
+    if(static_cast<unsigned long>(fileSize) > maximumCaptureFileSize)
+    {
+      std::cerr << "Capture file " << filename << " is too large to read into memory ("
+                << fileSize << " bytes)." << std::endl;
+      fclose(file);
+      ok_ = false;
+      return ok_;
+    }
+    fileSize_ = static_cast<size_t>(fileSize);
     buffer_.reset(new unsigned char[fileSize_]);
     fseek(file, 0, SEEK_SET);
     unsigned char * rawBuffer = buffer_.get();
@@ -312,20 +361,22 @@ PCapReader::read(const unsigned char *& buffer, size_t & size)
   {
     ok_ = false;
     size_t skipped = 0;
-    size_t minBytes = sizeof(pcap_pkthdr) + sizeof(ip_header) + sizeof(udp_header);
+    size_t malformed = 0;
+
+    size_t headerSize = sizeof(pcap_pkthdr);
     if(usetv32_)
     {
-      minBytes = sizeof(pcap_pkthdr32) + sizeof(ip_header) + sizeof(udp_header);
+      headerSize = sizeof(pcap_pkthdr32);
     }
-    if(usetv64_)
+    else if(usetv64_)
     {
-      minBytes = sizeof(pcap_pkthdr64) + sizeof(ip_header) + sizeof(udp_header);
+      headerSize = sizeof(pcap_pkthdr64);
     }
 
     if(verbose_)
     {
       std::cout << "PCapReader: Starting read position: " << pos_ << " file size: " << fileSize_
-                << " minimum packet size: " << minBytes << std::endl;
+                << " record header size: " << headerSize << std::endl;
       if(usetv32_)
       {
         std::cout << "PCapReader: reading from 32 bit packet capture" << std::endl;
@@ -340,153 +391,231 @@ PCapReader::read(const unsigned char *& buffer, size_t & size)
       }
     }
 
-    while(!ok_ && (pos_ + minBytes < fileSize_))
+    const unsigned char * const base = buffer_.get();
+
+    while(!ok_ && pos_ + headerSize <= fileSize_)
     {
-      ////////////////////////////
       // process the packet header
-      size_t headerPos = pos_;
+      const size_t headerPos = pos_;
       size_t datalen = 0;
       size_t expectlen = 0;
       bool truncate = false;
-//      unsigned int dataLinkType = 0;
 
       if(usetv32_)
       {
-        pcap_pkthdr32 * packetHeader = reinterpret_cast<pcap_pkthdr32 *>(buffer_.get() + pos_);
+        pcap_pkthdr32 packetHeader;
+        if(!copyHeader(base, fileSize_, pos_, packetHeader))
+        {
+          break;
+        }
         pos_ += sizeof(pcap_pkthdr32);
-        datalen = swap(packetHeader->caplen);
-        expectlen = swap(packetHeader->len);
-        truncate = (packetHeader->caplen != packetHeader->len);
+        datalen = swap(packetHeader.caplen);
+        expectlen = swap(packetHeader.len);
+        truncate = (packetHeader.caplen != packetHeader.len);
       }
       else if(usetv64_)
       {
-        pcap_pkthdr64 * packetHeader = reinterpret_cast<pcap_pkthdr64 *>(buffer_.get() + pos_);
+        pcap_pkthdr64 packetHeader;
+        if(!copyHeader(base, fileSize_, pos_, packetHeader))
+        {
+          break;
+        }
         pos_ += sizeof(pcap_pkthdr64);
-        datalen = swap(packetHeader->caplen);
-        expectlen = swap(packetHeader->len);
-        truncate = (packetHeader->caplen != packetHeader->len);
+        datalen = swap(packetHeader.caplen);
+        expectlen = swap(packetHeader.len);
+        truncate = (packetHeader.caplen != packetHeader.len);
       }
       else
       {
-        pcap_pkthdr * packetHeader = reinterpret_cast<pcap_pkthdr *>(buffer_.get() + pos_);
+        pcap_pkthdr packetHeader;
+        if(!copyHeader(base, fileSize_, pos_, packetHeader))
+        {
+          break;
+        }
         pos_ += sizeof(pcap_pkthdr);
-        datalen = swap(packetHeader->caplen);
-        expectlen = swap(packetHeader->len);
-        truncate = (packetHeader->caplen != packetHeader->len);
+        datalen = swap(packetHeader.caplen);
+        expectlen = swap(packetHeader.len);
+        truncate = (packetHeader.caplen != packetHeader.len);
       }
       if(verbose_)
       {
         std::cout << "PCapReader: after header position: " << pos_ << " data length: " << datalen;
       }
+
+      // caplen is a raw uint32 straight from the file and every bound below is
+      // derived from it, so a record claiming more than the file holds ends the
+      // scan rather than being clamped: the rest of the file is unparseable.
+      if(datalen > fileSize_ - pos_)
+      {
+        if(verbose_)
+        {
+          std::cout << "  Record claims " << datalen << " bytes; only "
+                    << (fileSize_ - pos_) << " remain." << std::endl;
+        }
+        pos_ = fileSize_;
+        malformed += 1;
+        break;
+      }
+
+      // Everything from here on stays inside this one record.
+      const size_t frameEnd = pos_ + datalen;
+
       if(truncate)
       {
-        pos_ += datalen;
-        skipped+= 1;
+        pos_ = frameEnd;
+        skipped += 1;
         if(verbose_)
         {
           std::cout << "  Truncated. received 0x"  << std::hex << datalen
                     << " expected 0x" << expectlen << std::dec << std::endl;
         }
+        continue;
       }
-      else
+
+      if(verbose_)
+      {
+        std::cout << std::endl;
+      }
+
+      // walk off the link layer
+      bool found = false;
+      switch(linktype_)
+      {
+      case DLT_EN10MB:
+        {
+          if(verbose_)
+          {
+            std::cout << "PCapReader: Ethernet packet." << std::endl;
+          }
+          // datalen is unsigned: subtracting a header the record is too short
+          // to contain wraps it to ~2^64 and every later bound is meaningless.
+          if(datalen >= sizeof(ethernetIIHeader))
+          {
+            pos_ += sizeof(ethernetIIHeader);
+            found = true;
+          }
+          break;
+        }
+      case DLT_LINUX_SLL:
+        {
+          if(verbose_)
+          {
+            std::cout << "PCapReader: Linux cooked socket packet." << std::endl;
+          }
+          if(datalen >= sizeof(linuxCookedCaptureHeader))
+          {
+            pos_ += sizeof(linuxCookedCaptureHeader);
+            found = true;
+          }
+          break;
+        }
+      default:
+        {
+          if(verbose_)
+          {
+            std::cout << "PCapReader: Other type of packet.  Checking for IP protocol flag." << std::endl;
+          }
+          // HACK!look for the IP protocol flag to mark the end of the link layer
+          // header, bounded by the record rather than by a corruptible counter.
+          static const unsigned short IPProtocol = 0x0008;
+          unsigned short protocol = 0;
+          while(!found && copyHeader(base, frameEnd, pos_, protocol))
+          {
+            if(swap(protocol) == IPProtocol)
+            {
+              found = true;
+              pos_ += 2;
+            }
+            else
+            {
+              pos_ += 1;
+            }
+          }
+          break;
+        }
+      }
+
+      if(!found)
       {
         if(verbose_)
         {
-          std::cout << std::endl;
+          std::cout << "PCapReader: could not find packet. Skipping to next record." << std::endl;
         }
-        bool found = false;
-        switch(linktype_)
-        {
-        case DLT_EN10MB:
-          {
-            if(verbose_)
-            {
-              std::cout << "PCapReader: Ethernet packet." << std::endl;
-            }
-            pos_ += sizeof(ethernetIIHeader);
-            datalen -= sizeof(ethernetIIHeader);
-            found = true;
-            break;
-          }
-        case DLT_LINUX_SLL:
-          {
-            if(verbose_)
-            {
-              std::cout << "PCapReader: Linux cooked socket packet." << std::endl;
-            }
-            pos_ += sizeof(linuxCookedCaptureHeader);
-            datalen -= sizeof(linuxCookedCaptureHeader);
-            found = true;
-            break;
-          }
-        default:
-          {
-            if(verbose_)
-            {
-              std::cout << "PCapReader: Other type of packet.  Checking for IP protocol flag." << std::endl;
-            }
-            // HACK!look for the IP protocol flag to mark the end of the the link layer header
-            static unsigned short IPProtocol = 0x0008;
-            while(!found && datalen > 2)
-            {
-              unsigned short protocol = *(unsigned short *)(buffer_.get() + pos_);
-              if(swap(protocol) == IPProtocol)
-              {
-                found = true;
-                pos_ += 2;
-                datalen -= 2;
-              }
-              else
-              {
-                pos_ += 1;
-                datalen -= 1;
-              }
-            }
-            break;
-          }
-        }
-        if(found)
-        {
-          ip_header * ipHeader = reinterpret_cast<ip_header *>(buffer_.get() + pos_);
-          // IP header contains its own length expressed in 4 byte units.
-          size_t ipLen = (ipHeader->ver_ihl & 0xF) * 4;
-          pos_ += ipLen;
-          datalen -= ipLen;
-          udp_header * udpHeader = reinterpret_cast<udp_header*>(buffer_.get() + pos_);
-          pos_ += sizeof(udp_header);
-          datalen -= sizeof(udp_header);
-
-          // udplen includes udp header + cargo
-          // udplen is stored in network byte order
-          size_t udplen = ntohs(udpHeader->len);
-
-          buffer = buffer_.get() + pos_;
-          // trust the udp header for actual cargo size
-          // but continue to trust pos_ and datalen (originates in pcap header) for position in buffer.
-          size = udplen - sizeof(udp_header);
-          if(verbose_)
-          {
-            std::cout << "PCapReader: " << headerPos << ": " << pos_ << ' ' << size
-              << "=== 0x" << std::hex  << headerPos << ": 0x" << pos_ << " 0x" << size << std::dec << std::endl;
-          }
-          ok_ = true;
-          pos_ += datalen;
-        }
-        else
-        {
-          if(verbose_)
-          {
-            std::cout << "PCapReader: could not find packet. Skipping " << datalen << " bytes." << std::endl;
-          }
-          pos_ += datalen;
-          skipped += 1;
-        }
-
+        pos_ = frameEnd;
+        skipped += 1;
+        continue;
       }
+
+      // IPv4, then UDP
+      size_t remaining = frameEnd - pos_;
+
+      // The only IPv4 field needed here is the header length, in the low
+      // nibble of the first byte, expressed in 4 byte units.
+      if(remaining < minimumIpHeaderLength)
+      {
+        pos_ = frameEnd;
+        malformed += 1;
+        continue;
+      }
+      const size_t ipLen = (base[pos_] & 0xF) * 4;
+      if(ipLen < minimumIpHeaderLength || ipLen > remaining)
+      {
+        if(verbose_)
+        {
+          std::cout << "PCapReader: implausible IP header length " << ipLen
+                    << " with " << remaining << " bytes in the record." << std::endl;
+        }
+        pos_ = frameEnd;
+        malformed += 1;
+        continue;
+      }
+      pos_ += ipLen;
+      remaining -= ipLen;
+
+      udp_header udpHeader;
+      if(!copyHeader(base, frameEnd, pos_, udpHeader))
+      {
+        pos_ = frameEnd;
+        malformed += 1;
+        continue;
+      }
+      pos_ += sizeof(udp_header);
+      remaining -= sizeof(udp_header);
+
+      // udplen covers the udp header plus cargo and arrives in network byte
+      // order.  It is a wire value: below the header size it underflows the
+      // cargo size, above what was captured it points the caller past the end.
+      const size_t udplen = ntohs(udpHeader.len);
+      if(udplen < sizeof(udp_header) || udplen - sizeof(udp_header) > remaining)
+      {
+        if(verbose_)
+        {
+          std::cout << "PCapReader: implausible UDP length " << udplen
+                    << " with " << remaining << " bytes in the record." << std::endl;
+        }
+        pos_ = frameEnd;
+        malformed += 1;
+        continue;
+      }
+
+      buffer = base + pos_;
+      size = udplen - sizeof(udp_header);
+      if(verbose_)
+      {
+        std::cout << "PCapReader: " << headerPos << ": " << pos_ << ' ' << size
+          << "=== 0x" << std::hex  << headerPos << ": 0x" << pos_ << " 0x" << size << std::dec << std::endl;
+      }
+      ok_ = true;
+      pos_ = frameEnd;
     }
     if(skipped != 0)
     {
       std::cerr << "Warning: ignoring " << skipped << " truncated packets." << std::endl;
+    }
+    if(malformed != 0)
+    {
+      std::cerr << "Warning: ignoring " << malformed
+                << " packets with lengths inconsistent with the capture." << std::endl;
     }
   }
   return ok_;

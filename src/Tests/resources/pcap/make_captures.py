@@ -22,13 +22,20 @@ PCAPNG_BLOCK_SHB = 0x0A0D0D0A
 PCAPNG_BYTE_ORDER_MAGIC = 0x1A2B3C4D
 
 
-def udp_over_ethernet(payload, sport=12345, dport=13014):
-    udp = struct.pack("!HHHH", sport, dport, 8 + len(payload), 0) + payload
+def udp_over_ethernet(payload, sport=12345, dport=13014, udp_length=None, ihl=5):
+    """Build an Ethernet II / IPv4 / UDP frame.
+
+    udp_length and ihl are overridable so the corpus can carry the wire values
+    a hostile capture would use: the reader derives buffer bounds from both.
+    """
+    if udp_length is None:
+        udp_length = 8 + len(payload)
+    udp = struct.pack("!HHHH", sport, dport, udp_length, 0) + payload
 
     total_length = 20 + len(udp)
     ip = struct.pack(
         "!BBHHHBBH4s4s",
-        0x45,           # version 4, header length 5 words
+        0x40 | (ihl & 0xF),  # version 4, header length in 4 byte words
         0,              # type of service
         total_length,
         0,              # identification
@@ -115,6 +122,20 @@ def main():
         # caplen shorter than the 14 byte Ethernet header: the dissection layer
         # subtracts that header size from an unsigned length.
         "short-link-header.pcap": classic_pcap(truncated_frame, caplen=6),
+        # UDP length field of zero: the reader returns udplen - 8 as the cargo
+        # size, so an unsigned size_t wraps to nearly 2^64.
+        "udp-length-zero.pcap": classic_pcap(udp_over_ethernet(PAYLOAD, udp_length=0)),
+        # UDP length field larger than the bytes actually captured.
+        "udp-length-overlong.pcap": classic_pcap(udp_over_ethernet(PAYLOAD, udp_length=60000)),
+        # IPv4 header length field of 15 words (60 bytes) on a frame that only
+        # carries a 20 byte header, so it eats past the UDP header.
+        "ip-header-overlong.pcap": classic_pcap(udp_over_ethernet(PAYLOAD, ihl=15)),
+        # IPv4 header length field below the 20 byte minimum.
+        "ip-header-undersized.pcap": classic_pcap(udp_over_ethernet(PAYLOAD, ihl=0)),
+        # A record header claiming far more captured bytes than the file holds.
+        "caplen-beyond-file.pcap": classic_pcap(frame)[:24]
+        + struct.pack("<IIII", 1_700_000_000, 0, 0xFFFFFF00, 0xFFFFFF00)
+        + frame,
         # A record header that claims more data than the file holds.
         "truncated-record.pcap": classic_pcap(frame)[: 24 + 16 + 10],
         # No records at all, just a valid file header.
