@@ -175,3 +175,29 @@ TEST(QuickFAST, testPresenceMapBufferDecodeIsBounded)
   partial.decode(embedded, sizeof(embedded), partialOffset);
   EXPECT_EQ((partialOffset), (4u));
 }
+
+TEST(QuickFAST, testPresenceMapGrowsGeometrically)
+{
+  // grow() extended capacity by exactly one byte and copied the whole buffer
+  // each time, so decoding an n-byte presence map cost O(n^2).  Growth has to
+  // be geometric, which shows up as capacity overshooting the bytes stored.
+  const size_t pmapBytes = 200;
+  std::string encoded(pmapBytes - 1, '\x7F');
+  encoded += '\xFF';
+
+  Codecs::DataSourceString source(encoded);
+  Codecs::PresenceMap pmap(1);
+  pmap.decode(source);
+
+  const uchar * raw = 0;
+  size_t capacity = 0;
+  pmap.getRaw(raw, capacity);
+  EXPECT_GE((capacity), (pmapBytes));
+  EXPECT_GT((capacity), (pmapBytes));
+
+  // Growing must not corrupt what was already stored: every data bit is set.
+  for(size_t bit = 0; bit < (pmapBytes * 7); ++bit)
+  {
+    EXPECT_TRUE(pmap.checkNextField());
+  }
+}

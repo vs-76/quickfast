@@ -86,13 +86,19 @@ PresenceMap::getRaw(const uchar *& buffer, size_t &byteLength)const
 void
 PresenceMap::grow()
 {
-  // todo: consider reporting this as a recoverable error due to performance impact
-  std::unique_ptr<uchar[]> newBuffer(new uchar [byteCapacity_+1]);
-  newBuffer[byteCapacity_] = 0;
+  // Extending by a single byte made decoding an n byte presence map cost
+  // O(n^2) in copying, which a peer controls the size of.
+  size_t newCapacity = byteCapacity_ * 2;
+  if(newCapacity <= byteCapacity_)
+  {
+    newCapacity = byteCapacity_ + 1;
+  }
+  std::unique_ptr<uchar[]> newBuffer(new uchar [newCapacity]);
   std::copy(bits_, bits_ + byteCapacity_, newBuffer.get());
+  std::memset(newBuffer.get() + byteCapacity_, 0, newCapacity - byteCapacity_);
   bits_ = newBuffer.get();
   externalBuffer_.swap(newBuffer);
-  byteCapacity_ += 1;
+  byteCapacity_ = newCapacity;
 }
 
 void
