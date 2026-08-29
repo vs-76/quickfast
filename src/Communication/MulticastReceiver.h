@@ -10,217 +10,82 @@
 // All inline, do not export.
 //#include <Common/QuickFAST_Export.h>
 #include "MulticastReceiver_fwd.h"
-#include <Communication/AsynchReceiver.h>
+#include <Communication/MulticastReceiverBase.h>
 
 namespace QuickFAST
 {
   namespace Communication
   {
+    /// @brief A feed that accepts traffic from any sender in the group.
+    ///
+    /// Ordinary (any-source) multicast: the subscription names a group and
+    /// an interface, and whoever sends to that group is heard.
+    class AnySourceMulticastFeed
+      : public MulticastFeedBase
+    {
+    public:
+      /// @brief Construct a feed.
+      /// @param host is the receiver that owns this feed
+      /// @param ioService services the asynchronous reads
+      /// @param name identifies this feed in display/log messages
+      /// @param multicastGroupIP multicast address as a text string
+      /// @param listenInterfaceIP identifies the network interface to be used
+      /// @param bindIP the IP to be used to bind the socket
+      /// @param portNumber port number
+      AnySourceMulticastFeed(
+        MulticastFeedHost & host,
+        AsioService & ioService,
+        const std::string & name,
+        const std::string & multicastGroupIP,
+        const std::string & listenInterfaceIP,
+        const std::string & bindIP,
+        unsigned short portNumber
+        )
+        : MulticastFeedBase(
+            host,
+            ioService,
+            name,
+            multicastGroupIP,
+            listenInterfaceIP,
+            bindIP,
+            portNumber)
+      {
+      }
+
+    protected:
+      // Implement MulticastFeedBase
+      virtual void join()
+      {
+        asio::ip::multicast::join_group joinRequest(
+          multicastGroup().to_v4(),
+          listenInterface().to_v4());
+        socket().set_option(joinRequest);
+      }
+
+      virtual void leave()
+      {
+        asio::ip::multicast::leave_group leaveRequest(
+          multicastGroup().to_v4(),
+          listenInterface().to_v4());
+        socket().set_option(leaveRequest);
+      }
+    };
+
     /// @brief Receive Multicast Packets and pass them to a packet handler
     class MulticastReceiver
-      : public AsynchReceiver
+      : public MulticastReceiverBase
     {
-    private:
-      /// @brief private internal class to represet a multicast feed
-      class MulticastFeed
-      {
-      public:
-        MulticastFeed(
-          MulticastReceiver & parent,
-          AsioService & ioService,
-          const std::string & name,
-          const std::string & multicastGroupIP,
-          const std::string & listenInterfaceIP,
-          const std::string & bindIP,
-          unsigned short portNumber
-          )
-        : parent_(parent)
-        , name_(name)
-        , listenInterface_(asio::ip::make_address(listenInterfaceIP))
-        , portNumber_(portNumber)
-        , multicastGroup_(asio::ip::make_address(multicastGroupIP))
-        , bindAddress_(asio::ip::make_address(bindIP))
-        , endpoint_(listenInterface_, portNumber)
-        , socket_(ioService)
-        , joined_(false)
-        , readInProgress_(false)
-        {
-        }
-
-        const std::string & name()const
-        {
-          return name_;
-        }
-
-        bool canStartRead() const
-        {
-          return !readInProgress_;
-        }
-
-        void initializeReceiver()
-        {
-          socket_.open(endpoint_.protocol());
-          socket_.set_option(asio::ip::udp::socket::reuse_address(true));
-          asio::ip::udp::endpoint bindpoint(bindAddress_, portNumber_);
-          socket_.bind(bindpoint);
-
-          // Join the multicast group
-          asio::ip::multicast::join_group joinRequest(
-            multicastGroup_.to_v4(),
-            listenInterface_.to_v4());
-          socket_.set_option(joinRequest);
-          joined_ = true;
-        }
-
-        bool fillBuffer(LinkedBuffer * buffer, std::unique_lock<std::mutex> &)
-        {
-          if(readInProgress_)
-          {
-            return false;
-          }
-          readInProgress_ = true;
-//          std::cout << "Start read on feed: " << name_ << std::endl;
-          socket_.async_receive_from(
-            asio::buffer(buffer->get(), buffer->capacity()),
-            senderEndpoint_,
-            [this, buffer](const asio::error_code& error, std::size_t bytes_transferred)
-            {
-              this->handleReceive(error, buffer, bytes_transferred);
-            });
-          return true;
-        }
-
-        void handleReceive(
-          const asio::error_code& error,
-          LinkedBuffer * buffer,
-          size_t bytesReceived)
-        {
-//          std::cout << "Receive on feed: " << name_ << std::endl;
-          assert(readInProgress_);
-          readInProgress_ = false;
-          parent_.handleReceive(error, buffer, bytesReceived);
-          if(parent_.stopping_)
-          {
-            if(joined_)
-            {
-              // leave the multicast group
-              asio::ip::multicast::leave_group leaveRequest(
-                multicastGroup_.to_v4(),
-                listenInterface_.to_v4());
-              socket_.set_option(leaveRequest);
-            }
-            socket_.close();
-          }
-        }
-
-        void stop()
-        {
-          // attempt to cancel any receive requests in progress.
-          asio::error_code ec;
-          socket_.cancel(ec);
-        }
-
-        void pause()
-        {
-          // Temporarily leave the group
-          if(joined_)
-          {
-            asio::ip::multicast::leave_group leaveRequest(
-              multicastGroup_.to_v4(),
-              listenInterface_.to_v4());
-            socket_.set_option(leaveRequest);
-            joined_ = false;
-          }
-        }
-
-        void resume()
-        {
-          if(!joined_)
-          {
-            // rejoin the multicast group
-            asio::ip::multicast::join_group joinRequest(
-              multicastGroup_.to_v4(),
-              listenInterface_.to_v4());
-            socket_.set_option(joinRequest);
-            joined_ = true;
-          }
-        }
-
-        asio::ip::address listenInterface()const
-        {
-          return listenInterface_;
-        }
-
-        unsigned short portNumber()const
-        {
-          return portNumber_;
-        }
-
-        asio::ip::address multicastGroup()const
-        {
-          return multicastGroup_;
-        }
-
-        asio::ip::address bindAddress()const
-        {
-          return bindAddress_;
-        }
-
-        asio::ip::udp::endpoint endpoint()const
-        {
-          return endpoint_;
-        }
-
-        asio::ip::udp::endpoint senderEndpoint()const
-        {
-          return senderEndpoint_;
-        }
-
-        asio::ip::udp::socket & socket()
-        {
-          return socket_;
-        }
-
-        bool joined()const
-        {
-          return joined_;
-        }
-
-        bool readInProgress()const
-        {
-          return readInProgress_;
-        }
-      private:
-        MulticastFeed();
-        MulticastFeed(const MulticastFeed &);
-        MulticastFeed & operator =(const MulticastFeed &);
-      private:
-        MulticastReceiver & parent_;
-        std::string name_;
-        asio::ip::address listenInterface_;
-        unsigned short portNumber_;
-        asio::ip::address multicastGroup_;
-        asio::ip::address bindAddress_;
-        asio::ip::udp::endpoint endpoint_;
-        asio::ip::udp::endpoint senderEndpoint_;
-        asio::ip::udp::socket socket_;
-        bool joined_;
-        bool readInProgress_;
-      };
-      typedef std::shared_ptr<MulticastFeed> MulticastFeedPtr;
-      typedef std::vector<MulticastFeedPtr> MulticastFeedVector;
-
     public:
 
       /// @brief Construct
       MulticastReceiver()
-        : AsynchReceiver()
+        : MulticastReceiverBase()
       {
       }
 
       /// @brief construct given shared io_service
       MulticastReceiver(asio::io_context & ioService)
-        : AsynchReceiver(ioService)
+        : MulticastReceiverBase(ioService)
       {
       }
 
@@ -237,7 +102,7 @@ namespace QuickFAST
         const std::string & bindIP,
         unsigned short portNumber
         )
-        : AsynchReceiver()
+        : MulticastReceiverBase()
       {
         addFeed(
          "default",
@@ -261,7 +126,7 @@ namespace QuickFAST
         const std::string & bindIP,
         unsigned short portNumber
         )
-        : AsynchReceiver(ioService)
+        : MulticastReceiverBase(ioService)
       {
         addFeed(
          "default",
@@ -295,115 +160,16 @@ namespace QuickFAST
         unsigned short portNumber
         )
       {
-        MulticastFeedPtr feed(new MulticastFeed(*this, ioService_, name, multicastGroupIP, listenInterfaceIP, bindIP, portNumber));
-        feeds_.push_back(feed);
+        MulticastFeedPtr feed(new AnySourceMulticastFeed(
+          feedHost(),
+          ioService_,
+          name,
+          multicastGroupIP,
+          listenInterfaceIP,
+          bindIP,
+          portNumber));
+        MulticastReceiverBase::addFeed(feed);
       }
-
-      // Implement Receiver method
-      virtual bool initializeReceiver()
-      {
-        bool ok = true;
-        size_t nFeed = 0;
-        try
-        {
-          for(nFeed = 0; ok && nFeed < feeds_.size(); ++nFeed)
-          {
-            if(assembler_->wantLog(Common::Logger::QF_LOG_INFO))
-            {
-              std::stringstream msg;
-              msg << "Joining multicast group for feed " << feeds_[nFeed]->name()
-                << ": " << feeds_[nFeed]->multicastGroup().to_string()
-                << " via interface " << feeds_[nFeed]->endpoint().address().to_string()
-                << ':' << feeds_[nFeed]->endpoint().port();
-              assembler_->logMessage(Common::Logger::QF_LOG_INFO, msg.str());
-            }
-            feeds_[nFeed]->initializeReceiver();
-          }
-        }
-        catch (const std::exception & exception)
-        {
-          ok = false;
-          std::stringstream msg;
-          msg << "Error " << exception.what()
-            << " joining multicast group ";
-          if(nFeed < feeds_.size())
-          {
-            msg << " for feed " << feeds_[nFeed]->name()
-                << ": " << feeds_[nFeed]->multicastGroup().to_string()
-                << " via interface " << feeds_[nFeed]->endpoint().address().to_string()
-                << ':' << feeds_[nFeed]->endpoint().port();
-          }
-          assembler_->logMessage(Common::Logger::QF_LOG_SERIOUS, msg.str());
-        }
-        if(!ok)
-        {
-          for(size_t nFeed = 0; nFeed < feeds_.size(); ++nFeed)
-          feeds_[nFeed]->stop();
-        }
-        return ok;
-      }
-
-      virtual void stop()
-      {
-        // stop processing buffers first
-        AsynchReceiver::pause();
-        for(size_t nFeed = 0; nFeed < feeds_.size(); ++nFeed)
-        {
-          feeds_[nFeed]->stop();
-        }
-        // and then shut everything down for good.
-        AsynchReceiver::stop();
-      }
-
-      virtual void pause()
-      {
-        for(size_t nFeed = 0; nFeed < feeds_.size(); ++nFeed)
-        {
-          feeds_[nFeed]->pause();
-        }
-        AsynchReceiver::pause();
-      }
-
-      virtual void resume()
-      {
-        AsynchReceiver::resume();
-        for(size_t nFeed = 0; nFeed < feeds_.size(); ++nFeed)
-        {
-          feeds_[nFeed]->resume();
-        }
-      }
-
-    private:
-      bool fillBuffer(LinkedBuffer * buffer, std::unique_lock<std::mutex> & lock)
-      {
-        // consider fairness/round robin
-        for(size_t nFeed = 0; nFeed < feeds_.size(); ++nFeed)
-        {
-          if(feeds_[nFeed]->canStartRead())
-          {
-            return feeds_[nFeed]->fillBuffer(buffer, lock);
-          }
-        }
-//        std::cout << "All " << feeds_.size() << " feed(s) busy. " << std::endl;
-        assert(false); // we should never get here
-        return false;
-      }
-
-      virtual bool canStartRead()
-      {
-        for(size_t nFeed = 0; nFeed < feeds_.size(); ++nFeed)
-        {
-          if(feeds_[nFeed]->canStartRead())
-          {
-//            std::cout << "Can start read on feed " << nFeed << ": " << feeds_[nFeed]->name() << std::endl;
-            return true;
-          }
-        }
-        return false;
-      }
-
-    private:
-      MulticastFeedVector feeds_;
     };
   }
 }
