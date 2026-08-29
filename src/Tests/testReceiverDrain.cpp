@@ -21,7 +21,9 @@
 #include <Codecs/TemplateRegistry.h>
 #include <Common/Logger.h>
 
+#include <atomic>
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 
 using namespace QuickFAST;
@@ -85,7 +87,7 @@ namespace
   {
   public:
     explicit TemporaryFile(const std::string & contents)
-      : name_(std::tmpnam(0))
+      : name_((std::filesystem::temp_directory_path() / uniqueName()).string())
     {
       std::ofstream out(name_.c_str(), std::ios::binary);
       out.write(contents.data(), std::streamsize(contents.size()));
@@ -102,6 +104,12 @@ namespace
     }
 
   private:
+    static std::string uniqueName()
+    {
+      static std::atomic<unsigned> counter{0};
+      return "quickfast-drain-" + std::to_string(counter++) + ".dat";
+    }
+
     std::string name_;
   };
 
