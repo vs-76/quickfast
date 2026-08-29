@@ -26,7 +26,7 @@ namespace QuickFAST
 
       ~SynchReceiver()
       {
-        stop();
+        Receiver::stop();
         if(bool(thread_))
         {
           thread_->join();
