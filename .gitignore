@@ -55,3 +55,6 @@ cachegrind.out*
 
 #a place to hide documents that should not go into the repo:
 doc/NotGitWorthy/
+
+# Local agent implementation prompts (never push to GitHub)
+doc/agent-prompts/

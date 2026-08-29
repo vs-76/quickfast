@@ -29,7 +29,7 @@ With `-DQUICKFAST_USE_SPDLOG=ON` it also finds or fetches
 | `QUICKFAST_SANITIZE_ADDRESS` | `OFF` | AddressSanitizer (`-fsanitize=address`) |
 | `QUICKFAST_SANITIZE_UNDEFINED` | `OFF` | UndefinedBehaviorSanitizer (`-fsanitize=undefined`) |
 | `QUICKFAST_SANITIZE_THREAD` | `OFF` | ThreadSanitizer (`-fsanitize=thread`; incompatible with ASan/UBSan) |
-| `QUICKFAST_USE_SPDLOG` | `OFF` | Build `Common::SpdlogLogger` (find/FetchContent [spdlog](https://github.com/gabime/spdlog)) |
+| `QUICKFAST_USE_SPDLOG` | `OFF` | Build `SpdlogLogger` + `managed_file_sink_mt` (find/FetchContent spdlog; requires zlib, tzdata) |
 | `QUICKFAST_ENABLE_PVS_STUDIO` | `ON` | Create `pvs-studio` target if `pvs-studio-analyzer` is installed |
 | `CMAKE_BUILD_TYPE` | (unset) | Prefer `Release` or `Debug` |
 | `CMAKE_CXX_COMPILER` | system default | e.g. `g++-16`, `clang++-22` |
@@ -224,11 +224,15 @@ A license file is typically expected at `~/.config/PVS-Studio/PVS-Studio.lic`.
 
 ## Optional spdlog logger adapter
 
-When `-DQUICKFAST_USE_SPDLOG=ON`, QuickFAST builds `Common::SpdlogLogger`, an
-implementation of `Common::Logger` that forwards to an application-owned
-`std::shared_ptr<spdlog::logger>`. Core codecs/communication stay on the
-`Logger` interface; inject the adapter via your message consumer and/or
-`Communication::AsioService::setLogger`.
+When `-DQUICKFAST_USE_SPDLOG=ON`, QuickFAST builds:
+- `Common::SpdlogLogger` — `Common::Logger` → application `spdlog::logger`
+- `Common::managed_file_sink_mt` — rotating/compressing file sink on a shared
+  `asio::io_context` (zlib required)
+
+Core codecs/communication stay on the `Logger` interface; inject the adapter via
+your message consumer and/or `Communication::AsioService::setLogger`.
+
+Requires system **tzdata** for IANA zones (`std::chrono` tzdb).
 
 ```bash
 cmake -S . -B build-spdlog -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=g++-16 \
@@ -237,7 +241,7 @@ cmake --build build-spdlog -j --target QuickFASTTest
 ctest --test-dir build-spdlog --output-on-failure
 ```
 
-Example:
+### Console logger
 
 ```cpp
 #include <Common/SpdlogLogger.h>
@@ -247,8 +251,43 @@ Example:
 auto lg = spdlog::stdout_color_mt("quickfast");
 lg->set_level(spdlog::level::info);
 QuickFAST::Common::SpdlogLogger qfLog(lg);
-// Pass qfLog (or a consumer that delegates to it) into the decoder stack;
-// optionally: receiver.setLogger(qfLog);
+```
+
+### Managed file sink (size + midnight, gzip, retention)
+
+Shares QuickFAST’s standalone Asio `io_context` for hard midnight rotation without
+traffic. Default retention is **32 MiB** of managed log bytes. Does **not** install
+its own `signal_set` — call `request_shutdown()` from the app handler.
+
+```cpp
+#include <Common/ManagedFileSink.h>
+#include <Common/SpdlogLogger.h>
+#include <Communication/AsioService.h>
+#include <spdlog/logger.h>
+#include <asio.hpp>
+
+QuickFAST::Communication::AsioService asioService; // or app-owned io_context
+
+auto cfg = QuickFAST::Common::ManagedFileSinkConfigBuilder()
+  .base_path("logs/quickfast.log")
+  .max_file_bytes(100ull << 20)
+  .max_managed_bytes(32ull << 20)              // default
+  // .time_zone("Europe/Moscow")               // optional IANA; default = system
+  // .retention(RetentionMode::FilesystemFreePercent)
+  // .free_percent_min(10)
+  .pattern("%Y-%m-%d %H:%M:%S.%e [%l] %v")
+  .build();
+
+auto sink = std::make_shared<QuickFAST::Common::managed_file_sink_mt>(
+  asioService.ioService(), cfg);
+auto lg = std::make_shared<spdlog::logger>("quickfast", sink);
+QuickFAST::Common::SpdlogLogger qfLog(lg);
+
+asio::signal_set signals(asioService.ioService(), SIGINT, SIGTERM);
+signals.async_wait([&](const asio::error_code &, int) {
+  sink->request_shutdown();
+  asioService.stopService();
+});
 ```
 
 `Context::setLogOutput(std::ostream&)` remains a separate debug path and is not

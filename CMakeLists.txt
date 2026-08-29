@@ -18,7 +18,7 @@ option(QUICKFAST_SANITIZE_ADDRESS "Build with AddressSanitizer (-fsanitize=addre
 option(QUICKFAST_SANITIZE_UNDEFINED "Build with UndefinedBehaviorSanitizer (-fsanitize=undefined)" OFF)
 option(QUICKFAST_SANITIZE_THREAD "Build with ThreadSanitizer (-fsanitize=thread)" OFF)
 option(QUICKFAST_USE_SPDLOG
-  "Build Common::SpdlogLogger adapter (FetchContent/find_package spdlog)"
+  "Build SpdlogLogger + managed_file_sink_mt (spdlog + zlib)"
   OFF)
 
 if(QUICKFAST_ENABLE_COVERAGE)
@@ -106,6 +106,7 @@ if(QUICKFAST_USE_SPDLOG)
       target_compile_options(spdlog PRIVATE -w)
     endif()
   endif()
+  find_package(ZLIB REQUIRED)
 endif()
 
 # Strict warnings for first-party code (deps use SYSTEM includes / silenced below).
@@ -198,7 +199,9 @@ if(WIN32)
 endif()
 
 if(QUICKFAST_USE_SPDLOG)
-  list(APPEND QUICKFAST_LIB_SOURCES src/Common/SpdlogLogger.cpp)
+  list(APPEND QUICKFAST_LIB_SOURCES
+    src/Common/SpdlogLogger.cpp
+    src/Common/ManagedFileSink.cpp)
 endif()
 
 add_library(QuickFAST SHARED ${QUICKFAST_LIB_SOURCES})
@@ -224,7 +227,11 @@ target_link_libraries(QuickFAST
 
 if(QUICKFAST_USE_SPDLOG)
   target_compile_definitions(QuickFAST PUBLIC QUICKFAST_HAS_SPDLOG=1)
-  target_link_libraries(QuickFAST PUBLIC spdlog::spdlog)
+  target_link_libraries(QuickFAST PUBLIC spdlog::spdlog ZLIB::ZLIB)
+  if(QUICKFAST_BUILD_TESTS)
+    # Expose managed_file_sink_mt test helpers only in test-enabled builds.
+    target_compile_definitions(QuickFAST PUBLIC QUICKFAST_ENABLE_TEST_HOOKS=1)
+  endif()
 endif()
 
 target_compile_options(QuickFAST PRIVATE ${QUICKFAST_WARNING_FLAGS})
@@ -266,6 +273,7 @@ if(QUICKFAST_BUILD_TESTS)
   list(FILTER QUICKFAST_TEST_SOURCES EXCLUDE REGEX ".*/main\\.cpp$")
   if(NOT QUICKFAST_USE_SPDLOG)
     list(FILTER QUICKFAST_TEST_SOURCES EXCLUDE REGEX ".*/testSpdlogLogger\\.cpp$")
+    list(FILTER QUICKFAST_TEST_SOURCES EXCLUDE REGEX ".*/testManagedFileSink\\.cpp$")
   endif()
 
   add_executable(QuickFASTTest ${QUICKFAST_TEST_SOURCES})

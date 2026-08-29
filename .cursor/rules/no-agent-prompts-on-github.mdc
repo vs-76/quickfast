@@ -1,0 +1,29 @@
+---
+description: Never commit or push agent prompts to GitHub
+alwaysApply: true
+---
+
+# No agent prompts on GitHub
+
+Agent implementation prompts and similar local briefing docs are **local-only**.
+
+## Location
+
+Keep prompts under (gitignored):
+
+- `doc/agent-prompts/`
+- `doc/NotGitWorthy/` (legacy catch-all)
+
+Do **not** put prompts in tracked paths such as `docs/`, `BUILD.md`, `.cursor/rules/`, or source trees.
+
+## Hard bans
+
+- Do **not** `git add`, commit, or push files under `doc/agent-prompts/`
+- Do **not** open PRs that include agent prompts
+- If a commit request would stage prompt files, **stop**, unstage them, and warn the user
+- Prefer writing new prompts only under `doc/agent-prompts/`
+
+## Allowed
+
+- Cursor rules in `.cursor/rules/` that *forbid* publishing prompts (this file)
+- Referring to local prompt paths in chat without committing them
