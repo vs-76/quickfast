@@ -177,6 +177,29 @@ cmake --build build-clang22-libcxx -j && ctest --test-dir build-clang22-libcxx -
 
 ---
 
+## Windows compile gate (mingw-w64)
+
+`src/Common` carries `_WIN32` branches — `windows.h`, `GetDiskFreeSpaceExW`, and
+`wchar_t` filesystem paths — that a Linux build never compiles. This script
+cross-compiles those sources with mingw-w64 and fails on any warning, so the
+Windows paths cannot rot unnoticed between real Windows builds:
+
+```bash
+sudo apt install g++-mingw-w64-x86-64   # once
+scripts/check-windows-compile.sh                          # all of src/Common
+scripts/check-windows-compile.sh src/Common/ManagedFileSink.cpp
+```
+
+It is compile-only. Linking QuickFAST for Windows also needs Xerces-C, zlib, fmt
+and spdlog cross-built for the target, which the script does not attempt; it
+borrows the host's portable third-party headers for the compile. Override
+`MINGW_CXX`, `ASIO_INCLUDE_DIR` or `HOST_INCLUDE_DIR` if autodetection is wrong.
+
+A narrow-string path passed to a `...W` API, for example, fails the gate while
+building cleanly on POSIX.
+
+---
+
 ## Useful extras
 
 Parallel build with an explicit job count:
@@ -257,8 +280,16 @@ QuickFAST::Common::SpdlogLogger qfLog(lg);
 ### Managed file sink (size + midnight, gzip, retention)
 
 Shares QuickFAST’s standalone Asio `io_context` for hard midnight rotation without
-traffic. Default retention is **32 MiB** of managed log bytes. Does **not** install
-its own `signal_set` — call `request_shutdown()` from the app handler.
+traffic. Defaults are **8 MiB** per file within a **32 MiB** budget of managed log
+bytes, i.e. four generations. Does **not** install its own `signal_set` — call
+`request_shutdown()` from the app handler.
+
+Under `RetentionMode::ManagedBytes`, `max_file_bytes` must not exceed
+`max_managed_bytes`, and the constructor rejects a config that does. Retention
+never evicts the active file, so a larger per-file limit would let the active file
+alone overrun the budget with nothing left to reclaim. Raise both together to keep
+more history. The limit is not enforced under `FilesystemFreePercent`, which does
+not use the budget.
 
 Rotated files are named `<stem>.YYYY-MM-DD_HHMMSS[.N].<ext>`, gaining `.gz` once
 compressed; `.N` disambiguates repeated rotations inside one second.
@@ -268,6 +299,21 @@ handler has returned, so the sink may be destroyed while the shared `io_context`
 keeps running. Beyond shutdown, the sink exposes `rotate_now()` (on-demand
 rotation, e.g. from a `SIGHUP` handler), `wait_for_compression_idle(timeout)`,
 and `managed_bytes()`.
+
+Scheduling is DST-safe. The rotation time is resolved with
+`std::chrono::choose::latest`, because a local time such as midnight does not
+exist on one day a year in zones that shift the clock at 24:00
+(`America/Santiago`, `America/Havana`, `Asia/Beirut`), and the two-argument
+`zoned_time` throws on such a time. A gap resolves to the instant the offset
+changes; an ambiguous time resolves to the later of its two instants. See
+`managed_file_sink_mt::next_rotation_after()`, which is public and testable.
+
+Because the rotation timer runs on an `io_context` the application also uses for
+its feed handlers, the handler never lets an exception escape — that would
+propagate out of `io_context::run()` and take the thread down. Failures are
+counted in `rotation_failures()`, and `rotation_schedule_lost()` becomes true if
+a failure also prevented the timer being re-armed (size-based rotation keeps
+working; scheduled rotation stops until restart). Both are worth alerting on.
 
 The `FilesystemFreePercent` policy needs free space to be queryable (`statvfs`
 on POSIX, `GetDiskFreeSpaceEx` on Windows); when the query fails the policy is
@@ -284,8 +330,8 @@ QuickFAST::Communication::AsioService asioService; // or app-owned io_context
 
 auto cfg = QuickFAST::Common::ManagedFileSinkConfigBuilder()
   .base_path("logs/quickfast.log")
-  .max_file_bytes(100ull << 20)
-  .max_managed_bytes(32ull << 20)              // default
+  .max_file_bytes(100ull << 20)                // default 8 MiB
+  .max_managed_bytes(1ull << 30)               // must be >= max_file_bytes
   // .time_zone("Europe/Moscow")               // optional IANA; default = system
   // .retention(RetentionMode::FilesystemFreePercent)
   // .free_percent_min(10)
