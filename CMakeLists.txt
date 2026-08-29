@@ -14,6 +14,9 @@ option(QUICKFAST_USE_LIBCXX
 option(QUICKFAST_ENABLE_COVERAGE
   "Instrument QuickFAST and tests for gcov coverage (GCC; use with gcovr)"
   OFF)
+option(QUICKFAST_SANITIZE_ADDRESS "Build with AddressSanitizer (-fsanitize=address)" OFF)
+option(QUICKFAST_SANITIZE_UNDEFINED "Build with UndefinedBehaviorSanitizer (-fsanitize=undefined)" OFF)
+option(QUICKFAST_SANITIZE_THREAD "Build with ThreadSanitizer (-fsanitize=thread)" OFF)
 
 if(QUICKFAST_ENABLE_COVERAGE)
   if(NOT QUICKFAST_BUILD_TESTS)
@@ -25,6 +28,30 @@ if(QUICKFAST_ENABLE_COVERAGE)
       "QUICKFAST_ENABLE_COVERAGE=ON with CMAKE_BUILD_TYPE=Release; "
       "prefer Debug for accurate coverage maps")
   endif()
+endif()
+
+if(QUICKFAST_SANITIZE_THREAD AND (QUICKFAST_SANITIZE_ADDRESS OR QUICKFAST_SANITIZE_UNDEFINED))
+  message(FATAL_ERROR
+    "QUICKFAST_SANITIZE_THREAD cannot be combined with AddressSanitizer or "
+    "UndefinedBehaviorSanitizer")
+endif()
+
+set(QUICKFAST_SANITIZE_FLAGS "")
+if(QUICKFAST_SANITIZE_ADDRESS)
+  list(APPEND QUICKFAST_SANITIZE_FLAGS -fsanitize=address -fno-omit-frame-pointer)
+endif()
+if(QUICKFAST_SANITIZE_UNDEFINED)
+  list(APPEND QUICKFAST_SANITIZE_FLAGS -fsanitize=undefined -fno-omit-frame-pointer)
+endif()
+if(QUICKFAST_SANITIZE_THREAD)
+  list(APPEND QUICKFAST_SANITIZE_FLAGS -fsanitize=thread -fno-omit-frame-pointer)
+  # libstdc++ (esp. GCC 16) diagnoses atomic_thread_fence under TSan; do not
+  # promote that into a hard -Werror failure for sanitizer builds.
+  list(APPEND QUICKFAST_SANITIZE_FLAGS -Wno-error=tsan)
+endif()
+if(QUICKFAST_SANITIZE_FLAGS)
+  add_compile_options(${QUICKFAST_SANITIZE_FLAGS})
+  add_link_options(${QUICKFAST_SANITIZE_FLAGS})
 endif()
 
 if(QUICKFAST_USE_LIBCXX)
@@ -324,4 +351,7 @@ else()
 endif()
 if(QUICKFAST_ENABLE_COVERAGE)
   message(STATUS "Coverage: instrumentation ON (--coverage on QuickFAST + QuickFASTTest)")
+endif()
+if(QUICKFAST_SANITIZE_FLAGS)
+  message(STATUS "Sanitizers: ${QUICKFAST_SANITIZE_FLAGS}")
 endif()

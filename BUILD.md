@@ -24,6 +24,9 @@ CMake fetches standalone [Asio](https://github.com/chriskohlhoff/asio) and
 | `QUICKFAST_BUILD_EXAMPLES` | `ON` | Build example applications |
 | `QUICKFAST_USE_LIBCXX` | `OFF` | Use LLVM libc++ (`-stdlib=libc++`); **Clang/AppleClang only** |
 | `QUICKFAST_ENABLE_COVERAGE` | `OFF` | Instrument library + tests with `--coverage`; add `coverage` target if `gcovr` is installed |
+| `QUICKFAST_SANITIZE_ADDRESS` | `OFF` | AddressSanitizer (`-fsanitize=address`) |
+| `QUICKFAST_SANITIZE_UNDEFINED` | `OFF` | UndefinedBehaviorSanitizer (`-fsanitize=undefined`) |
+| `QUICKFAST_SANITIZE_THREAD` | `OFF` | ThreadSanitizer (`-fsanitize=thread`; incompatible with ASan/UBSan) |
 | `QUICKFAST_ENABLE_PVS_STUDIO` | `ON` | Create `pvs-studio` target if `pvs-studio-analyzer` is installed |
 | `CMAKE_BUILD_TYPE` | (unset) | Prefer `Release` or `Debug` |
 | `CMAKE_CXX_COMPILER` | system default | e.g. `g++-16`, `clang++-22` |
@@ -237,5 +240,98 @@ cmake --build build-cov -j --target coverage
 
 The `coverage` target builds `QuickFASTTest`, runs `ctest`, then generates a
 gcovr summary for first-party `src/` (deps under `_deps` are excluded).
+
+---
+
+## Sanitizers (ASan / UBSan / TSan)
+
+Prefer `Debug` for readable stacks. ASan and UBSan may be combined; TSan cannot
+be combined with either.
+
+### AddressSanitizer + UndefinedBehaviorSanitizer
+
+```bash
+cmake -S . -B build-asan -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=g++-16 \
+  -DQUICKFAST_SANITIZE_ADDRESS=ON -DQUICKFAST_SANITIZE_UNDEFINED=ON \
+  -DQUICKFAST_BUILD_EXAMPLES=OFF
+cmake --build build-asan -j --target QuickFASTTest
+export QUICKFAST_ROOT="$(pwd)"
+# Fail on any sanitizer finding
+export ASAN_OPTIONS=detect_leaks=1:abort_on_error=1
+export UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1
+ctest --test-dir build-asan --output-on-failure
+```
+
+### ThreadSanitizer
+
+```bash
+cmake -S . -B build-tsan -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=g++-16 \
+  -DQUICKFAST_SANITIZE_THREAD=ON \
+  -DQUICKFAST_BUILD_EXAMPLES=OFF
+cmake --build build-tsan -j --target QuickFASTTest
+export QUICKFAST_ROOT="$(pwd)"
+export TSAN_OPTIONS=halt_on_error=1:second_deadlock_stack=1
+ctest --test-dir build-tsan --output-on-failure
+```
+
+---
+
+## Valgrind (memcheck / helgrind / cachegrind)
+
+Use a **non-sanitizer** build with debug info (`RelWithDebInfo` or `Debug`).
+Do not mix Valgrind with ASan/TSan binaries.
+
+```bash
+cmake -S . -B build-valgrind -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+  -DCMAKE_CXX_COMPILER=g++-16 -DQUICKFAST_BUILD_EXAMPLES=OFF
+cmake --build build-valgrind -j --target QuickFASTTest
+export QUICKFAST_ROOT="$(pwd)"
+TEST=build-valgrind/bin/QuickFASTTest
+```
+
+### Memcheck
+
+```bash
+valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all \
+  --track-origins=yes --error-exitcode=1 \
+  --log-file=valgrind-memcheck.log \
+  "$TEST"
+```
+
+### Helgrind (data races / lock order)
+
+Valgrind’s tool name is `helgrind` (one “l”).
+
+```bash
+valgrind --tool=helgrind --error-exitcode=1 \
+  --log-file=valgrind-helgrind.log \
+  "$TEST"
+```
+
+#### Known third-party noise: `libp11-kit`
+
+On Ubuntu/Debian (and similar), Helgrind may report errors that are **not**
+QuickFAST defects. Observed on `QuickFASTTest`:
+
+- **Symptom:** `pthread_mutex_destroy with invalid argument` (often 2 contexts)
+- **Where:** `libp11-kit.so` → `_dl_fini` / `__run_exit_handlers` (process teardown)
+- **What it is:** [p11-kit](https://p11-glue.github.io/p11-glue/p11-kit.html) —
+  a system PKCS#11 module manager, pulled in transitively (crypto / TLS stack),
+  not linked or owned by QuickFAST
+- **Action:** Treat as suppressible host noise unless a stack frame points into
+  QuickFAST (`libQuickFAST`, `QuickFASTTest`, or project `src/`). Do not fail a
+  release gate on p11-kit-only Helgrind summaries.
+
+TSan on the same tests is the stronger first-party race check; it reported clean
+when Helgrind only showed the p11-kit teardown findings above.
+
+### Cachegrind (cache / branch simulation)
+
+```bash
+valgrind --tool=cachegrind --cachegrind-out-file=cachegrind.out \
+  --log-file=valgrind-cachegrind.log \
+  "$TEST"
+# optional: cg_annotate cachegrind.out | less
+```
 
 Legacy MPC / `setup.sh` remains available for older toolchains; prefer CMake on modern Linux.
