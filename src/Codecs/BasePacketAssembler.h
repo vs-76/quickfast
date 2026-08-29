@@ -71,7 +71,7 @@ namespace QuickFAST
       /// @returns the byte count
       size_t byteCount()const
       {
-        return byteCount_;
+        return receivedByteCount_;
       }
 
       ///////////////////////////
@@ -112,7 +112,7 @@ namespace QuickFAST
       /// How many buffers have been decoded.
       size_t messageCount_;
       /// How many bytes were in those buffers.
-      size_t byteCount_;
+      size_t receivedByteCount_;
       /// How many buffers should be decoded before stopping artificially.
       size_t messageLimit_;
     };
