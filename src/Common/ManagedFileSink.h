@@ -22,6 +22,7 @@
 #include <cstdint>
 #include <deque>
 #include <filesystem>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <set>
@@ -107,24 +108,32 @@ namespace QuickFAST
       managed_file_sink_mt(const managed_file_sink_mt &) = delete;
       managed_file_sink_mt & operator=(const managed_file_sink_mt &) = delete;
 
-      /// Cancel timer, stop compression workers, flush and close the active file.
+      /// @brief Cancel timer, stop compression workers, flush and close the active file.
+      ///
+      /// Blocks until any in-flight rotation timer handler has finished, so the sink
+      /// may be destroyed afterwards even while the shared io_context keeps running.
+      /// Idempotent.
       void request_shutdown();
 
       /// Active log path.
       std::filesystem::path active_filename() const;
 
+      /// @brief Rotate the active file now, without waiting for size or schedule.
+      ///
+      /// Useful for on-demand rotation (e.g. from a SIGHUP handler). No-op after
+      /// @c request_shutdown().
+      void rotate_now();
+
+      /// @brief Wait until no rotated file is queued or being compressed.
+      /// @returns false on timeout.
+      bool wait_for_compression_idle(std::chrono::milliseconds timeout);
+
+      /// Total size of managed files (active + rotated + compressed).
+      std::uint64_t managed_bytes();
+
 #if defined(QUICKFAST_ENABLE_TEST_HOOKS)
-      /// Test helper: perform a time-based rotation immediately (no log line required).
-      void force_time_rotation_for_test();
-
-      /// Test helper: wait until the compression queue is empty (or timeout).
-      bool wait_for_compression_idle_for_test(std::chrono::milliseconds timeout);
-
       /// Test helper: cancel current schedule and fire the Asio rotation timer soon.
       void arm_rotation_after_for_test(std::chrono::milliseconds delay);
-
-      /// Test helper: total size of managed files (active + finished).
-      std::uint64_t managed_bytes_for_test();
 #endif
 
     protected:
@@ -137,7 +146,9 @@ namespace QuickFAST
       std::filesystem::path make_rotated_path_unlocked_(
         std::chrono::system_clock::time_point when);
       void arm_rotation_timer_unlocked_();
+      void async_wait_rotation_unlocked_();
       void on_rotation_timer_(const asio::error_code & ec);
+      void detach_timer_state_();
 
       void enqueue_compress_unlocked_(std::filesystem::path path);
       void compress_worker_();
@@ -165,6 +176,21 @@ namespace QuickFAST
 
       asio::io_context & io_;
       asio::system_timer rotation_timer_;
+
+      /// @brief Keeps queued Asio timer handlers safe against sink destruction.
+      ///
+      /// Cancelling a timer only queues its handler, and a stopped @c io_context may
+      /// never run it at all, so handlers hold a weak reference to this block rather
+      /// than to the sink. Shutdown clears @c sink under @c mutex, which also waits
+      /// out a handler that is already running.
+      struct RotationTimerState
+      {
+        std::mutex mutex;
+        managed_file_sink_mt * sink = nullptr;
+      };
+
+      std::shared_ptr<RotationTimerState> timer_state_ =
+        std::make_shared<RotationTimerState>();
 
       std::FILE * file_ = nullptr;
       std::size_t current_size_ = 0;

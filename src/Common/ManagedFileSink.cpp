@@ -9,13 +9,19 @@
 #include <zlib.h>
 
 #include <algorithm>
+#include <cerrno>
 #include <cstdio>
-#include <cstring>
 #include <format>
 #include <fstream>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
-#include <sys/statvfs.h>
+
+#if defined(_WIN32)
+# include <windows.h>
+#else
+# include <sys/statvfs.h>
+#endif
 
 using namespace ::QuickFAST;
 using namespace ::QuickFAST::Common;
@@ -23,31 +29,90 @@ namespace fs = std::filesystem;
 
 namespace
 {
+  /// Bound on evictions per retention pass, so a pathological directory cannot
+  /// stall the caller (a rotation or a compression completion) indefinitely.
+  const int DEF_MFS_MAX_EVICTIONS_PER_PASS = 1024;
+
+  /// Copy chunk used while gzipping a rotated file.
+  const std::size_t DEF_MFS_GZIP_CHUNK_BYTES = 64u * 1024u;
+
+  const char * const DEF_MFS_GZ_SUFFIX = ".gz";
+  const char * const DEF_MFS_TMP_SUFFIX = ".tmp";
+
+  /// Timer state whose handler this thread is currently executing, if any. Lets
+  /// request_shutdown() recognise a call made from its own rotation handler, where
+  /// the state mutex is already held by this thread.
+  thread_local const void * tls_active_rotation_state = nullptr;
+
+  bool
+  has_suffix(const std::string & value, const std::string & suffix)
+  {
+    return value.size() >= suffix.size()
+           && value.compare(value.size() - suffix.size(), suffix.size(), suffix) == 0;
+  }
+
+  /// @brief Rotated-file timestamp, truncated to whole seconds.
+  ///
+  /// The truncation is required: chrono's %S prints fractional digits for a
+  /// time_point with sub-second precision, which would put nanoseconds in every
+  /// rotated file name and make the same-second sequence suffix unreachable.
   std::string
   format_local_timestamp(
     const std::chrono::time_zone * zone,
     std::chrono::system_clock::time_point tp)
   {
-    const auto zt = std::chrono::zoned_time{zone, tp};
+    const auto zt =
+      std::chrono::zoned_time{zone, std::chrono::floor<std::chrono::seconds>(tp)};
     return std::format("{:%Y-%m-%d_%H%M%S}", zt);
   }
 
-  unsigned
+  /// @returns free space percent, or nullopt when the filesystem cannot be queried.
+  std::optional<unsigned>
   filesystem_free_percent(const fs::path & path)
   {
+#if defined(_WIN32)
+    ULARGE_INTEGER available{};
+    ULARGE_INTEGER total{};
+    if(GetDiskFreeSpaceExW(path.c_str(), &available, &total, nullptr) == 0
+       || total.QuadPart == 0)
+    {
+      return std::nullopt;
+    }
+    const auto free_units = static_cast<double>(available.QuadPart);
+    const auto total_units = static_cast<double>(total.QuadPart);
+#else
     struct statvfs st {};
-    if(statvfs(path.c_str(), &st) != 0)
+    if(statvfs(path.c_str(), &st) != 0 || st.f_blocks == 0)
     {
-      return 100;
+      return std::nullopt;
     }
-    if(st.f_blocks == 0)
-    {
-      return 100;
-    }
-    const auto free_blocks = static_cast<double>(st.f_bavail);
-    const auto total_blocks = static_cast<double>(st.f_blocks);
-    return static_cast<unsigned>((free_blocks * 100.0) / total_blocks);
+    const auto free_units = static_cast<double>(st.f_bavail);
+    const auto total_units = static_cast<double>(st.f_blocks);
+#endif
+    return static_cast<unsigned>((free_units * 100.0) / total_units);
   }
+
+  /// Publishes the timer state whose handler is running, for the scope's lifetime.
+  class RotationHandlerGuard
+  {
+  public:
+    explicit RotationHandlerGuard(const void * state)
+      : previous_(tls_active_rotation_state)
+    {
+      tls_active_rotation_state = state;
+    }
+
+    ~RotationHandlerGuard()
+    {
+      tls_active_rotation_state = previous_;
+    }
+
+    RotationHandlerGuard(const RotationHandlerGuard &) = delete;
+    RotationHandlerGuard & operator=(const RotationHandlerGuard &) = delete;
+
+  private:
+    const void * previous_;
+  };
 }
 
 ManagedFileSinkConfigBuilder &
@@ -182,6 +247,8 @@ managed_file_sink_mt::managed_file_sink_mt(asio::io_context & io, ManagedFileSin
 
   this->set_pattern(cfg_.pattern);
 
+  timer_state_->sink = this;
+
   dir_ = cfg_.base_path.parent_path();
   if(dir_.empty())
   {
@@ -271,13 +338,16 @@ managed_file_sink_mt::open_active_file_unlocked_()
 std::filesystem::path
 managed_file_sink_mt::make_rotated_path_unlocked_(std::chrono::system_clock::time_point when)
 {
-  if(last_rotate_tp_ == when)
+  // Compare at the resolution the file name carries, so repeated rotations inside
+  // one second get distinct ".N" suffixes instead of overwriting each other.
+  const auto second = std::chrono::floor<std::chrono::seconds>(when);
+  if(last_rotate_tp_ == second)
   {
     ++same_second_seq_;
   }
   else
   {
-    last_rotate_tp_ = when;
+    last_rotate_tp_ = second;
     same_second_seq_ = 0;
   }
 
@@ -328,10 +398,29 @@ managed_file_sink_mt::arm_rotation_timer_unlocked_()
   {
     return;
   }
-  const auto next = next_rotation_tp_(std::chrono::system_clock::now());
-  rotation_timer_.expires_at(next);
+  rotation_timer_.expires_at(next_rotation_tp_(std::chrono::system_clock::now()));
+  async_wait_rotation_unlocked_();
+}
+
+void
+managed_file_sink_mt::async_wait_rotation_unlocked_()
+{
   rotation_timer_.async_wait(
-    [self = this](const asio::error_code & ec) { self->on_rotation_timer_(ec); });
+    [state = std::weak_ptr<RotationTimerState>(timer_state_)](const asio::error_code & ec)
+    {
+      const std::shared_ptr<RotationTimerState> locked = state.lock();
+      if(!locked)
+      {
+        return;
+      }
+      std::lock_guard<std::mutex> lock(locked->mutex);
+      if(locked->sink == nullptr)
+      {
+        return;
+      }
+      const RotationHandlerGuard guard(locked.get());
+      locked->sink->on_rotation_timer_(ec);
+    });
 }
 
 void
@@ -348,6 +437,22 @@ managed_file_sink_mt::on_rotation_timer_(const asio::error_code & ec)
   }
   rotate_unlocked_(std::chrono::system_clock::now());
   arm_rotation_timer_unlocked_();
+}
+
+void
+managed_file_sink_mt::detach_timer_state_()
+{
+  if(tls_active_rotation_state == timer_state_.get())
+  {
+    // Called from this sink's own rotation handler, which already holds the state
+    // mutex on this thread; locking again would deadlock.
+    timer_state_->sink = nullptr;
+    return;
+  }
+  // Blocks until a handler that is already running has returned. Deliberately does
+  // not wait for merely queued handlers: a stopped io_context would never run them.
+  std::lock_guard<std::mutex> lock(timer_state_->mutex);
+  timer_state_->sink = nullptr;
 }
 
 void
@@ -373,6 +478,11 @@ managed_file_sink_mt::sink_it_(const spdlog::details::log_msg & msg)
   }
   const std::size_t written = std::fwrite(formatted.data(), 1, nbytes, file_);
   current_size_ += written;
+  if(written != nbytes)
+  {
+    throw spdlog::spdlog_ex(
+      "Short write to log file: " + cfg_.base_path.string(), errno);
+  }
 }
 
 void
@@ -387,13 +497,13 @@ managed_file_sink_mt::flush_()
 void
 managed_file_sink_mt::request_shutdown()
 {
+  // Before the sink mutex: rotation handlers take the state mutex first, so the
+  // reverse order here would risk a deadlock.
+  detach_timer_state_();
+
   {
     std::lock_guard<std::mutex> lock(base_sink<std::mutex>::mutex_);
-    if(shutting_down_)
-    {
-      // Still join compress thread below if needed.
-    }
-    else
+    if(!shutting_down_)
     {
       shutting_down_ = true;
       rotation_timer_.cancel();
@@ -423,16 +533,15 @@ managed_file_sink_mt::active_filename() const
   return cfg_.base_path;
 }
 
-#if defined(QUICKFAST_ENABLE_TEST_HOOKS)
 void
-managed_file_sink_mt::force_time_rotation_for_test()
+managed_file_sink_mt::rotate_now()
 {
   std::lock_guard<std::mutex> lock(base_sink<std::mutex>::mutex_);
   rotate_unlocked_(std::chrono::system_clock::now());
 }
 
 bool
-managed_file_sink_mt::wait_for_compression_idle_for_test(std::chrono::milliseconds timeout)
+managed_file_sink_mt::wait_for_compression_idle(std::chrono::milliseconds timeout)
 {
   const auto deadline = std::chrono::steady_clock::now() + timeout;
   std::unique_lock<std::mutex> lock(compress_mutex_);
@@ -441,6 +550,14 @@ managed_file_sink_mt::wait_for_compression_idle_for_test(std::chrono::millisecon
   });
 }
 
+std::uint64_t
+managed_file_sink_mt::managed_bytes()
+{
+  std::lock_guard<std::mutex> lock(base_sink<std::mutex>::mutex_);
+  return managed_bytes_unlocked_();
+}
+
+#if defined(QUICKFAST_ENABLE_TEST_HOOKS)
 void
 managed_file_sink_mt::arm_rotation_after_for_test(std::chrono::milliseconds delay)
 {
@@ -450,15 +567,7 @@ managed_file_sink_mt::arm_rotation_after_for_test(std::chrono::milliseconds dela
     return;
   }
   rotation_timer_.expires_after(delay);
-  rotation_timer_.async_wait(
-    [self = this](const asio::error_code & ec) { self->on_rotation_timer_(ec); });
-}
-
-std::uint64_t
-managed_file_sink_mt::managed_bytes_for_test()
-{
-  std::lock_guard<std::mutex> lock(base_sink<std::mutex>::mutex_);
-  return managed_bytes_unlocked_();
+  async_wait_rotation_unlocked_();
 }
 #endif
 
@@ -503,7 +612,7 @@ managed_file_sink_mt::compress_worker_()
       compress_queue_.pop_front();
     }
 
-    const fs::path gz = path.string() + ".gz";
+    const fs::path gz = path.string() + DEF_MFS_GZ_SUFFIX;
     const bool ok = gzip_file_(path, gz, cfg_.gzip_level);
     if(ok)
     {
@@ -528,7 +637,7 @@ managed_file_sink_mt::gzip_file_(
   const fs::path & dst_gz,
   int level)
 {
-  const fs::path tmp = fs::path(dst_gz.string() + ".tmp");
+  const fs::path tmp = fs::path(dst_gz.string() + DEF_MFS_TMP_SUFFIX);
   std::ifstream in(src, std::ios::binary);
   if(!in)
   {
@@ -543,7 +652,7 @@ managed_file_sink_mt::gzip_file_(
     return false;
   }
 
-  char buffer[64 * 1024];
+  char buffer[DEF_MFS_GZIP_CHUNK_BYTES];
   bool ok = true;
   while(in)
   {
@@ -595,8 +704,8 @@ managed_file_sink_mt::is_managed_name_(const fs::path & path) const
   {
     return false;
   }
-  return name.find(extension_) != std::string::npos
-         || (name.size() > 3 && name.substr(name.size() - 3) == ".gz");
+  return has_suffix(name, extension_)
+         || has_suffix(name, extension_ + DEF_MFS_GZ_SUFFIX);
 }
 
 std::vector<std::filesystem::path>
@@ -631,8 +740,7 @@ managed_file_sink_mt::list_managed_finished_unlocked_() const
       }
     }
     // Skip incomplete temp compress outputs.
-    const std::string name = p.filename().string();
-    if(name.size() >= 4 && name.substr(name.size() - 4) == ".tmp")
+    if(has_suffix(p.filename().string(), DEF_MFS_TMP_SUFFIX))
     {
       continue;
     }
@@ -675,14 +783,20 @@ managed_file_sink_mt::retention_exceeded_unlocked_() const
   {
     return managed_bytes_unlocked_() > cfg_.max_managed_bytes;
   }
-  return filesystem_free_percent(dir_) < cfg_.free_percent_min;
+  const auto free_percent = filesystem_free_percent(dir_);
+  if(!free_percent.has_value())
+  {
+    // Free space is unknown; evicting on a guess could discard logs that are still
+    // wanted, so treat the policy as not triggered.
+    return false;
+  }
+  return *free_percent < cfg_.free_percent_min;
 }
 
 void
 managed_file_sink_mt::apply_retention_unlocked_()
 {
-  // Bound loops to avoid pathological stalls.
-  for(int i = 0; i < 1024 && retention_exceeded_unlocked_(); ++i)
+  for(int i = 0; i < DEF_MFS_MAX_EVICTIONS_PER_PASS && retention_exceeded_unlocked_(); ++i)
   {
     auto finished = list_managed_finished_unlocked_();
     if(finished.empty())
@@ -723,15 +837,11 @@ managed_file_sink_mt::recover_uncompressed_unlocked_()
       continue;
     }
     const std::string name = p.filename().string();
-    if(name.size() >= 3 && name.substr(name.size() - 3) == ".gz")
+    if(has_suffix(name, DEF_MFS_GZ_SUFFIX) || has_suffix(name, DEF_MFS_TMP_SUFFIX))
     {
       continue;
     }
-    if(name.size() >= 4 && name.substr(name.size() - 4) == ".tmp")
-    {
-      continue;
-    }
-    const fs::path gz = fs::path(p.string() + ".gz");
+    const fs::path gz = fs::path(p.string() + DEF_MFS_GZ_SUFFIX);
     if(fs::exists(gz, ec))
     {
       continue;

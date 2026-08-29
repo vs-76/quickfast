@@ -26,6 +26,7 @@ With `-DQUICKFAST_USE_SPDLOG=ON` it also finds or fetches
 | `QUICKFAST_BUILD_EXAMPLES` | `ON` | Build example applications |
 | `QUICKFAST_USE_LIBCXX` | `OFF` | Use LLVM libc++ (`-stdlib=libc++`); **Clang/AppleClang only** |
 | `QUICKFAST_USE_SPDLOG` | `OFF` | Build `SpdlogLogger` + `managed_file_sink_mt` (find/FetchContent spdlog; requires zlib, tzdata) |
+| `QUICKFAST_ENABLE_TEST_HOOKS` | follows `QUICKFAST_BUILD_TESTS` | Compile `managed_file_sink_mt` test-only hooks into the library; keep `OFF` for shipping builds |
 | `QUICKFAST_ENABLE_PVS_STUDIO` | `ON` | Create `pvs-studio` target if `pvs-studio-analyzer` is installed |
 | `CMAKE_BUILD_TYPE` | (unset) | Prefer `Release` or `Debug` |
 | `CMAKE_CXX_COMPILER` | system default | e.g. `g++-16`, `clang++-22` |
@@ -254,6 +255,19 @@ QuickFAST::Common::SpdlogLogger qfLog(lg);
 Shares QuickFAST’s standalone Asio `io_context` for hard midnight rotation without
 traffic. Default retention is **32 MiB** of managed log bytes. Does **not** install
 its own `signal_set` — call `request_shutdown()` from the app handler.
+
+Rotated files are named `<stem>.YYYY-MM-DD_HHMMSS[.N].<ext>`, gaining `.gz` once
+compressed; `.N` disambiguates repeated rotations inside one second.
+
+`request_shutdown()` is idempotent and blocks until an in-flight rotation timer
+handler has returned, so the sink may be destroyed while the shared `io_context`
+keeps running. Beyond shutdown, the sink exposes `rotate_now()` (on-demand
+rotation, e.g. from a `SIGHUP` handler), `wait_for_compression_idle(timeout)`,
+and `managed_bytes()`.
+
+The `FilesystemFreePercent` policy needs free space to be queryable (`statvfs`
+on POSIX, `GetDiskFreeSpaceEx` on Windows); when the query fails the policy is
+treated as not triggered rather than evicting on a guess.
 
 ```cpp
 #include <Common/ManagedFileSink.h>

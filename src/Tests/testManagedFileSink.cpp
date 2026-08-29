@@ -13,6 +13,7 @@
 #include <asio.hpp>
 #include <zlib.h>
 
+#include <algorithm>
 #include <chrono>
 #include <fstream>
 #include <functional>
@@ -123,7 +124,8 @@ namespace
     return n;
   }
 
-  bool
+  // Only reached by the Asio timer test, which needs QUICKFAST_ENABLE_TEST_HOOKS.
+  [[maybe_unused]] bool
   wait_until(std::chrono::milliseconds timeout, const std::function<bool()> & pred)
   {
     const auto deadline = std::chrono::steady_clock::now() + timeout;
@@ -158,10 +160,10 @@ namespace
       {
         sink_->request_shutdown();
       }
-      // Stop the io_context before destroying the sink so cancelled timer
-      // handlers cannot run against a freed managed_file_sink_mt.
-      runner_.stop();
+      // Destroy the sink while the io_context is still running: request_shutdown()
+      // is required to have drained any cancelled timer handler first.
       sink_.reset();
+      runner_.stop();
       std::error_code ec;
       fs::remove_all(dir_, ec);
     }
@@ -281,7 +283,7 @@ TEST_F(ManagedFileSinkTest, SizeRotationProducesGzipAndNewActive)
   logger->info("second-line-should-be-in-new-file");
   logger->flush();
 
-  ASSERT_TRUE(sink_->wait_for_compression_idle_for_test(std::chrono::seconds(5)));
+  ASSERT_TRUE(sink_->wait_for_compression_idle(std::chrono::seconds(5)));
 
   const auto files = list_regular_files(dir_);
   EXPECT_GE(count_suffix(files, ".gz"), 1u);
@@ -320,7 +322,7 @@ TEST_F(ManagedFileSinkTest, CompressDisabledKeepsPlainRotatedFiles)
   logger->info("stays-active-bbbbbbbbbbbbbbbb");
   logger->flush();
 
-  ASSERT_TRUE(sink_->wait_for_compression_idle_for_test(std::chrono::seconds(1)));
+  ASSERT_TRUE(sink_->wait_for_compression_idle(std::chrono::seconds(1)));
 
   const auto files = list_regular_files(dir_);
   EXPECT_EQ(0u, count_suffix(files, ".gz"));
@@ -354,13 +356,14 @@ TEST_F(ManagedFileSinkTest, ForceTimeRotationWithoutTraffic)
   logger->flush();
 
   const auto before = list_regular_files(dir_);
-  sink_->force_time_rotation_for_test();
-  ASSERT_TRUE(sink_->wait_for_compression_idle_for_test(std::chrono::seconds(5)));
+  sink_->rotate_now();
+  ASSERT_TRUE(sink_->wait_for_compression_idle(std::chrono::seconds(5)));
   const auto after = list_regular_files(dir_);
   EXPECT_GT(after.size(), before.size());
   EXPECT_GE(count_suffix(after, ".gz"), 1u);
 }
 
+#if defined(QUICKFAST_ENABLE_TEST_HOOKS)
 TEST_F(ManagedFileSinkTest, AsioTimerFiresHardRotationWithoutTraffic)
 {
   ManagedFileSinkConfig cfg = defaultConfig();
@@ -374,7 +377,80 @@ TEST_F(ManagedFileSinkTest, AsioTimerFiresHardRotationWithoutTraffic)
   ASSERT_TRUE(wait_until(std::chrono::seconds(3), [&] {
     return count_suffix(list_regular_files(dir_), ".gz") > beforeGz;
   }));
-  ASSERT_TRUE(sink_->wait_for_compression_idle_for_test(std::chrono::seconds(5)));
+  ASSERT_TRUE(sink_->wait_for_compression_idle(std::chrono::seconds(5)));
+}
+
+TEST_F(ManagedFileSinkTest, ShutdownIsSafeWithPendingTimerHandler)
+{
+  ManagedFileSinkConfig cfg = defaultConfig();
+  cfg.compress = false;
+  auto logger = makeLogger(cfg, "mfs_pending");
+  logger->info("pre-shutdown");
+  logger->flush();
+
+  // Arm the timer, then tear the sink down while the io_context keeps running:
+  // the cancelled handler must not touch the freed sink.
+  sink_->arm_rotation_after_for_test(std::chrono::milliseconds(10));
+  sink_->request_shutdown();
+  logger.reset();
+  sink_.reset();
+
+  EXPECT_TRUE(fs::exists(cfg.base_path));
+}
+
+TEST_F(ManagedFileSinkTest, ShutdownDoesNotHangWhenIoContextStoppedFirst)
+{
+  ManagedFileSinkConfig cfg = defaultConfig();
+  cfg.compress = false;
+  auto logger = makeLogger(cfg, "mfs_stopped_io");
+  logger->info("pre-stop");
+  logger->flush();
+
+  // A handler queued by cancel() will never run once the io_context is stopped,
+  // so shutdown must not wait for it.
+  sink_->arm_rotation_after_for_test(std::chrono::milliseconds(10));
+  runner_.stop();
+  sink_->request_shutdown();
+  logger.reset();
+  sink_.reset();
+
+  EXPECT_TRUE(fs::exists(cfg.base_path));
+}
+#endif
+
+TEST_F(ManagedFileSinkTest, SinkMayBeDestroyedWhileIoContextRuns)
+{
+  ManagedFileSinkConfig cfg = defaultConfig();
+  cfg.compress = false;
+
+  for(int i = 0; i < 20; ++i)
+  {
+    auto logger = makeLogger(cfg, "mfs_destroy_" + std::to_string(i));
+    logger->info("line {}", i);
+    logger->flush();
+    sink_->request_shutdown();
+    logger.reset();
+    sink_.reset();
+  }
+
+  EXPECT_TRUE(fs::exists(cfg.base_path));
+}
+
+TEST_F(ManagedFileSinkTest, RotateNowIsPublicAndIgnoredAfterShutdown)
+{
+  ManagedFileSinkConfig cfg = defaultConfig();
+  cfg.compress = false;
+  auto logger = makeLogger(cfg, "mfs_rotate_now");
+  logger->info("payload");
+  logger->flush();
+
+  sink_->rotate_now();
+  const auto afterRotate = list_regular_files(dir_).size();
+  EXPECT_GE(afterRotate, 2u);
+
+  sink_->request_shutdown();
+  sink_->rotate_now();
+  EXPECT_EQ(afterRotate, list_regular_files(dir_).size());
 }
 
 TEST_F(ManagedFileSinkTest, MultipleRotationsInSameSecondGetSequenceSuffix)
@@ -385,11 +461,12 @@ TEST_F(ManagedFileSinkTest, MultipleRotationsInSameSecondGetSequenceSuffix)
   logger->info("seed");
   logger->flush();
 
-  sink_->force_time_rotation_for_test();
-  sink_->force_time_rotation_for_test();
-  sink_->force_time_rotation_for_test();
+  sink_->rotate_now();
+  sink_->rotate_now();
+  sink_->rotate_now();
 
   std::size_t rotated = 0;
+  std::size_t sequenced = 0;
   for(const auto & p : list_regular_files(dir_))
   {
     if(p == cfg.base_path)
@@ -397,9 +474,49 @@ TEST_F(ManagedFileSinkTest, MultipleRotationsInSameSecondGetSequenceSuffix)
       continue;
     }
     ++rotated;
-    EXPECT_NE(std::string::npos, p.filename().string().find("app."));
+    const std::string name = p.filename().string();
+    EXPECT_NE(std::string::npos, name.find("app."));
+    // app.YYYY-MM-DD_HHMMSS.log or app.YYYY-MM-DD_HHMMSS.N.log
+    if(std::count(name.begin(), name.end(), '.') == 3)
+    {
+      ++sequenced;
+    }
   }
-  EXPECT_GE(rotated, 2u);
+  // Every rotation must survive: three distinct names, two carrying a ".N" suffix.
+  EXPECT_EQ(3u, rotated);
+  EXPECT_EQ(2u, sequenced);
+}
+
+TEST_F(ManagedFileSinkTest, RotatedNamesUseWholeSecondsWithoutFractions)
+{
+  ManagedFileSinkConfig cfg = defaultConfig();
+  cfg.compress = false;
+  auto logger = makeLogger(cfg, "mfs_names");
+  logger->info("payload");
+  logger->flush();
+  sink_->rotate_now();
+
+  bool checked = false;
+  for(const auto & p : list_regular_files(dir_))
+  {
+    if(p == cfg.base_path)
+    {
+      continue;
+    }
+    const std::string name = p.filename().string();
+    // Expect app.YYYY-MM-DD_HHMMSS.log: a 6-digit time field, no nanoseconds.
+    const std::size_t underscore = name.find('_');
+    ASSERT_NE(std::string::npos, underscore);
+    const std::string tail = name.substr(underscore + 1);
+    ASSERT_EQ(std::string("HHMMSS.log").size(), tail.size())
+      << "unexpected rotated name: " << name;
+    EXPECT_EQ(".log", tail.substr(6)) << "unexpected rotated name: " << name;
+    EXPECT_TRUE(std::all_of(tail.begin(), tail.begin() + 6, [](char c) {
+      return c >= '0' && c <= '9';
+    })) << "unexpected rotated name: " << name;
+    checked = true;
+  }
+  EXPECT_TRUE(checked);
 }
 
 TEST_F(ManagedFileSinkTest, RestartRecoveryCompressesLeftovers)
@@ -413,7 +530,7 @@ TEST_F(ManagedFileSinkTest, RestartRecoveryCompressesLeftovers)
   ManagedFileSinkConfig cfg = defaultConfig();
   auto logger = makeLogger(cfg, "mfs_recover");
   (void)logger;
-  ASSERT_TRUE(sink_->wait_for_compression_idle_for_test(std::chrono::seconds(5)));
+  ASSERT_TRUE(sink_->wait_for_compression_idle(std::chrono::seconds(5)));
 
   EXPECT_FALSE(fs::exists(leftover));
   EXPECT_TRUE(fs::exists(fs::path(leftover.string() + ".gz")));
@@ -434,7 +551,7 @@ TEST_F(ManagedFileSinkTest, RestartRecoveryCanBeDisabled)
   cfg.recover_uncompressed_on_start = false;
   auto logger = makeLogger(cfg, "mfs_norecover");
   (void)logger;
-  ASSERT_TRUE(sink_->wait_for_compression_idle_for_test(std::chrono::seconds(1)));
+  ASSERT_TRUE(sink_->wait_for_compression_idle(std::chrono::seconds(1)));
 
   EXPECT_TRUE(fs::exists(leftover));
   EXPECT_FALSE(fs::exists(fs::path(leftover.string() + ".gz")));
@@ -456,7 +573,7 @@ TEST_F(ManagedFileSinkTest, SkipsLeftoverThatAlreadyHasGzipSibling)
   ManagedFileSinkConfig cfg = defaultConfig();
   auto logger = makeLogger(cfg, "mfs_skipgz");
   (void)logger;
-  ASSERT_TRUE(sink_->wait_for_compression_idle_for_test(std::chrono::seconds(2)));
+  ASSERT_TRUE(sink_->wait_for_compression_idle(std::chrono::seconds(2)));
 
   EXPECT_TRUE(fs::exists(leftover));
   EXPECT_EQ("should-remain", [&] {
@@ -480,7 +597,7 @@ TEST_F(ManagedFileSinkTest, ManagedBytesEvictionKeepsActive)
     logger->flush();
   }
 
-  EXPECT_LE(sink_->managed_bytes_for_test(), cfg.max_managed_bytes + cfg.max_file_bytes);
+  EXPECT_LE(sink_->managed_bytes(), cfg.max_managed_bytes + cfg.max_file_bytes);
   EXPECT_TRUE(fs::exists(cfg.base_path));
 }
 
@@ -498,9 +615,9 @@ TEST_F(ManagedFileSinkTest, ManagedBytesEvictionWithGzip)
     logger->info("gz-evict-{:02d}-yyyyyyyyyyyyyyyyyyyy", i);
     logger->flush();
   }
-  ASSERT_TRUE(sink_->wait_for_compression_idle_for_test(std::chrono::seconds(5)));
+  ASSERT_TRUE(sink_->wait_for_compression_idle(std::chrono::seconds(5)));
 
-  EXPECT_LE(sink_->managed_bytes_for_test(), cfg.max_managed_bytes + cfg.max_file_bytes);
+  EXPECT_LE(sink_->managed_bytes(), cfg.max_managed_bytes + cfg.max_file_bytes);
   EXPECT_TRUE(fs::exists(cfg.base_path));
 }
 
@@ -636,7 +753,7 @@ TEST_F(ManagedFileSinkTest, ConcurrentWritersDoNotCrash)
   {
     th.join();
   }
-  ASSERT_TRUE(sink_->wait_for_compression_idle_for_test(std::chrono::seconds(10)));
+  ASSERT_TRUE(sink_->wait_for_compression_idle(std::chrono::seconds(10)));
   EXPECT_TRUE(fs::exists(dir_ / "app.log"));
 }
 
