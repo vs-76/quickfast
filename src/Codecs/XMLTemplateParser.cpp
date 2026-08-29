@@ -265,7 +265,10 @@ namespace
       std::string tag(tagRaw.get());
 
       // Don't pop <templates>.  It's optional and has been forcibly pushed
-      if(tag != "templates")
+      // (in fact it is not: the push is commented out in
+      // parseTemplateRegistry, which is why the empty check below is needed
+      // rather than merely defensive).
+      if(tag != "templates" && !schemaElements_.empty())
       {
         if(schemaElements_.top().first == tag)
         {
@@ -344,6 +347,28 @@ namespace
     }
 
   private:
+    /// @brief The element that encloses the one being parsed.
+    ///
+    /// Nearly every handler begins by reaching for this, and std::stack::top()
+    /// on an empty stack is undefined. The stack can be empty: the sentinel
+    /// push in parseTemplateRegistry is commented out, and the reader runs
+    /// without core validation, so nothing rejects a field or operator
+    /// appearing outside a <template>. A release build followed the
+    /// out-of-bounds read with a virtual call through a garbage pointer and
+    /// died without a word, which for a hand-maintained configuration file is
+    /// the least useful thing it could do.
+    const SchemaElementPtr & enclosingElement(const std::string & tag)
+    {
+      if(schemaElements_.empty())
+      {
+        std::stringstream msg;
+        msg << "[ERR S1] <" << tag
+            << "> is not valid here: it must appear inside a <template>.";
+        throw TemplateDefinitionError(msg.str());
+      }
+      return schemaElements_.top().second;
+    }
+
     TemplateRegistryPtr registry_;
 
     const std::string & getRequiredAttribute(
@@ -561,7 +586,7 @@ TemplateBuilder::parseTemplate(const std::string & tag, const AttributeMap& attr
   bool ignore = getOptionalBooleanAttribute(attributes, "ignore", false);
   target->setIgnore(ignore);
   registry_->addTemplate(target);
-//  schemaElements_.top().second->addTemplate(target);
+//  enclosingElement(tag)->addTemplate(target);
   schemaElements_.push(StackEntry(tag, target));
 }
 
@@ -571,7 +596,7 @@ TemplateBuilder::parseTypeRef(const std::string & tag, const AttributeMap& attri
   std::string name = getRequiredAttribute(attributes, "name");
   std::string ns;
   getOptionalAttribute(attributes, "ns", ns);
-  schemaElements_.top().second->setApplicationType(name, ns);
+  enclosingElement(tag)->setApplicationType(name, ns);
 }
 void
 TemplateBuilder::parseInt8(const std::string & tag, const AttributeMap& attributes)
@@ -590,7 +615,7 @@ TemplateBuilder::parseInt8(const std::string & tag, const AttributeMap& attribut
   {
     field->setPresence(presence == "mandatory");
   }
-  schemaElements_.top().second->addInstruction(field);
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -611,7 +636,7 @@ TemplateBuilder::parseUInt8(const std::string & tag, const AttributeMap& attribu
   {
     field->setPresence(presence == "mandatory");
   }
-  schemaElements_.top().second->addInstruction(field);
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -632,7 +657,7 @@ TemplateBuilder::parseInt16(const std::string & tag, const AttributeMap& attribu
   {
     field->setPresence(presence == "mandatory");
   }
-  schemaElements_.top().second->addInstruction(field);
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -653,7 +678,7 @@ TemplateBuilder::parseUInt16(const std::string & tag, const AttributeMap& attrib
   {
     field->setPresence(presence == "mandatory");
   }
-  schemaElements_.top().second->addInstruction(field);
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -679,7 +704,7 @@ TemplateBuilder::parseInt32(const std::string & tag, const AttributeMap& attribu
   {
     field->setIgnoreOverflow(std::tolower(allowOverflow[0]) == 'y');
   }
-  schemaElements_.top().second->addInstruction(field);
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -700,7 +725,7 @@ TemplateBuilder::parseUInt32(const std::string & tag, const AttributeMap& attrib
   {
     field->setPresence(presence == "mandatory");
   }
-  schemaElements_.top().second->addInstruction(field);
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -721,7 +746,7 @@ TemplateBuilder::parseInt64(const std::string & tag, const AttributeMap& attribu
   {
     field->setPresence(presence == "mandatory");
   }
-  schemaElements_.top().second->addInstruction(field);
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -742,7 +767,7 @@ TemplateBuilder::parseUInt64(const std::string & tag, const AttributeMap& attrib
   {
     field->setPresence(presence == "mandatory");
   }
-  schemaElements_.top().second->addInstruction(field);
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -763,7 +788,7 @@ TemplateBuilder::parseDecimal(const std::string & tag, const AttributeMap& attri
   {
     field->setPresence(presence == "mandatory");
   }
-  schemaElements_.top().second->addInstruction(field);
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -776,7 +801,7 @@ TemplateBuilder::parseExponent(const std::string & tag, const AttributeMap& attr
   {
     field->setPresence(presence == "mandatory");
   }
-  schemaElements_.top().second->setExponentInstruction(field);
+  enclosingElement(tag)->setExponentInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -789,7 +814,7 @@ TemplateBuilder::parseMantissa(const std::string & tag, const AttributeMap& attr
   {
     field->setPresence(presence == "mandatory");
   }
-  schemaElements_.top().second->setMantissaInstruction(field);
+  enclosingElement(tag)->setMantissaInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -821,7 +846,7 @@ TemplateBuilder::parseString(const std::string & tag, const AttributeMap& attrib
   {
     field->setPresence(presence == "mandatory");
   }
-  schemaElements_.top().second->addInstruction(field);
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -842,7 +867,7 @@ TemplateBuilder::parseByteVector(const std::string & tag, const AttributeMap& at
   {
     field->setPresence(presence == "mandatory");
   }
-  schemaElements_.top().second->addInstruction(field);
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -872,7 +897,7 @@ TemplateBuilder::parseGroup(const std::string & tag, const AttributeMap& attribu
   SegmentBodyPtr body(new SegmentBody);
   field->setSegmentBody(body);
 
-  schemaElements_.top().second->addInstruction(field);
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, body));
 }
 
@@ -905,7 +930,7 @@ TemplateBuilder::parseSequence(const std::string & tag, const AttributeMap& attr
   body->allowLengthField();
   body->setMandatoryLength(mandatory);
 
-  schemaElements_.top().second->addInstruction(field);
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, body));
 }
 
@@ -931,7 +956,7 @@ TemplateBuilder::parseLength(const std::string & tag, const AttributeMap& attrib
       field->setPresence(mandatory);
     }
   }
-  schemaElements_.top().second->addLengthInstruction(field);
+  enclosingElement(tag)->addLengthInstruction(field);
   // Is this push necessary?
   schemaElements_.push(StackEntry(tag, field));
 }
@@ -951,7 +976,7 @@ TemplateBuilder::parseTemplateRef(const std::string & tag, const AttributeMap& a
   {
     field.reset(new FieldInstructionDynamicTemplateRef);
   }
-  schemaElements_.top().second->addInstruction(field);
+  enclosingElement(tag)->addInstruction(field);
   // Is this push necessary?
   schemaElements_.push(StackEntry(tag, field));
 }
@@ -969,7 +994,7 @@ TemplateBuilder::parseConstant(const std::string & tag, const AttributeMap& attr
 {
   FieldOpPtr op(new FieldOpConstant);
   op->setValue(getRequiredAttribute(attributes, "value"));
-  schemaElements_.top().second->setFieldOp(op);
+  enclosingElement(tag)->setFieldOp(op);
   schemaElements_.push(StackEntry(tag, op));
 }
 
@@ -1016,7 +1041,7 @@ TemplateBuilder::parseInitialValue(const std::string & tag, const AttributeMap& 
   {
     op->setValue(value);
   }
-  schemaElements_.top().second->setFieldOp(op);
+  enclosingElement(tag)->setFieldOp(op);
   // is this push necessary?
   schemaElements_.push(StackEntry(tag, op));
 }
@@ -1051,7 +1076,7 @@ TemplateBuilder::parseOp(const std::string & tag, const AttributeMap& attributes
     size_t pmapBit = atoi(pmapBitStr.c_str());
     op->setPMapBit(pmapBit);
   }
-  schemaElements_.top().second->setFieldOp(op);
+  enclosingElement(tag)->setFieldOp(op);
   // is this push necessary?
   schemaElements_.push(StackEntry(tag, op));
 }
