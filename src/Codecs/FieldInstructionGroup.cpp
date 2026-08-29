@@ -78,6 +78,12 @@ FieldInstructionGroup::decodeNop(
     else
     {
 //      std::cout << "Folding group into parent segment: " << segmentBody_->getApplicationType() << std::endl;
+      // Note for template authors: this makes typeRef structural rather than
+      // decorative. A group with no typeRef does not inherit its parent's
+      // type, so adding one to either the group or the enclosing template
+      // moves every field in the group one level deeper in the decoded
+      // message, with no diagnostic on either side. Doc/template-authoring.md
+      // has the full table; src/Tests/testGroupTypeRef.cpp pins every row.
       // Because the application types match,
       // the group fields are decoded directly into to the current
       // field set.  As a result the group "disappears" completely
