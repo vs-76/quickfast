@@ -252,6 +252,35 @@ if(QUICKFAST_BUILD_EXAMPLES)
     src/Examples/PCapToMulticast/main.cpp)
 endif()
 
+# Optional PVS-Studio static analysis target (created only when the tools exist).
+option(QUICKFAST_ENABLE_PVS_STUDIO
+  "Create a pvs-studio CMake target when pvs-studio-analyzer is available"
+  ON)
+
+if(QUICKFAST_ENABLE_PVS_STUDIO)
+  find_program(QUICKFAST_PVS_STUDIO_ANALYZER NAMES pvs-studio-analyzer)
+  find_program(QUICKFAST_PVS_STUDIO_CONVERTER NAMES plog-converter)
+  if(QUICKFAST_PVS_STUDIO_ANALYZER AND QUICKFAST_PVS_STUDIO_CONVERTER)
+    include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/PVS-Studio.cmake")
+    pvs_studio_add_target(
+      TARGET pvs-studio
+      ANALYZE QuickFAST
+      MODE GA:1,2
+      OUTPUT
+      LOG "${CMAKE_BINARY_DIR}/pvs-studio.log"
+      FORMAT errorfile
+      BIN "${QUICKFAST_PVS_STUDIO_ANALYZER}"
+      CONVERTER "${QUICKFAST_PVS_STUDIO_CONVERTER}"
+      ARGS
+        -e "${CMAKE_BINARY_DIR}/_deps"
+        -e "${CMAKE_CURRENT_SOURCE_DIR}/src/DotNet"
+    )
+    message(STATUS "PVS-Studio: target 'pvs-studio' -> ${QUICKFAST_PVS_STUDIO_ANALYZER}")
+  else()
+    message(STATUS "PVS-Studio: analyzer not found; target 'pvs-studio' not created")
+  endif()
+endif()
+
 message(STATUS "QuickFAST ${PROJECT_VERSION}: C++${CMAKE_CXX_STANDARD}, XercesC ${XercesC_VERSION} (no Boost)")
 message(STATUS "Warning flags: ${QUICKFAST_WARNING_FLAGS}")
 if(QUICKFAST_USE_LIBCXX)

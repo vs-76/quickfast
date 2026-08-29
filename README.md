@@ -50,7 +50,7 @@ cmake -S . -B build-clang22-libcxx -DCMAKE_BUILD_TYPE=Release \
 cmake --build build-clang22-libcxx -j && ctest --test-dir build-clang22-libcxx --output-on-failure
 ```
 
-Optional flags: `-DQUICKFAST_BUILD_TESTS=OFF`, `-DQUICKFAST_BUILD_EXAMPLES=OFF`, `-DQUICKFAST_USE_LIBCXX=ON` (Clang only).
+Optional flags: `-DQUICKFAST_BUILD_TESTS=OFF`, `-DQUICKFAST_BUILD_EXAMPLES=OFF`, `-DQUICKFAST_USE_LIBCXX=ON` (Clang only), `-DQUICKFAST_ENABLE_PVS_STUDIO=OFF`.
 
 The legacy MPC/`setup.sh` flow remains available for older toolchains; prefer CMake on modern Linux.
 

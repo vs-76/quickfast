@@ -23,6 +23,7 @@ CMake fetches standalone [Asio](https://github.com/chriskohlhoff/asio) and
 | `QUICKFAST_BUILD_TESTS` | `ON` | Build `QuickFASTTest` and register ctest |
 | `QUICKFAST_BUILD_EXAMPLES` | `ON` | Build example applications |
 | `QUICKFAST_USE_LIBCXX` | `OFF` | Use LLVM libc++ (`-stdlib=libc++`); **Clang/AppleClang only** |
+| `QUICKFAST_ENABLE_PVS_STUDIO` | `ON` | Create `pvs-studio` target if `pvs-studio-analyzer` is installed |
 | `CMAKE_BUILD_TYPE` | (unset) | Prefer `Release` or `Debug` |
 | `CMAKE_CXX_COMPILER` | system default | e.g. `g++-16`, `clang++-22` |
 
@@ -188,5 +189,28 @@ Clean rebuild: remove the build directory and configure again.
 ```bash
 rm -rf build-gcc16
 ```
+
+---
+
+## PVS-Studio
+
+If [PVS-Studio](https://pvs-studio.com/) is installed (`pvs-studio-analyzer` and
+`plog-converter` on `PATH`), configure creates an optional target that analyzes
+the `QuickFAST` library (FetchContent deps and `src/DotNet` are excluded):
+
+```bash
+cmake -S . -B build-gcc16 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++-16
+cmake --build build-gcc16 -j --target QuickFAST   # build first
+cmake --build build-gcc16 --target pvs-studio
+# report: build-gcc16/pvs-studio.log
+```
+
+Disable the target even when tools are present:
+
+```bash
+cmake -S . -B build-gcc16 -DQUICKFAST_ENABLE_PVS_STUDIO=OFF
+```
+
+A license file is typically expected at `~/.config/PVS-Studio/PVS-Studio.lic`.
 
 Legacy MPC / `setup.sh` remains available for older toolchains; prefer CMake on modern Linux.
