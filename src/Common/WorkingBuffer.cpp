@@ -42,7 +42,7 @@ WorkingBuffer::operator =(const WorkingBuffer & rhs)
 namespace
 {
   template<typename TYPE>
-  void swap_i(TYPE lhs, TYPE rhs)
+  void swap_i(TYPE & lhs, TYPE & rhs)
   {
     TYPE temp = lhs;
     lhs = rhs;
