@@ -1051,3 +1051,42 @@ TEST_F(ManagedFileSinkTest, ManagedBytesIgnoresUnsizableFiles)
   const std::uint64_t total = sink_->managed_bytes();
   EXPECT_EQ((total), (std::uint64_t(2 * plantedBytes)));
 }
+
+TEST_F(ManagedFileSinkTest, DirectoryScanSurvivesUnstatableEntries)
+{
+  // The scan loops share one error_code across iterations and never reset it,
+  // so the first entry that fails is_regular_file() short-circuits
+  // "if(ec || ...)" for every entry after it, silently dropping the rest of
+  // the directory.  Dangling symlinks are the easy way to fail that call.
+  ManagedFileSinkConfig cfg = defaultConfig();
+  cfg.compress = false;
+  cfg.recover_uncompressed_on_start = false;
+  cfg.max_managed_bytes = 32ull << 20;
+  auto logger = makeLogger(cfg, "mfs_sticky");
+  (void)logger;
+
+  const std::size_t plantedBytes = 100;
+  const int plantedFiles = 20;
+  for(int i = 0; i < plantedFiles; ++i)
+  {
+    std::ofstream out(
+      dir_ / std::format("app.2019-01-01_{:06d}.log", i),
+      std::ios::binary);
+    out << std::string(plantedBytes, 'x');
+  }
+
+  // Interleaved dangling symlinks, so whatever order the directory iterator
+  // uses, real files follow a broken one.
+  std::error_code ec;
+  for(int i = 0; i < plantedFiles; ++i)
+  {
+    fs::create_symlink(
+      dir_ / "no-such-target",
+      dir_ / std::format("app.2018-01-01_{:06d}.log", i),
+      ec);
+    ASSERT_FALSE(ec);
+  }
+
+  const std::uint64_t total = sink_->managed_bytes();
+  EXPECT_EQ((total), (std::uint64_t(plantedFiles) * plantedBytes));
+}

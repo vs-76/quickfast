@@ -792,7 +792,10 @@ managed_file_sink_mt::list_managed_finished_unlocked_() const
   }
   for(const auto & entry : fs::directory_iterator(dir_, ec))
   {
-    if(ec || !entry.is_regular_file(ec))
+    // A fresh code per entry: sharing one would let a single unstatable
+    // entry, such as a dangling symlink, short-circuit every entry after it.
+    std::error_code entryEc;
+    if(!entry.is_regular_file(entryEc) || entryEc)
     {
       continue;
     }
@@ -909,7 +912,10 @@ managed_file_sink_mt::recover_uncompressed_unlocked_()
   std::vector<fs::path> pending;
   for(const auto & entry : fs::directory_iterator(dir_, ec))
   {
-    if(ec || !entry.is_regular_file(ec))
+    // See list_managed_finished_unlocked_: a shared error_code would drop
+    // every entry after the first one that cannot be stat'd.
+    std::error_code entryEc;
+    if(!entry.is_regular_file(entryEc) || entryEc)
     {
       continue;
     }
@@ -928,7 +934,7 @@ managed_file_sink_mt::recover_uncompressed_unlocked_()
       continue;
     }
     const fs::path gz = fs::path(p.string() + DEF_MFS_GZ_SUFFIX);
-    if(fs::exists(gz, ec))
+    if(fs::exists(gz, entryEc))
     {
       continue;
     }
