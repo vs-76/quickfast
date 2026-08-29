@@ -170,7 +170,7 @@ FieldSet::equals (const FieldSet & rhs, std::ostream & reason) const
       return false;
     }
     Messages::FieldCPtr f1 = fields_[nField].getField();
-    Messages::FieldCPtr f2 = fields_[nField].getField();
+    Messages::FieldCPtr f2 = rhs.fields_[nField].getField();
     if(*f1 != *f2)
     {
       reason << "Field[" << nField << "] "<< fields_[nField].name() << "values: " << f1->displayString() << " != " << f2->displayString();
