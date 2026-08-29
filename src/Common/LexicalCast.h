@@ -51,6 +51,21 @@ inline Target lexical_cast(const Source & source)
       text = oss.str();
     }
 
+    if constexpr (std::is_unsigned_v<Target> && !std::is_same_v<Target, bool>)
+    {
+      // num_get accepts a leading minus for an unsigned target and applies the
+      // result modulo 2^N *without* setting failbit, so the stream check below
+      // never fires and "-1" arrives as the largest representable value. An
+      // out-of-range magnitude does set failbit, which is what made the
+      // function look validated. boost::lexical_cast rejected this outright.
+      const auto pos = text.find_first_not_of(" \t\n\v\f\r");
+      if (pos != std::string::npos && text[pos] == '-')
+      {
+        throw std::invalid_argument(
+          "lexical_cast failed: negative value for unsigned target");
+      }
+    }
+
     std::istringstream iss(text);
     Target value{};
     if (!(iss >> value))
