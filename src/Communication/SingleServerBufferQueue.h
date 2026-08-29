@@ -166,13 +166,13 @@ namespace QuickFAST
       {
         assert(busy_);
         bool wasEmpty = incoming_.isEmpty();
-        while(wait && wasEmpty)
+        if(wait && wasEmpty)
         {
           //std::ostringstream msg;
           //msg << "Q:{"<< (void *) this <<  "} wait" << std::endl;
           //std::cout << msg.str() << std::flush;
 
-          condition_.wait(lock, [this]{ return !incoming_.isEmpty(); });
+          condition_.wait(lock, [this]() { return !incoming_.isEmpty(); });
           wasEmpty = incoming_.isEmpty();
         }
         if(!wasEmpty)
