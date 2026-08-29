@@ -524,10 +524,6 @@ namespace QuickFAST
           throw std::logic_error("StringBufferT growth calculation incorrect");
         }
         unsigned char * newBuffer(new unsigned char[needed + 1]);
-        if(newBuffer == 0)
-        {
-          throw std::bad_alloc();
-        }
         const unsigned char * oldBuffer = getBuffer();
         std::memcpy(newBuffer, oldBuffer, size_);
         newBuffer[size_] = 0;
