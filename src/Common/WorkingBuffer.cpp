@@ -131,6 +131,13 @@ WorkingBuffer::grow(size_t newCapacity)
   {
     newCapacity = initialCapacity;
   }
+  // The copy below moves capacity_ bytes, and in reverse mode delta is
+  // computed as a difference of capacities.  A request to shrink would
+  // overrun the new allocation, and underflow delta to a wild offset first.
+  if(newCapacity <= capacity_)
+  {
+    newCapacity = capacity_ * 3 / 2 + 1;
+  }
   size_t oldCapacity = capacity_;
   std::unique_ptr<uchar[]> newBuffer(new uchar[newCapacity]);
   size_t delta = 0;
@@ -154,7 +161,9 @@ WorkingBuffer::append(const WorkingBuffer & rhs)
   {
     if(startPos_ < bytesToAppend)
     {
-      grow(size() + bytesToAppend);
+      // grow() shifts startPos_ by the capacity delta, so ask for exactly the
+      // shortfall to leave room for bytesToAppend below startPos_.
+      grow(capacity_ + (bytesToAppend - startPos_));
     }
     std::memcpy(buffer_.get() + startPos_ - bytesToAppend, rhs.buffer_.get() + rhs.startPos_, bytesToAppend);
     startPos_ -= bytesToAppend;
@@ -163,7 +172,9 @@ WorkingBuffer::append(const WorkingBuffer & rhs)
   {
     if(endPos_ + bytesToAppend > capacity_)
     {
-      grow(size() + bytesToAppend);
+      // The bytes already consumed by pop_front() still sit below endPos_, so
+      // size() understates what has to fit.
+      grow(endPos_ + bytesToAppend);
     }
     std::memcpy(buffer_.get() + endPos_, rhs.buffer_.get() + rhs.startPos_, bytesToAppend);
     endPos_ += bytesToAppend;
