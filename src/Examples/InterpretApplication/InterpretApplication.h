@@ -9,6 +9,7 @@
 #include <Communication/Receiver_fwd.h>
 #include <Application/CommandArgParser.h>
 #include <Application/DecoderConnection.h>
+#include <Messages/JsonOptions.h>
 
 namespace QuickFAST{
   namespace Examples{
@@ -65,6 +66,8 @@ namespace QuickFAST{
       std::string bufferFilename_;
       bool console_;
       bool fixOutput_;
+      bool jsonOutput_;
+      Messages::JsonOptions jsonOptions_;
       size_t threads_;
       bool silent_;
     };
