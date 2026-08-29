@@ -105,7 +105,7 @@ namespace QuickFAST
       /// @brief Support indexing constant
       const unsigned char & operator[](size_t index) const
       {
-        if(index >= used_)
+        if((capacity_ == 0 && index >= used_) || index >= capacity_)
         {
           throw std::range_error("LinkedBuffer (const): Index out of bounds.");
         }

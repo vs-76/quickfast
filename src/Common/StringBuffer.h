@@ -270,7 +270,7 @@ namespace QuickFAST
     }
 
     /// @brief access an element of the StringBufferT for possible update
-    unsigned char& operator[](size_t pos)
+    unsigned char& operator[](size_t pos) //-V659
     {
       // If pos == size(), the non-const behavior is undefined.
       if(pos < size())
@@ -578,7 +578,7 @@ namespace QuickFAST
 
 
     /// @brief find the buffer that's presently in use; mutable version
-    unsigned char * getBuffer()
+    unsigned char * getBuffer() //-V659
     {
       if (heapBuffer_ != 0)
       {
