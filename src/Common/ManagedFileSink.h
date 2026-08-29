@@ -49,9 +49,15 @@ namespace QuickFAST
     {
       std::filesystem::path base_path;
 
-      std::size_t max_file_bytes = 100ull << 20;
+      /// @brief Rotate the active file once it exceeds this size.
+      ///
+      /// Must not exceed @c max_managed_bytes under @c RetentionMode::ManagedBytes:
+      /// retention never evicts the active file, so a larger value would let the
+      /// active file alone overrun the whole budget with nothing to reclaim.
+      std::size_t max_file_bytes = 8ull << 20; // 8 MiB default
 
       RetentionMode retention = RetentionMode::ManagedBytes;
+      /// Budget for active + rotated + compressed files. Fits four default files.
       std::size_t max_managed_bytes = 32ull << 20; // 32 MiB default
       unsigned free_percent_min = 10;
 

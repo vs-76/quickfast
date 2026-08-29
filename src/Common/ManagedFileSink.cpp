@@ -244,6 +244,15 @@ managed_file_sink_mt::managed_file_sink_mt(asio::io_context & io, ManagedFileSin
   {
     throw std::invalid_argument("ManagedFileSinkConfig.max_file_bytes must be > 0");
   }
+  if(cfg_.retention == RetentionMode::ManagedBytes
+     && cfg_.max_file_bytes > cfg_.max_managed_bytes)
+  {
+    // Retention never evicts the active file, so this combination cannot be
+    // honoured: the active file alone would exceed the budget and eviction would
+    // have nothing left to reclaim.
+    throw std::invalid_argument(
+      "ManagedFileSinkConfig.max_file_bytes must not exceed max_managed_bytes");
+  }
 
   this->set_pattern(cfg_.pattern);
 

@@ -892,10 +892,46 @@ TEST_F(ManagedFileSinkTest, CreatesMissingParentDirectories)
 TEST_F(ManagedFileSinkTest, ConfigDefaults)
 {
   ManagedFileSinkConfig cfg;
+  EXPECT_EQ(8ull << 20, cfg.max_file_bytes);
   EXPECT_EQ(32ull << 20, cfg.max_managed_bytes);
   EXPECT_EQ(RetentionMode::ManagedBytes, cfg.retention);
   EXPECT_FALSE(cfg.pattern.empty());
   EXPECT_NE(std::string::npos, cfg.pattern.find("%v"));
+
+  // The retention budget must be reachable with the shipped defaults: retention
+  // never evicts the active file.
+  EXPECT_LE(cfg.max_file_bytes, cfg.max_managed_bytes);
+}
+
+TEST_F(ManagedFileSinkTest, RejectsFileLimitLargerThanRetentionBudget)
+{
+  ManagedFileSinkConfig cfg = defaultConfig();
+  cfg.retention = RetentionMode::ManagedBytes;
+  cfg.max_managed_bytes = 1024;
+  cfg.max_file_bytes = 4096;
+  EXPECT_THROW(
+    { managed_file_sink_mt sink(runner_.io(), cfg); },
+    std::invalid_argument);
+
+  // Equal limits are legal: one full active file exactly fills the budget.
+  cfg.max_file_bytes = 1024;
+  EXPECT_NO_THROW({
+    managed_file_sink_mt sink(runner_.io(), cfg);
+    sink.request_shutdown();
+  });
+}
+
+TEST_F(ManagedFileSinkTest, AllowsLargeFileLimitUnderFreeSpaceRetention)
+{
+  // The budget only constrains ManagedBytes retention.
+  ManagedFileSinkConfig cfg = defaultConfig();
+  cfg.retention = RetentionMode::FilesystemFreePercent;
+  cfg.max_managed_bytes = 1024;
+  cfg.max_file_bytes = 100ull << 20;
+  EXPECT_NO_THROW({
+    managed_file_sink_mt sink(runner_.io(), cfg);
+    sink.request_shutdown();
+  });
 }
 
 TEST_F(ManagedFileSinkTest, BuilderRequiresBasePath)

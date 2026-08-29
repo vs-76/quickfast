@@ -257,8 +257,16 @@ QuickFAST::Common::SpdlogLogger qfLog(lg);
 ### Managed file sink (size + midnight, gzip, retention)
 
 Shares QuickFAST’s standalone Asio `io_context` for hard midnight rotation without
-traffic. Default retention is **32 MiB** of managed log bytes. Does **not** install
-its own `signal_set` — call `request_shutdown()` from the app handler.
+traffic. Defaults are **8 MiB** per file within a **32 MiB** budget of managed log
+bytes, i.e. four generations. Does **not** install its own `signal_set` — call
+`request_shutdown()` from the app handler.
+
+Under `RetentionMode::ManagedBytes`, `max_file_bytes` must not exceed
+`max_managed_bytes`, and the constructor rejects a config that does. Retention
+never evicts the active file, so a larger per-file limit would let the active file
+alone overrun the budget with nothing left to reclaim. Raise both together to keep
+more history. The limit is not enforced under `FilesystemFreePercent`, which does
+not use the budget.
 
 Rotated files are named `<stem>.YYYY-MM-DD_HHMMSS[.N].<ext>`, gaining `.gz` once
 compressed; `.N` disambiguates repeated rotations inside one second.
@@ -299,8 +307,8 @@ QuickFAST::Communication::AsioService asioService; // or app-owned io_context
 
 auto cfg = QuickFAST::Common::ManagedFileSinkConfigBuilder()
   .base_path("logs/quickfast.log")
-  .max_file_bytes(100ull << 20)
-  .max_managed_bytes(32ull << 20)              // default
+  .max_file_bytes(100ull << 20)                // default 8 MiB
+  .max_managed_bytes(1ull << 30)               // must be >= max_file_bytes
   // .time_zone("Europe/Moscow")               // optional IANA; default = system
   // .retention(RetentionMode::FilesystemFreePercent)
   // .free_percent_min(10)
