@@ -80,6 +80,28 @@ namespace QuickFAST
       }
 
 
+      /// @brief The most bytes the buffer pool can hold at one time.
+      ///
+      /// needBytes cannot ever report more than this many bytes available, so
+      /// an assembler asked to wait for a larger block is waiting for
+      /// something that cannot happen.
+      ///
+      /// The pool is measured buffer by buffer rather than as count times
+      /// size, because a buffer wrapping external memory reports a capacity of
+      /// zero and carries its extent in used() instead.
+      ///
+      /// @returns the total capacity in bytes, or zero before start().
+      size_t totalBufferCapacity() const
+      {
+        std::unique_lock<std::mutex> lock(bufferMutex_);
+        size_t total = 0;
+        for(const BufferLifetime & buffer : bufferLifetimes_)
+        {
+          total += std::max(buffer->capacity(), buffer->used());
+        }
+        return total;
+      }
+
       /// @brief add additional buffers on-the-fly
       /// @param bufferCount is how many buffers to add
       void addBuffers(
@@ -468,7 +490,7 @@ namespace QuickFAST
       BufferLifetimeManager bufferLifetimes_;
 
       /// Protect access to the SingleServerBufferQueue
-      std::mutex bufferMutex_;
+      mutable std::mutex bufferMutex_;
 
       /// @brief Accept buffers from multiple threads and deliver them to a single thread.
       ///

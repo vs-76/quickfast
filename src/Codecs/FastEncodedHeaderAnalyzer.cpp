@@ -75,6 +75,18 @@ FastEncodedHeaderAnalyzer::analyzeHeader(DataSource & source, size_t & blockSize
           {
             return false;
           }
+          // Nothing used to stop this loop except a stop bit, and nothing
+          // detected the bits that fell off the top. A sender that never sets
+          // the stop bit spins here for as long as it keeps sending, and one
+          // that sends eleven groups chooses the block size freely no matter
+          // what the first ten said -- which is how a peer picks the value
+          // that leaves the assembler waiting for a block that cannot arrive.
+          const size_t roomAtTheTop = std::numeric_limits<size_t>::max() >> 7;
+          if(blockSize_ > roomAtTheTop)
+          {
+            throw OverflowError(
+              "[ERR D2] Block size in FAST encoded header is too large to represent.");
+          }
           blockSize_ <<= 7;
           blockSize_ |= (next & 0x7f);
           if((next & 0x80) != 0)
