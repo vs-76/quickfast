@@ -177,6 +177,29 @@ cmake --build build-clang22-libcxx -j && ctest --test-dir build-clang22-libcxx -
 
 ---
 
+## Windows compile gate (mingw-w64)
+
+`src/Common` carries `_WIN32` branches — `windows.h`, `GetDiskFreeSpaceExW`, and
+`wchar_t` filesystem paths — that a Linux build never compiles. This script
+cross-compiles those sources with mingw-w64 and fails on any warning, so the
+Windows paths cannot rot unnoticed between real Windows builds:
+
+```bash
+sudo apt install g++-mingw-w64-x86-64   # once
+scripts/check-windows-compile.sh                          # all of src/Common
+scripts/check-windows-compile.sh src/Common/ManagedFileSink.cpp
+```
+
+It is compile-only. Linking QuickFAST for Windows also needs Xerces-C, zlib, fmt
+and spdlog cross-built for the target, which the script does not attempt; it
+borrows the host's portable third-party headers for the compile. Override
+`MINGW_CXX`, `ASIO_INCLUDE_DIR` or `HOST_INCLUDE_DIR` if autodetection is wrong.
+
+A narrow-string path passed to a `...W` API, for example, fails the gate while
+building cleanly on POSIX.
+
+---
+
 ## Useful extras
 
 Parallel build with an explicit job count:
