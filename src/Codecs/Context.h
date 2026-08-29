@@ -57,6 +57,44 @@ namespace QuickFAST
         return strict_;
       }
 
+      /// @brief Default ceiling for a single decoded &lt;byteVector&gt; (16 MiB).
+      ///
+      /// Speculative reservation is capped separately; this limit rejects a
+      /// wire length before any payload bytes are copied into the Context
+      /// working buffer. Zero disables the ceiling.
+      static const size_t defaultMaxByteVectorLength = 16u * 1024u * 1024u;
+
+      /// @brief Default ceiling for a single decoded &lt;sequence&gt; entry count.
+      ///
+      /// Zero disables the ceiling.
+      static const size_t defaultMaxSequenceLength = 1000000u;
+
+      /// @brief Cap the length of a decoded byte vector.
+      /// @param maxBytes maximum accepted length; 0 means unlimited
+      void setMaxByteVectorLength(size_t maxBytes)
+      {
+        maxByteVectorLength_ = maxBytes;
+      }
+
+      /// @brief Current byte-vector length ceiling (0 = unlimited).
+      size_t getMaxByteVectorLength() const
+      {
+        return maxByteVectorLength_;
+      }
+
+      /// @brief Cap the number of entries in a decoded sequence.
+      /// @param maxEntries maximum accepted length; 0 means unlimited
+      void setMaxSequenceLength(size_t maxEntries)
+      {
+        maxSequenceLength_ = maxEntries;
+      }
+
+      /// @brief Current sequence-length ceiling (0 = unlimited).
+      size_t getMaxSequenceLength() const
+      {
+        return maxSequenceLength_;
+      }
+
       /// @brief Reset decoding state to initial conditions
       /// @param resetTemplateId Normally you want to reset the template ID
       ///        however there are cases when you don't.
@@ -351,6 +389,10 @@ namespace QuickFAST
 
       /// false makes the Xcoder more forgiving
       bool strict_;
+      /// Reject byteVector lengths above this (0 = no ceiling)
+      size_t maxByteVectorLength_;
+      /// Reject sequence lengths above this (0 = no ceiling)
+      size_t maxSequenceLength_;
     private:
       size_t indexedDictionarySize_;
       typedef std::unique_ptr<Value[]> IndexedDictionary;

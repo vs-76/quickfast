@@ -417,6 +417,18 @@ namespace QuickFAST{
         return bufferCount_;
       }
 
+      /// @brief Maximum accepted &lt;byteVector&gt; length (0 = unlimited).
+      size_t maxByteVectorLength()const
+      {
+        return maxByteVectorLength_;
+      }
+
+      /// @brief Maximum accepted &lt;sequence&gt; entry count (0 = unlimited).
+      size_t maxSequenceLength()const
+      {
+        return maxSequenceLength_;
+      }
+
       /// @brief Support (nonstandard) presence attribute on length instruction
       unsigned long nonstandard() const
       {
@@ -712,6 +724,18 @@ namespace QuickFAST{
         bufferCount_ = bufferCount;
       }
 
+      /// @brief Cap decoded byte-vector lengths (0 disables the ceiling).
+      void setMaxByteVectorLength(size_t maxBytes)
+      {
+        maxByteVectorLength_ = maxBytes;
+      }
+
+      /// @brief Cap decoded sequence lengths (0 disables the ceiling).
+      void setMaxSequenceLength(size_t maxEntries)
+      {
+        maxSequenceLength_ = maxEntries;
+      }
+
       /// @brief Support nonstandard FAST featurs
       /// @param nonstandard is an 'or' of the nonstandard features that will be allowed
       ///      1:  if the presence attribute is allowed on length instructoin
@@ -845,6 +869,10 @@ namespace QuickFAST{
         out << "  -buffers count       : Number of buffers. (default " << bufferCount() << ")." << std::endl;
         out << "                         For \"-streaming block\" buffersize * buffers must" << std::endl;
         out << "                         exceed largest expected message." << std::endl;
+        out << "  -maxbytevector n     : Reject <byteVector> lengths above n bytes." << std::endl;
+        out << "                         0 disables the ceiling (default " << maxByteVectorLength() << ")." << std::endl;
+        out << "  -maxsequence n       : Reject <sequence> lengths above n entries." << std::endl;
+        out << "                         0 disables the ceiling (default " << maxSequenceLength() << ")." << std::endl;
         out << std::endl;
         out << "  -e file              : Echo input to file:" << std::endl;
         out << "    -ehex                : Echo as hexadecimal (default)." << std::endl;
@@ -1152,6 +1180,16 @@ namespace QuickFAST{
           setBufferCount(QuickFAST::lexical_cast<size_t>(argv[1]));
           consumed = 2;
         }
+        else if(opt == "-maxbytevector" && argc > 1)
+        {
+          setMaxByteVectorLength(QuickFAST::lexical_cast<size_t>(argv[1]));
+          consumed = 2;
+        }
+        else if(opt == "-maxsequence" && argc > 1)
+        {
+          setMaxSequenceLength(QuickFAST::lexical_cast<size_t>(argv[1]));
+          consumed = 2;
+        }
         else if(opt == "-nonstandard" && argc > 1)
         {
           setNonstandard(QuickFAST::lexical_cast<unsigned long>(argv[1]));
@@ -1263,6 +1301,13 @@ namespace QuickFAST{
       /// For StreamingAssembler with waitForCompleteMessage_ specified,
       /// bufferCount_ * bufferSize_ must equal or exceed maximum message size.
       size_t bufferCount_ = 2;
+
+      /// @brief Cap for a decoded byteVector; matches Context::defaultMaxByteVectorLength.
+      /// Zero means unlimited.
+      size_t maxByteVectorLength_ = 16u * 1024u * 1024u;
+      /// @brief Cap for a decoded sequence length; matches Context::defaultMaxSequenceLength.
+      /// Zero means unlimited.
+      size_t maxSequenceLength_ = 1000000u;
 
       /// @brief Allow nonstandard presence attribute on length instruction
       /// If true, allow presence= attribute on sequence length instruction

@@ -2585,6 +2585,73 @@ TEST(QuickFAST, testSequenceLengthIsNotPreallocated)
     EncodingError);
 }
 
+TEST(QuickFAST, testByteVectorHardCeilingRejectsHonestPayload)
+{
+  // Speculative reservation alone still lets push() grow to the wire length
+  // when the bytes are present.  The Context ceiling must refuse that payload
+  // before any of it is copied.
+  const size_t payloadLength = 64u;
+  std::string payload(payloadLength, 'y');
+  Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(1, 1, 0));
+  Codecs::Decoder decoder(registry);
+  decoder.setMaxByteVectorLength(32);
+  Codecs::DataSourceString source(payload);
+  WorkingBuffer buffer;
+
+  EXPECT_THROW(
+    Codecs::FieldInstruction::decodeByteVector(
+      decoder, source, "blob", buffer, payloadLength),
+    EncodingError);
+  EXPECT_EQ((buffer.size()), (0u));
+}
+
+TEST(QuickFAST, testByteVectorHardCeilingZeroIsUnlimited)
+{
+  const size_t payloadLength = 48u;
+  std::string payload(payloadLength, 'z');
+  Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(1, 1, 0));
+  Codecs::Decoder decoder(registry);
+  decoder.setMaxByteVectorLength(0);
+  Codecs::DataSourceString source(payload);
+  WorkingBuffer buffer;
+
+  Codecs::FieldInstruction::decodeByteVector(
+    decoder, source, "blob", buffer, payloadLength);
+  EXPECT_EQ((buffer.size()), (payloadLength));
+}
+
+TEST(QuickFAST, testSequenceHardCeilingRejectsHonestLength)
+{
+  // Build a sequence whose wire length is five, with five zero uint32 entries.
+  // Under a ceiling of two the decode must stop before materialising them.
+  Codecs::FieldInstructionSequence instruction("seq", "");
+  Codecs::SegmentBodyPtr segment(new Codecs::SegmentBody(0));
+  Codecs::FieldInstructionPtr entryField(
+    new Codecs::FieldInstructionUInt32("value", ""));
+  segment->addInstruction(entryField);
+  instruction.setSegmentBody(segment);
+
+  Codecs::DictionaryIndexer indexer;
+  instruction.indexDictionaries(indexer, "global", "", "");
+  Codecs::TemplateRegistryPtr registry(
+    new Codecs::TemplateRegistry(3, 3, indexer.size()));
+  instruction.finalize(*registry);
+
+  // Length 5, then five stop-bit zeros for the entry fields.
+  const std::string wire("\x85\x80\x80\x80\x80\x80", 6);
+  Codecs::DataSourceString source(wire);
+  Codecs::PresenceMap pmap(1);
+  Codecs::Decoder decoder(registry);
+  decoder.setMaxSequenceLength(2);
+  Codecs::SingleMessageConsumer consumer;
+  Codecs::GenericMessageBuilder builder(consumer);
+  builder.startMessage("UNIT_TEST", "", 10);
+
+  EXPECT_THROW(
+    instruction.decode(source, pmap, decoder, builder),
+    EncodingError);
+}
+
 TEST(QuickFAST, testTruncatedAsciiStringIsRejected)
 {
   // Input that ends before the stop bit leaves partial bytes in the working

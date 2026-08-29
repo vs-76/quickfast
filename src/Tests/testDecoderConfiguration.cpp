@@ -184,3 +184,19 @@ TEST(QuickFAST, testConfigurationCopyPreservesMulticastSources)
   ASSERT_EQ(1u, copy.multicastSourceIPs(0).size());
   EXPECT_EQ("10.0.0.1", copy.multicastSourceIPs(0)[0]);
 }
+
+/// @brief Allocation ceilings are configurable from the command line.
+TEST(QuickFAST, testConfigurationParsesAllocationCeilings)
+{
+  Application::DecoderConfiguration configuration;
+  EXPECT_EQ(16u * 1024u * 1024u, configuration.maxByteVectorLength());
+  EXPECT_EQ(1000000u, configuration.maxSequenceLength());
+
+  parse(configuration, {"-maxbytevector", "4096", "-maxsequence", "128"});
+  EXPECT_EQ(4096u, configuration.maxByteVectorLength());
+  EXPECT_EQ(128u, configuration.maxSequenceLength());
+
+  parse(configuration, {"-maxbytevector", "0", "-maxsequence", "0"});
+  EXPECT_EQ(0u, configuration.maxByteVectorLength());
+  EXPECT_EQ(0u, configuration.maxSequenceLength());
+}
