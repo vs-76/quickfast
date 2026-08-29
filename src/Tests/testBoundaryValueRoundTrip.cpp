@@ -188,6 +188,38 @@ TEST(QuickFAST, testMandatoryIntegerMaximumRoundTrips)
   }
 }
 
+/// @brief Zero and near-zero values must survive every operator as well.
+TEST(QuickFAST, testIntegerZeroAndNearZeroRoundTrips)
+{
+  for(const char * fieldOperator : theOperators)
+  {
+    expectUnsignedSurvives("uInt32", fieldOperator, false, 0);
+    expectUnsignedSurvives("uInt32", fieldOperator, true, 0);
+    expectUnsignedSurvives("uInt64", fieldOperator, false, 0);
+    expectUnsignedSurvives("uInt64", fieldOperator, true, 0);
+    expectSignedSurvives("int32", fieldOperator, false, 0);
+    expectSignedSurvives("int32", fieldOperator, true, 0);
+    expectSignedSurvives("int64", fieldOperator, false, 0);
+    expectSignedSurvives("int64", fieldOperator, true, 0);
+    expectSignedSurvives("int64", fieldOperator, false, -1);
+    expectSignedSurvives("int64", fieldOperator, true, -1);
+  }
+}
+
+/// @brief Optional 64-bit max-1 is representable; only the absolute max is not.
+TEST(QuickFAST, testOptionalInteger64NearMaximumRoundTrips)
+{
+  for(const char * fieldOperator : theOperators)
+  {
+    expectUnsignedSurvives("uInt64", fieldOperator, true,
+      std::numeric_limits<uint64>::max() - 1);
+    expectSignedSurvives("int64", fieldOperator, true,
+      std::numeric_limits<int64>::max() - 1);
+    expectSignedSurvives("int64", fieldOperator, true,
+      std::numeric_limits<int64>::min());
+  }
+}
+
 /// @brief At 64 bits the adjusted value is unrepresentable, so it must be refused.
 ///
 /// value + 1 has nowhere to go: widening cannot help and the decoder could not

@@ -424,8 +424,50 @@ TEST(QuickFAST, TestWorkingBuffer)
   EXPECT_TRUE(abc.capacity() > abcCap); // now we should have grown
   EXPECT_TRUE(0 == std::strncmp(abcStr.data(), reinterpret_cast<const char *>(abc.begin()), abcHalf * 4));
 
+  // Assignment, toString, hexDisplay and empty pop_front are the remaining
+  // behavioural edges operators actually hit from encoders and diagnostics.
+  WorkingBuffer assigned;
+  assigned = abc;
+  EXPECT_TRUE(assigned == abc);
 
-  // TODO: This is a start, but we could use a lot more testing here.
+  WorkingBuffer swapped;
+  swapped.clear(false);
+  swapped.push('z');
+  assigned.swap(swapped);
+  EXPECT_EQ(1u, assigned.size());
+  EXPECT_TRUE(swapped == abc);
+
+  std::string asText;
+  abc.toString(asText);
+  EXPECT_EQ(abcStr, asText);
+
+  std::ostringstream hex;
+  abc.hexDisplay(hex, 8);
+  EXPECT_FALSE(hex.str().empty());
+
+  WorkingBuffer empty;
+  empty.clear(false);
+  EXPECT_THROW(empty.pop_front(), UsageError);
+
+  WorkingBuffer reverseGrow;
+  reverseGrow.clear(true, 2);
+  for(size_t n = 0; n < 40; ++n)
+  {
+    reverseGrow.push(uchar('0' + (n % 10)));
+  }
+  EXPECT_GE(reverseGrow.size(), 40u);
+
+  WorkingBuffer reverseAppend;
+  reverseAppend.clear(true, 4);
+  reverseAppend.push('a');
+  WorkingBuffer piece;
+  piece.clear(false);
+  for(size_t n = 0; n < 20; ++n)
+  {
+    piece.push('b');
+  }
+  reverseAppend.append(piece);
+  EXPECT_EQ(21u, reverseAppend.size());
 }
 
 TEST(QuickFAST, TestDecimal)
