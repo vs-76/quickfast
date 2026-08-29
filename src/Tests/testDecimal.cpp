@@ -242,3 +242,54 @@ TEST(QuickFAST, testDecimalDeltaRejectsAMantissaThatOverflows)
   const Decimal value = decodeDecimalDeltas(justTheMaximum);
   EXPECT_EQ((value.getMantissa()), (LLONG_MAX));
 }
+
+TEST(QuickFAST, testDecimalParseRejectsTooManyFractionalDigits)
+{
+  // fracString.size() is a size_t narrowed to int8_t, so 200 fractional
+  // digits gave int8_t(200) == -56, negated to +56: the parsed number was out
+  // by roughly 10^112 and the sign of the exponent was inverted.
+  const std::string tooPrecise = "0." + std::string(200, '1');
+  Decimal value;
+  EXPECT_THROW(value.parse(tooPrecise), OverflowError);
+
+  // The largest exponent a Decimal can hold still parses.
+  Decimal legal;
+  EXPECT_NO_THROW(legal.parse("0." + std::string(8, '1')));
+  EXPECT_EQ((legal.getExponent()), (-8));
+}
+
+TEST(QuickFAST, testDecimalParseRejectsMalformedInput)
+{
+  // The first lexical_cast is guarded and sets the overflow flag; the recovery
+  // path ran a second, unguarded one. Input that is malformed rather than
+  // merely too large reached it and threw bad_lexical_cast straight out of a
+  // void function with no documented exception contract.
+  Decimal value;
+  EXPECT_THROW(value.parse("-"), UsageError);
+  EXPECT_THROW(value.parse("1.2.3"), UsageError);
+  EXPECT_THROW(value.parse(""), UsageError);
+  EXPECT_THROW(value.parse("abc"), UsageError);
+  EXPECT_THROW(value.parse("1e5"), UsageError);
+
+  // Ordinary input is unaffected, including the forms that were already fine.
+  Decimal ok;
+  ok.parse("  -12.750  ");
+  EXPECT_EQ((double(ok)), (-12.75));
+  ok.parse("42");
+  EXPECT_EQ((double(ok)), (42.0));
+  ok.parse("+3.5");
+  EXPECT_EQ((double(ok)), (3.5));
+}
+
+TEST(QuickFAST, testDecimalParseHandlesAnOversizeMantissa)
+{
+  // The recovery path trims trailing zeros to make an over-long mantissa fit.
+  Decimal value;
+  value.parse("1" + std::string(25, '0'));
+  EXPECT_EQ((value.getMantissa()), (1));
+  EXPECT_EQ((value.getExponent()), (25));
+
+  // Too many significant digits cannot be recovered by trimming zeros.
+  Decimal hopeless;
+  EXPECT_THROW(hopeless.parse(std::string(25, '9')), OverflowError);
+}

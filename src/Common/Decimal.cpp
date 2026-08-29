@@ -47,6 +47,32 @@ namespace {
   /// exponents need not be legal. The narrowing is well-defined modular
   /// conversion, so it wrapped silently: 64 + 64 became -128 and normalize
   /// then reported an *underflow* for what was an overflow.
+  /// @brief Is this a plain, optionally signed run of decimal digits?
+  ///
+  /// parse() splices the fractional part onto the whole part, so "1.2.3"
+  /// reaches the conversion as "12.3" -- malformed input arrives looking
+  /// almost right, and used to throw out of a void function.
+  bool isIntegerString(const std::string & str)
+  {
+    size_t pos = 0;
+    if(pos < str.size() && (str[pos] == '-' || str[pos] == '+'))
+    {
+      ++pos;
+    }
+    if(pos == str.size())
+    {
+      return false;
+    }
+    for(; pos < str.size(); ++pos)
+    {
+      if(std::isdigit(static_cast<unsigned char>(str[pos])) == 0)
+      {
+        return false;
+      }
+    }
+    return true;
+  }
+
   exponent_t checkedExponent(int exponent)
   {
     if(exponent > 64)
@@ -95,6 +121,23 @@ Decimal::parse(const std::string & value)
     fracString = str.substr(dotPos+1);
   }
   std::string mantissaString = wholeString+fracString;
+
+  // Validate before converting. Only the first conversion below was guarded,
+  // so input that was malformed rather than merely too large reached the
+  // recovery conversion and threw bad_lexical_cast straight out of parse().
+  if(!isIntegerString(mantissaString))
+  {
+    throw UsageError("Cannot parse decimal", value.c_str());
+  }
+
+  // fracString.size() is a size_t and exponent_ is int8_t: 200 fractional
+  // digits narrowed to int8_t(200) == -56 and then negated to +56, so the
+  // value came out wrong by about 10^112 with the sign of the exponent
+  // inverted.
+  if(fracString.size() > 64)
+  {
+    throw OverflowError("[ERR R1]Decimal Exponent undeflow.");
+  }
   exponent_ = -exponent_t(fracString.size());
 
   bool overflow = false;
@@ -113,12 +156,29 @@ Decimal::parse(const std::string & value)
   }
 #endif
 
-  if (overflow && autoNormalize_)
+  if (overflow)
   {
-    size_t pos = mantissaString.find_last_not_of ("0");
-    exponent_ += exponent_t(mantissaString.length () - pos - 1);
+    // Recovery is only possible by trimming trailing zeros, which needs
+    // autonormalization to be wanted in the first place.
+    const size_t pos = autoNormalize_
+      ? mantissaString.find_last_not_of("0")
+      : std::string::npos;
+    if(pos == std::string::npos)
+    {
+      // All zeros, or nothing to trim: the mantissa genuinely does not fit.
+      throw OverflowError("[ERR R1]Decimal mantissa overflow parsing " + value);
+    }
+    exponent_ = checkedExponent(
+      int(exponent_) + int(mantissaString.length() - pos - 1));
     mantissaString = mantissaString.substr (0, pos + 1);
-    mantissa_ = QuickFAST::lexical_cast<mantissa_t>(mantissaString);
+    try
+    {
+      mantissa_ = QuickFAST::lexical_cast<mantissa_t>(mantissaString);
+    }
+    catch (const std::exception &)
+    {
+      throw OverflowError("[ERR R1]Decimal mantissa overflow parsing " + value);
+    }
   }
 
   if(autoNormalize_)
