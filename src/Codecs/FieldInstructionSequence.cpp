@@ -91,6 +91,18 @@ FieldInstructionSequence::decodeNop(
   {
     length = lengthSet.value();
 
+    // Speculative reserve is already capped in Messages::Sequence; this stops
+    // the decode loop itself from materialising an unbounded number of entries
+    // when the wire length is large and the payload is actually present.
+    const size_t maxLength = decoder.getMaxSequenceLength();
+    if(maxLength != 0 && length > maxLength)
+    {
+      decoder.reportFatal(
+        "[ERR U19]",
+        "Sequence length exceeds the configured maximum.",
+        identity_);
+    }
+
     Messages::ValueMessageBuilder & sequenceBuilder = builder.startSequence(
       identity_,
       segment_->getApplicationType(),

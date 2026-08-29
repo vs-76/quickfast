@@ -383,6 +383,8 @@ DecoderConnection::configure(
 
   assembler_->setReset(configuration.reset());
   assembler_->setStrict(configuration.strict());
+  assembler_->decoder().setMaxByteVectorLength(configuration.maxByteVectorLength());
+  assembler_->decoder().setMaxSequenceLength(configuration.maxSequenceLength());
 
   switch(configuration.receiverType())
   {

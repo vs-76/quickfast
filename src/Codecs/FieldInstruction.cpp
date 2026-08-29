@@ -297,6 +297,17 @@ FieldInstruction::decodeByteVector(
   WorkingBuffer & buffer,
   size_t length)
 {
+  // Hard ceiling first: an honest payload that is simply too large for the
+  // application must not grow the Context working buffer entry by entry.
+  const size_t maxLength = decoder.getMaxByteVectorLength();
+  if(maxLength != 0 && length > maxLength)
+  {
+    decoder.reportFatal(
+      "[ERR U19]",
+      "ByteVector length exceeds the configured maximum.",
+      name);
+  }
+
   // The length arrived on the wire and the buffer belongs to the Context, so
   // it outlives the message.  Reserve only a plausible amount up front and let
   // push() grow the buffer as bytes actually arrive; anything longer than the
