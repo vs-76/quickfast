@@ -11,6 +11,9 @@ option(QUICKFAST_BUILD_EXAMPLES "Build QuickFAST example applications" ON)
 option(QUICKFAST_USE_LIBCXX
   "Use LLVM libc++ instead of the default C++ standard library (Clang only)"
   OFF)
+option(QUICKFAST_USE_SPDLOG
+  "Build Common::SpdlogLogger adapter (FetchContent/find_package spdlog)"
+  OFF)
 
 if(QUICKFAST_USE_LIBCXX)
   if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
@@ -43,6 +46,26 @@ add_library(asio INTERFACE)
 add_library(asio::asio ALIAS asio)
 target_include_directories(asio SYSTEM INTERFACE ${asio_SOURCE_DIR}/asio/include)
 target_compile_definitions(asio INTERFACE ASIO_STANDALONE ASIO_NO_DEPRECATED)
+
+if(QUICKFAST_USE_SPDLOG)
+  find_package(spdlog 1.12 QUIET CONFIG)
+  if(NOT spdlog_FOUND)
+    set(SPDLOG_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
+    set(SPDLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(SPDLOG_BUILD_BENCH OFF CACHE BOOL "" FORCE)
+    set(SPDLOG_INSTALL OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(
+      spdlog
+      GIT_REPOSITORY https://github.com/gabime/spdlog.git
+      GIT_TAG        v1.15.1
+      GIT_SHALLOW    TRUE
+    )
+    FetchContent_MakeAvailable(spdlog)
+    if(TARGET spdlog)
+      target_compile_options(spdlog PRIVATE -w)
+    endif()
+  endif()
+endif()
 
 # Strict warnings for first-party code (deps use SYSTEM includes / silenced below).
 # Exact set required for dual-compiler CI: -Werror -Wall -pedantic
@@ -133,6 +156,10 @@ if(WIN32)
   list(APPEND QUICKFAST_LIB_SOURCES src/Common/dllmain.cpp)
 endif()
 
+if(QUICKFAST_USE_SPDLOG)
+  list(APPEND QUICKFAST_LIB_SOURCES src/Common/SpdlogLogger.cpp)
+endif()
+
 add_library(QuickFAST SHARED ${QUICKFAST_LIB_SOURCES})
 add_library(QuickFAST::QuickFAST ALIAS QuickFAST)
 
@@ -153,6 +180,11 @@ target_link_libraries(QuickFAST
     Threads::Threads
     XercesC::XercesC
 )
+
+if(QUICKFAST_USE_SPDLOG)
+  target_compile_definitions(QuickFAST PUBLIC QUICKFAST_HAS_SPDLOG=1)
+  target_link_libraries(QuickFAST PUBLIC spdlog::spdlog)
+endif()
 
 target_compile_options(QuickFAST PRIVATE ${QUICKFAST_WARNING_FLAGS})
 
@@ -187,6 +219,9 @@ if(QUICKFAST_BUILD_TESTS)
 
   file(GLOB QUICKFAST_TEST_SOURCES CONFIGURE_DEPENDS src/Tests/*.cpp)
   list(FILTER QUICKFAST_TEST_SOURCES EXCLUDE REGEX ".*/main\\.cpp$")
+  if(NOT QUICKFAST_USE_SPDLOG)
+    list(FILTER QUICKFAST_TEST_SOURCES EXCLUDE REGEX ".*/testSpdlogLogger\\.cpp$")
+  endif()
 
   add_executable(QuickFASTTest ${QUICKFAST_TEST_SOURCES})
   target_link_libraries(QuickFASTTest
@@ -287,4 +322,9 @@ if(QUICKFAST_USE_LIBCXX)
   message(STATUS "C++ standard library: libc++ (-stdlib=libc++)")
 else()
   message(STATUS "C++ standard library: default (set -DQUICKFAST_USE_LIBCXX=ON for libc++ with Clang)")
+endif()
+if(QUICKFAST_USE_SPDLOG)
+  message(STATUS "spdlog: SpdlogLogger adapter enabled (QUICKFAST_HAS_SPDLOG)")
+else()
+  message(STATUS "spdlog: OFF (set -DQUICKFAST_USE_SPDLOG=ON for Common::SpdlogLogger)")
 endif()

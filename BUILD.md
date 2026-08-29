@@ -17,12 +17,15 @@ sudo apt-get install -y g++-16 clang++-22 libc++-dev libc++abi-dev
 
 CMake fetches standalone [Asio](https://github.com/chriskohlhoff/asio) and
 [GoogleTest](https://github.com/google/googletest) on first configure.
+With `-DQUICKFAST_USE_SPDLOG=ON` it also finds or fetches
+[spdlog](https://github.com/gabime/spdlog).
 
 | CMake option | Default | Meaning |
 | --- | --- | --- |
 | `QUICKFAST_BUILD_TESTS` | `ON` | Build `QuickFASTTest` and register ctest |
 | `QUICKFAST_BUILD_EXAMPLES` | `ON` | Build example applications |
 | `QUICKFAST_USE_LIBCXX` | `OFF` | Use LLVM libc++ (`-stdlib=libc++`); **Clang/AppleClang only** |
+| `QUICKFAST_USE_SPDLOG` | `OFF` | Build `Common::SpdlogLogger` (find/FetchContent [spdlog](https://github.com/gabime/spdlog)) |
 | `QUICKFAST_ENABLE_PVS_STUDIO` | `ON` | Create `pvs-studio` target if `pvs-studio-analyzer` is installed |
 | `CMAKE_BUILD_TYPE` | (unset) | Prefer `Release` or `Debug` |
 | `CMAKE_CXX_COMPILER` | system default | e.g. `g++-16`, `clang++-22` |
@@ -212,5 +215,39 @@ cmake -S . -B build-gcc16 -DQUICKFAST_ENABLE_PVS_STUDIO=OFF
 ```
 
 A license file is typically expected at `~/.config/PVS-Studio/PVS-Studio.lic`.
+
+---
+
+## Optional spdlog logger adapter
+
+When `-DQUICKFAST_USE_SPDLOG=ON`, QuickFAST builds `Common::SpdlogLogger`, an
+implementation of `Common::Logger` that forwards to an application-owned
+`std::shared_ptr<spdlog::logger>`. Core codecs/communication stay on the
+`Logger` interface; inject the adapter via your message consumer and/or
+`Communication::AsioService::setLogger`.
+
+```bash
+cmake -S . -B build-spdlog -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=g++-16 \
+  -DQUICKFAST_USE_SPDLOG=ON -DQUICKFAST_BUILD_EXAMPLES=OFF
+cmake --build build-spdlog -j --target QuickFASTTest
+ctest --test-dir build-spdlog --output-on-failure
+```
+
+Example:
+
+```cpp
+#include <Common/SpdlogLogger.h>
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+
+auto lg = spdlog::stdout_color_mt("quickfast");
+lg->set_level(spdlog::level::info);
+QuickFAST::Common::SpdlogLogger qfLog(lg);
+// Pass qfLog (or a consumer that delegates to it) into the decoder stack;
+// optionally: receiver.setLogger(qfLog);
+```
+
+`Context::setLogOutput(std::ostream&)` remains a separate debug path and is not
+bridged to spdlog.
 
 Legacy MPC / `setup.sh` remains available for older toolchains; prefer CMake on modern Linux.
