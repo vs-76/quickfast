@@ -146,14 +146,21 @@ namespace QuickFAST{
       virtual void displayBody(std::ostream & output, size_t indent)const;
 
     private:
+      /// @brief Refuse an exponent the specification does not allow.
+      /// @param context receives the error.
+      /// @param exponent is the value to check.
+      void checkExponentRange(Context & context, exponent_t exponent) const;
+
       void encodeDecimal(
         Codecs::DataDestination & destination,
+        Context & context,
         WorkingBuffer & buffer,
         exponent_t exponent,
         mantissa_t mantissa) const;
 
       void encodeNullableDecimal(
         Codecs::DataDestination & destination,
+        Context & context,
         WorkingBuffer & buffer,
         exponent_t exponent,
         mantissa_t mantissa) const;
