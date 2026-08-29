@@ -16,6 +16,7 @@
 #include <Codecs/GenericMessageBuilder.h>
 
 #include <Common/Exceptions.h>
+#include "TestPaths.h"
 
 using namespace QuickFAST;
 
@@ -109,6 +110,28 @@ TEST(QuickFAST, testStandardEchoAndVerboseStreamsAreNotDeleted)
     configuration.setVerboseFileName(stream);
     EXPECT_NO_THROW(configureAndDestroy(configuration));
   }
+  std::remove(path.c_str());
+}
+
+/// @brief With no verbose file configured, nothing may form a reference from null.
+///
+/// The same defect as the echo stream below, at a site the audit did not name.
+/// UBSan reports it on every run that parses a template without -vo, which is
+/// every ordinary run.
+TEST(QuickFAST, testNoVerboseFileDoesNotDereferenceNull)
+{
+  const std::string path = inputFile("testDecoderConnectionStreams.fast");
+  Application::DecoderConfiguration configuration = fileConfiguration(path);
+  configuration.setTemplateFileName(
+    QuickFAST::TestPaths::resource("/src/Tests/resources/unittest_mandatory.xml"));
+  ASSERT_TRUE(configuration.verboseFileName().empty());
+
+  // No setTemplateRegistry, so configure() parses the template file itself,
+  // which is the path that reaches setVerboseOutput.
+  Application::DecoderConnection connection;
+  Codecs::SingleMessageConsumer consumer;
+  Codecs::GenericMessageBuilder builder(consumer);
+  EXPECT_NO_THROW(connection.configure(builder, configuration));
   std::remove(path.c_str());
 }
 
