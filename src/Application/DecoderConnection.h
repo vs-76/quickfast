@@ -164,6 +164,10 @@ namespace QuickFAST{
       Codecs::Decoder & decoder() const;
 
     private:
+      /// Build the receiver for a multicast input whose feeds name their senders.
+      void createSourceSpecificMulticastReceiver(
+        const Application::DecoderConfiguration & configuration);
+
       // Each of these streams may be one this connection opened or one it is
       // merely borrowing -- cin, cout or cerr. That distinction used to be
       // carried by a bool beside each raw pointer, and fastFile_ never got
