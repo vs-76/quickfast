@@ -40,6 +40,8 @@ namespace QuickFAST{
       {
       }
 
+      MessageField & operator=(const MessageField &) = delete;
+
     public:
 
       /// @brief get the name of the field

@@ -57,6 +57,8 @@ namespace QuickFAST{
       {
       }
 
+      FieldIdentity & operator=(const FieldIdentity &) = default;
+
       /// @brief Set the fields ID (not terribly useful)
       /// @param id to be stored
       void setId(const field_id_t & id)

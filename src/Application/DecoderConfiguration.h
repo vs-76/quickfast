@@ -79,14 +79,8 @@ namespace QuickFAST{
         }
 
         /// @brief copy a multicast feed
-        MulticastFeed(const MulticastFeed & rhs)
-          : name_(rhs.name_)
-          , groupIP_(rhs.groupIP_)
-          , portNumber_(rhs.portNumber_)
-          , listenInterfaceIP_(rhs.listenInterfaceIP_)
-          , bindIP_(rhs.bindIP_)
-        {
-        }
+        MulticastFeed(const MulticastFeed & rhs) = default;
+        MulticastFeed & operator=(const MulticastFeed & rhs) = default;
 
       };
       /// @brief A collection of multicast feeds.
@@ -161,6 +155,8 @@ namespace QuickFAST{
         , extras_(rhs.extras_)
       {
       }
+
+      DecoderConfiguration & operator=(const DecoderConfiguration &) = delete;
 
       /// @brief Process the first "head" messages then stop.
       size_t head()const
