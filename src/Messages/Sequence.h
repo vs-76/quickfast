@@ -30,7 +30,14 @@ namespace QuickFAST{
         size_t sequenceLength)
         : lengthIdentity_(lengthFieldIdentity)
       {
-        this->entries_.reserve(sequenceLength);
+        // sequenceLength usually comes from the wire, so reserving it outright
+        // lets a handful of bytes demand tens of gigabytes.  Reserve a
+        // plausible amount and let the vector grow as entries really decode.
+        static const size_t maxSpeculativeReservation = 4096;
+        this->entries_.reserve(
+          sequenceLength < maxSpeculativeReservation
+            ? sequenceLength
+            : maxSpeculativeReservation);
       }
 
       ~Sequence()
