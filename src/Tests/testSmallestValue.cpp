@@ -380,17 +380,25 @@ namespace{
     EXPECT_TRUE(message.getField("uint64_incre", value));
     EXPECT_EQ((value->toUInt64()), (1));
 
+    // These three used to expect the field to be missing, recording the
+    // encoder's habit of sending an empty value as "unchanged" and thereby
+    // losing it. The input is an empty string, so an empty string is what must
+    // come back.
+
     //  <string name="asciistring_tail" presence="optional" charset="ascii" id="45"><tail/>
     //msg.addField(identity_asciistring_tail, Messages::FieldAscii::create(""));
-    EXPECT_EQ((message.getField("asciistring_tail", value)), (false));
+    EXPECT_TRUE(message.getField("asciistring_tail", value));
+    EXPECT_EQ((value->toAscii()), (""));
 
     //  <string name="utf8string_tail" presence="optional" charset="unicode" id="46"><tail/>
     //msg.addField(identity_utf8string_tail, Messages::FieldAscii::create(""));
-    EXPECT_EQ((message.getField("utf8string_tail", value)), (false));
+    EXPECT_TRUE(message.getField("utf8string_tail", value));
+    EXPECT_EQ((value->toUtf8()), (""));
 
     //  <byteVector name="bytevector_tail" presence="optional" id="47"><tail/>
     //msg.addField(identity_bytevector_tail, Messages::FieldByteVector::create(""));
-    EXPECT_EQ((message.getField("bytevector_tail", value)), (false));
+    EXPECT_TRUE(message.getField("bytevector_tail", value));
+    EXPECT_EQ((value->toByteVector()), (""));
 
   }
 
