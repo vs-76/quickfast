@@ -32,6 +32,13 @@ FastEncodedHeaderAnalyzer::~FastEncodedHeaderAnalyzer()
 bool
 FastEncodedHeaderAnalyzer::analyzeHeader(DataSource & source, size_t & blockSize, bool & skip)
 {
+  // Both out-parameters used to be written only after the parse completed, so
+  // every incomplete-data return left them untouched. FixedSizeHeaderAnalyzer,
+  // the other implementation of this interface, has always initialised them
+  // here; the two disagreeing about who owns initialisation is what breaks
+  // when a third caller appears that does not pre-initialise its locals.
+  blockSize = 0;
+  skip = false;
   while(state_ != ParsingComplete)
   {
     switch(state_)

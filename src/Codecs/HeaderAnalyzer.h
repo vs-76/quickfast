@@ -58,9 +58,17 @@ namespace QuickFAST{
       /// This message assumes the entire header is available in memory.
       /// This method does NOT consume or modify any data.  It may be called
       /// repeatedly and will produce the same result each time.
+      /// The length is not optional. Without it the implementation can only
+      /// trust that the caller's buffer reaches as far as the offset and
+      /// length it was configured with, and nothing validates those against
+      /// each other or against any buffer.
+      ///
       /// @param buffer points to the header
+      /// @param size is how many valid bytes are at buffer
       /// @returns the sequence number;
-      virtual uint32 getSequenceNumber([[maybe_unused]] const uchar * buffer) const
+      virtual uint32 getSequenceNumber(
+        [[maybe_unused]] const uchar * buffer,
+        [[maybe_unused]] size_t size) const
       {
         return 0;
       }

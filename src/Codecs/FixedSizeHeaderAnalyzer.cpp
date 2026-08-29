@@ -46,6 +46,17 @@ FixedSizeHeaderAnalyzer::FixedSizeHeaderAnalyzer(
         << " bytes a block size can hold.";
     throw UsageError("Invalid configuration", msg.str().c_str());
   }
+  // A sequence field wider than the accumulator shifted its own leading bytes
+  // off the top, so the number reported bore no relation to the one on the
+  // wire and nothing said so.
+  if(sequenceLength > sizeof(uint32))
+  {
+    std::stringstream msg;
+    msg << "Fixed size header sequence number field of " << sequenceLength
+        << " bytes exceeds the " << sizeof(uint32)
+        << " bytes a sequence number can hold.";
+    throw UsageError("Invalid configuration", msg.str().c_str());
+  }
 }
 
 FixedSizeHeaderAnalyzer::~FixedSizeHeaderAnalyzer()
@@ -154,8 +165,20 @@ FixedSizeHeaderAnalyzer::supportsSequenceNumber()const
 }
 
 uint32
-FixedSizeHeaderAnalyzer::getSequenceNumber(const uchar * buffer) const
+FixedSizeHeaderAnalyzer::getSequenceNumber(const uchar * buffer, size_t size) const
 {
+  // Without a length this read was unbounded: the offset and length come from
+  // constructor arguments that were validated against nothing, and the caller
+  // had no way to know how far the function would reach.
+  if(sequenceOffset_ + sequenceLength_ > size)
+  {
+    std::stringstream msg;
+    msg << "Sequence number at offset " << sequenceOffset_
+        << " for " << sequenceLength_
+        << " bytes runs past the end of a " << size << " byte header.";
+    throw UsageError("Invalid header", msg.str().c_str());
+  }
+
   uint32 value = 0;
   if(bigEndian_)
   {

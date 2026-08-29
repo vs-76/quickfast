@@ -140,7 +140,7 @@ PacketSequencingAssembler::serviceQueue(Communication::Receiver & receiver)
 void
 PacketSequencingAssembler::capturePacket(Communication::LinkedBuffer * buffer)
 {
-  sequence_t sequenceNumber = packetHeaderAnalyzer_.getSequenceNumber(buffer->get());
+  sequence_t sequenceNumber = packetHeaderAnalyzer_.getSequenceNumber(buffer->get(), buffer->used());
   if(first_)
   {
     first_ = false;
@@ -211,7 +211,7 @@ PacketSequencingAssembler::addToDeferred(Communication::LinkedBuffer * buffer, s
     deferredQueue_.push_front(buffer);
     return;
   }
-  sequence_t deferredSequenceNumber = packetHeaderAnalyzer_.getSequenceNumber(tail->get());
+  sequence_t deferredSequenceNumber = packetHeaderAnalyzer_.getSequenceNumber(tail->get(), tail->used());
   if(sequenceNumber == deferredSequenceNumber)
   {
     releasePacket(buffer);
@@ -224,7 +224,7 @@ PacketSequencingAssembler::addToDeferred(Communication::LinkedBuffer * buffer, s
   }
 
   // the other "easy" case is the buffer comes before everything in the deferred queue
-  deferredSequenceNumber = packetHeaderAnalyzer_.getSequenceNumber(positionInDeferred->get());
+  deferredSequenceNumber = packetHeaderAnalyzer_.getSequenceNumber(positionInDeferred->get(), positionInDeferred->used());
   if(sequenceNumber < deferredSequenceNumber)
   {
     deferredQueue_.push_front(buffer);
@@ -243,7 +243,7 @@ PacketSequencingAssembler::addToDeferred(Communication::LinkedBuffer * buffer, s
   // loop invariant: sequenceNumber > deferredSequenceNumber
   while(positionInDeferred->link() != 0)
   {
-    deferredSequenceNumber = packetHeaderAnalyzer_.getSequenceNumber(positionInDeferred->link()->get());
+    deferredSequenceNumber = packetHeaderAnalyzer_.getSequenceNumber(positionInDeferred->link()->get(), positionInDeferred->link()->used());
     if(sequenceNumber == deferredSequenceNumber)
     {
       releasePacket(buffer);
@@ -267,16 +267,16 @@ PacketSequencingAssembler::promoteDeferred()
 {
   bool result = false;
   Communication::LinkedBuffer * buffer = deferredQueue_.peek();
-  while(buffer != 0 && packetHeaderAnalyzer_.getSequenceNumber(buffer->get()) < nextSequenceNumber_)
+  while(buffer != 0 && packetHeaderAnalyzer_.getSequenceNumber(buffer->get(), buffer->used()) < nextSequenceNumber_)
   {
     releasePacket(deferredQueue_.pop());
     buffer = deferredQueue_.peek();
   }
 
-  while(buffer != 0 && packetHeaderAnalyzer_.getSequenceNumber(buffer->get()) < nextSequenceNumber_ + lookAheadCount_)
+  while(buffer != 0 && packetHeaderAnalyzer_.getSequenceNumber(buffer->get(), buffer->used()) < nextSequenceNumber_ + lookAheadCount_)
   {
     buffer = deferredQueue_.pop();
-    sequence_t sequenceNumber = packetHeaderAnalyzer_.getSequenceNumber(buffer->get());
+    sequence_t sequenceNumber = packetHeaderAnalyzer_.getSequenceNumber(buffer->get(), buffer->used());
     if(lookAhead_[sequenceNumber % lookAheadCount_] == 0)
     {
       lookAhead_[sequenceNumber % lookAheadCount_] = buffer;
@@ -353,5 +353,5 @@ PacketSequencingAssembler::findGapEnd() const
   }
   Communication::LinkedBuffer * deferredBuffer = deferredQueue_.peek();
   // assert deferredBuffer != 0
-  return packetHeaderAnalyzer_.getSequenceNumber(deferredBuffer->get());
+  return packetHeaderAnalyzer_.getSequenceNumber(deferredBuffer->get(), deferredBuffer->used());
 }
