@@ -20,6 +20,11 @@ option(QUICKFAST_SANITIZE_THREAD "Build with ThreadSanitizer (-fsanitize=thread)
 option(QUICKFAST_USE_SPDLOG
   "Build SpdlogLogger + managed_file_sink_mt (spdlog + zlib)"
   OFF)
+# The test-only sink hook is compiled into the shared library, so a shipping build
+# (QUICKFAST_BUILD_TESTS=OFF) must not carry it.
+option(QUICKFAST_ENABLE_TEST_HOOKS
+  "Expose managed_file_sink_mt test-only hooks (default: follow QUICKFAST_BUILD_TESTS)"
+  ${QUICKFAST_BUILD_TESTS})
 
 if(QUICKFAST_ENABLE_COVERAGE)
   if(NOT QUICKFAST_BUILD_TESTS)
@@ -228,8 +233,7 @@ target_link_libraries(QuickFAST
 if(QUICKFAST_USE_SPDLOG)
   target_compile_definitions(QuickFAST PUBLIC QUICKFAST_HAS_SPDLOG=1)
   target_link_libraries(QuickFAST PUBLIC spdlog::spdlog ZLIB::ZLIB)
-  if(QUICKFAST_BUILD_TESTS)
-    # Expose managed_file_sink_mt test helpers only in test-enabled builds.
+  if(QUICKFAST_ENABLE_TEST_HOOKS)
     target_compile_definitions(QuickFAST PUBLIC QUICKFAST_ENABLE_TEST_HOOKS=1)
   endif()
 endif()
