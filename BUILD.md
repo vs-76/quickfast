@@ -9,10 +9,10 @@ First-party code is always compiled with `-Wall -Werror -pedantic`.
 sudo apt-get install -y cmake build-essential libxerces-c-dev
 ```
 
-Optional compilers / libc++ (examples below use the packaged names on this tree):
+Optional compilers / libc++ / coverage (examples below use the packaged names on this tree):
 
 ```bash
-sudo apt-get install -y g++-16 clang++-22 libc++-dev libc++abi-dev
+sudo apt-get install -y g++-16 clang++-22 libc++-dev libc++abi-dev gcovr
 ```
 
 CMake fetches standalone [Asio](https://github.com/chriskohlhoff/asio) and
@@ -23,6 +23,7 @@ CMake fetches standalone [Asio](https://github.com/chriskohlhoff/asio) and
 | `QUICKFAST_BUILD_TESTS` | `ON` | Build `QuickFASTTest` and register ctest |
 | `QUICKFAST_BUILD_EXAMPLES` | `ON` | Build example applications |
 | `QUICKFAST_USE_LIBCXX` | `OFF` | Use LLVM libc++ (`-stdlib=libc++`); **Clang/AppleClang only** |
+| `QUICKFAST_ENABLE_COVERAGE` | `OFF` | Instrument library + tests with `--coverage`; add `coverage` target if `gcovr` is installed |
 | `QUICKFAST_ENABLE_PVS_STUDIO` | `ON` | Create `pvs-studio` target if `pvs-studio-analyzer` is installed |
 | `CMAKE_BUILD_TYPE` | (unset) | Prefer `Release` or `Debug` |
 | `CMAKE_CXX_COMPILER` | system default | e.g. `g++-16`, `clang++-22` |
@@ -212,5 +213,29 @@ cmake -S . -B build-gcc16 -DQUICKFAST_ENABLE_PVS_STUDIO=OFF
 ```
 
 A license file is typically expected at `~/.config/PVS-Studio/PVS-Studio.lic`.
+
+---
+
+## Coverage (gcov / gcovr)
+
+Supported with **GCC** (`g++-16`). Prefer `Debug`. Do not mix coverage
+instrumentation with ASan/TSan or Valgrind runs.
+
+Requires `gcovr` for the `coverage` CMake target (`sudo apt-get install -y gcovr`).
+Use a `gcov` that matches the compiler major version (e.g. `gcov-16` with `g++-16`);
+CMake selects `gcov-<major>` automatically when present.
+Instrumentation still applies when coverage is enabled even if `gcovr` is missing;
+only the report target is skipped.
+
+```bash
+cmake -S . -B build-cov -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=g++-16 \
+  -DQUICKFAST_ENABLE_COVERAGE=ON -DQUICKFAST_BUILD_EXAMPLES=OFF
+cmake --build build-cov -j --target coverage
+# report: build-cov/coverage/coverage.txt
+# HTML:   build-cov/coverage/html/index.html
+```
+
+The `coverage` target builds `QuickFASTTest`, runs `ctest`, then generates a
+gcovr summary for first-party `src/` (deps under `_deps` are excluded).
 
 Legacy MPC / `setup.sh` remains available for older toolchains; prefer CMake on modern Linux.
