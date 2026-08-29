@@ -497,10 +497,8 @@ FieldInstruction::encodeSignedInteger(DataDestination & destination, WorkingBuff
   }
   else
   {
-    // using absolute value avoids tricky word length issues
-    int64 absv = -value;
-//    if(absv == value) // Apparently this is not a valid check on all compilers
-    if((value << 1) == 0)
+    // INT64_MIN cannot be negated in signed arithmetic (undefined behavior).
+    if(value == std::numeric_limits<int64>::min())
     {
       // encode the most negative possible number
       destination.putByte(0x7F);    // 8... .... .... ....
@@ -514,77 +512,82 @@ FieldInstruction::encodeSignedInteger(DataDestination & destination, WorkingBuff
       destination.putByte(0x00);    // .... .... .... 3F8.
       destination.putByte(0x80);    // .... .... .... ..7f
     }
-    else if (absv <= 0x0000000000000040LL)
-    {
-      destination.putByte(value & 0xFF); // .... .... .... ..7f
-    }
-    else if (absv <= 0x0000000000002000LL)
-    {
-      destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
-      destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
-    }
-    else if (absv <= 0x0000000000100000LL)
-    {
-      destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
-      destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
-      destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
-    }
-    else if (absv <= 0x0000000008000000LL)
-    {
-      destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
-      destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
-      destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
-      destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
-    }
-    else if (absv <= 0x0000000400000000LL)
-    {
-      destination.putByte(((value >> 28)  & 0x7F)); // .... ...7 F... ....
-      destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
-      destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
-      destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
-      destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
-    }
-    else if (absv <= 0x0000020000000000LL)
-    {
-      destination.putByte(((value >> 35)  & 0x7F)); // .... .3F8 .... ....
-      destination.putByte(((value >> 28)  & 0x7F)); // .... ...7 F... ....
-      destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
-      destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
-      destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
-      destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
-    }
-    else if (absv <= 0x0001000000000000LL)
-    {
-      destination.putByte(((value >> 42)  & 0x7F));// ...1 FC.. .... ....
-      destination.putByte(((value >> 35)  & 0x7F)); // .... .3F8 .... ....
-      destination.putByte(((value >> 28)  & 0x7F)); // .... ...7 F... ....
-      destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
-      destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
-      destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
-      destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
-    }
-    else if (absv <= 0x0080000000000000LL)
-    {
-      destination.putByte(((value >> 49)  & 0x7F)); // ..FE .... .... ....
-      destination.putByte(((value >> 42)  & 0x7F)); // ...1 FC.. .... ....
-      destination.putByte(((value >> 35)  & 0x7F)); // .... .3F8 .... ....
-      destination.putByte(((value >> 28)  & 0x7F)); // .... ...7 F... ....
-      destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
-      destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
-      destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
-      destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
-    }
     else
     {
-      destination.putByte(((value >> 56)  & 0x7F)); // 7F.. .... .... ....
-      destination.putByte(((value >> 49)  & 0x7F)); // ..FE .... .... ....
-      destination.putByte(((value >> 42)  & 0x7F)); // ...1 FC.. .... ....
-      destination.putByte(((value >> 35)  & 0x7F)); // .... .3F8 .... ....
-      destination.putByte(((value >> 28)  & 0x7F)); // .... ...7 F... ....
-      destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
-      destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
-      destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
-      destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
+      // using absolute value avoids tricky word length issues
+      int64 absv = -value;
+      if (absv <= 0x0000000000000040LL)
+      {
+        destination.putByte(value & 0xFF); // .... .... .... ..7f
+      }
+      else if (absv <= 0x0000000000002000LL)
+      {
+        destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
+        destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
+      }
+      else if (absv <= 0x0000000000100000LL)
+      {
+        destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
+        destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
+        destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
+      }
+      else if (absv <= 0x0000000008000000LL)
+      {
+        destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
+        destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
+        destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
+        destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
+      }
+      else if (absv <= 0x0000000400000000LL)
+      {
+        destination.putByte(((value >> 28)  & 0x7F)); // .... ...7 F... ....
+        destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
+        destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
+        destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
+        destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
+      }
+      else if (absv <= 0x0000020000000000LL)
+      {
+        destination.putByte(((value >> 35)  & 0x7F)); // .... .3F8 .... ....
+        destination.putByte(((value >> 28)  & 0x7F)); // .... ...7 F... ....
+        destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
+        destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
+        destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
+        destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
+      }
+      else if (absv <= 0x0001000000000000LL)
+      {
+        destination.putByte(((value >> 42)  & 0x7F));// ...1 FC.. .... ....
+        destination.putByte(((value >> 35)  & 0x7F)); // .... .3F8 .... ....
+        destination.putByte(((value >> 28)  & 0x7F)); // .... ...7 F... ....
+        destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
+        destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
+        destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
+        destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
+      }
+      else if (absv <= 0x0080000000000000LL)
+      {
+        destination.putByte(((value >> 49)  & 0x7F)); // ..FE .... .... ....
+        destination.putByte(((value >> 42)  & 0x7F)); // ...1 FC.. .... ....
+        destination.putByte(((value >> 35)  & 0x7F)); // .... .3F8 .... ....
+        destination.putByte(((value >> 28)  & 0x7F)); // .... ...7 F... ....
+        destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
+        destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
+        destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
+        destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
+      }
+      else
+      {
+        destination.putByte(((value >> 56)  & 0x7F)); // 7F.. .... .... ....
+        destination.putByte(((value >> 49)  & 0x7F)); // ..FE .... .... ....
+        destination.putByte(((value >> 42)  & 0x7F)); // ...1 FC.. .... ....
+        destination.putByte(((value >> 35)  & 0x7F)); // .... .3F8 .... ....
+        destination.putByte(((value >> 28)  & 0x7F)); // .... ...7 F... ....
+        destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
+        destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
+        destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
+        destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
+      }
     }
   }
 }
