@@ -36,11 +36,17 @@ FieldInstructionAscii::~FieldInstructionAscii()
 bool
 FieldInstructionAscii::decodeAsciiFromSource(
   Codecs::DataSource & source,
+  Codecs::Context & context,
   bool mandatory,
   WorkingBuffer & buffer) const
 {
   PROFILE_POINT("ascii::decodeAsciiFromSource");
-  decodeAscii(source, buffer);
+  if(!decodeAscii(source, buffer))
+  {
+    // The stop bit never arrived, so what is in the buffer is a fragment.
+    // decodeByteVector treats the same condition as fatal.
+    context.reportFatal("[ERR U03]", "End of file: Ascii string is missing its stop bit.", identity_.name());
+  }
   if(!mandatory)
   {
     if(checkNullAscii(buffer))
@@ -66,7 +72,7 @@ FieldInstructionAscii::decodeNop(
   // note NOP never uses pmap.  It uses a null value instead for optional fields
   // so it's always safe to do the basic decode.
   WorkingBuffer & buffer = decoder.getWorkingBuffer();
-  if(decodeAsciiFromSource(source, isMandatory(), buffer))
+  if(decodeAsciiFromSource(source, decoder, isMandatory(), buffer))
   {
     builder.addValue(identity_, ValueType::ASCII, buffer.begin(), buffer.size());
   }
@@ -116,7 +122,7 @@ FieldInstructionAscii::decodeDefault(
   if(pmap.checkNextField())
   {
     WorkingBuffer & buffer = decoder.getWorkingBuffer();
-    if(decodeAsciiFromSource(source, isMandatory(), buffer))
+    if(decodeAsciiFromSource(source, decoder, isMandatory(), buffer))
     {
       builder.addValue(
         identity_,
@@ -155,7 +161,7 @@ FieldInstructionAscii::decodeCopy(
   {
     // field is in the stream, use it
     WorkingBuffer & buffer = decoder.getWorkingBuffer();
-    if(decodeAsciiFromSource(source, isMandatory(), buffer))
+    if(decodeAsciiFromSource(source, decoder, isMandatory(), buffer))
     {
       builder.addValue(
         identity_,
@@ -219,7 +225,7 @@ FieldInstructionAscii::decodeDelta(
   }
   std::string deltaValue;
   WorkingBuffer & buffer = decoder.getWorkingBuffer();
-  if(decodeAsciiFromSource(source, true, buffer))
+  if(decodeAsciiFromSource(source, decoder, true, buffer))
   {
     deltaValue = std::string(
       reinterpret_cast<const char *>(buffer.begin()),
@@ -291,7 +297,7 @@ FieldInstructionAscii::decodeTail(
   {
     // field is in the stream, use it
     WorkingBuffer & buffer = decoder.getWorkingBuffer();
-    if(decodeAsciiFromSource(source, isMandatory(), buffer))
+    if(decodeAsciiFromSource(source, decoder, isMandatory(), buffer))
     {
       const std::string tailValue(reinterpret_cast<const char *>(buffer.begin()), buffer.size());
       size_t tailLength = tailValue.length();
