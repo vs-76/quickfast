@@ -57,7 +57,10 @@ namespace QuickFAST
         std::unique_lock<std::mutex> lock(inputMutex_);
         if(inputBuffers_.isEmpty())
         {
-          inputWait_.wait_until(lock, std::chrono::steady_clock::now() + timeout);
+          inputWait_.wait_until(
+            lock,
+            std::chrono::steady_clock::now() + timeout,
+            [this]{ return !inputBuffers_.isEmpty(); });
         }
       }
 
@@ -89,7 +92,7 @@ namespace QuickFAST
         Communication::LinkedBuffer * buffer = freeBuffers_.pop();
         while(buffer == 0)
         {
-          freeWait_.wait(lock);
+          freeWait_.wait(lock, [this]{ return !freeBuffers_.isEmpty(); });
           buffer = freeBuffers_.pop();
         }
         return buffer;

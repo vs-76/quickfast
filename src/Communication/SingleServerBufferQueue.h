@@ -172,7 +172,7 @@ namespace QuickFAST
           //msg << "Q:{"<< (void *) this <<  "} wait" << std::endl;
           //std::cout << msg.str() << std::flush;
 
-          condition_.wait(lock);
+          condition_.wait(lock, [this]{ return !incoming_.isEmpty(); });
           wasEmpty = incoming_.isEmpty();
         }
         if(!wasEmpty)
