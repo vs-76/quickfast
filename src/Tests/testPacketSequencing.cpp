@@ -32,6 +32,7 @@
 #include <Codecs/XMLTemplateParser.h>
 #include <Codecs/TemplateRegistry.h>
 #include <Communication/SynchReceiver.h>
+#include <Communication/RecoveryFeed.h>
 #include <Messages/ValueMessageBuilder.h>
 #include <Common/Exceptions.h>
 
@@ -318,4 +319,99 @@ TEST(QuickFAST, testLossAtTheWraparoundBoundaryIsAGap)
   ASSERT_EQ(1u, builder.gaps_.size());
   EXPECT_EQ(0xFFFFFFFFu, builder.gaps_.front().first);
   EXPECT_EQ(0u, builder.gaps_.front().second);
+}
+
+namespace
+{
+  /// @brief A feed that promises recovery and never delivers it.
+  ///
+  /// A real feed of this shape is a misconfigured one, which is precisely the
+  /// case the assembler could not escape: stillWaiting() says yes, the gap
+  /// never fills, and the loop polls at 100 Hz with nothing to act on.
+  class NeverFillingFeed : public Communication::RecoveryFeed
+  {
+  public:
+    size_t reportGapCalls_ = 0;
+    size_t stillWaitingCalls_ = 0;
+    /// Answer false once this many stillWaiting calls have been made; zero
+    /// means keep promising forever.
+    size_t giveUpAfter_ = 0;
+
+    virtual bool reportGap(sequence_t, sequence_t)
+    {
+      ++reportGapCalls_;
+      return true;
+    }
+
+    virtual bool stillWaiting(sequence_t, sequence_t)
+    {
+      ++stillWaitingCalls_;
+      return giveUpAfter_ == 0 || stillWaitingCalls_ < giveUpAfter_;
+    }
+  };
+}
+
+/// @brief A gap that will never fill must escalate once a limit is set.
+///
+/// waitGapFill discarded the bool its own wait_until computed, so the caller
+/// could not tell "recovery data arrived" from "timed out again". With the
+/// result in hand the assembler can count consecutive timeouts and give up.
+TEST(QuickFAST, testUnfillableGapEscalatesAfterALimit)
+{
+  Codecs::FixedSizeHeaderAnalyzer packetHeader(0, true, 4, 0, 0, 4);
+  Codecs::NoHeaderAnalyzer messageHeader;
+  RecordingBuilder builder;
+  auto recovery = std::make_shared<NeverFillingFeed>();
+  Codecs::PacketSequencingAssembler assembler(
+    trivialRegistry(), packetHeader, messageHeader, builder, 4, recovery);
+  assembler.setGapTimeoutLimit(3);
+
+  // Packet 0 establishes the sequence; the jump to 10 is past the four slot
+  // look-ahead, so 10 defers and the assembler sits on a gap it cannot close.
+  feed(assembler, {packet(0), packet(10)});
+
+  ASSERT_FALSE(builder.gaps_.empty());
+  EXPECT_EQ(1u, builder.gaps_.front().first);
+  EXPECT_EQ(2u, builder.messages_);
+  EXPECT_EQ(1u, recovery->reportGapCalls_);
+  EXPECT_LE(recovery->stillWaitingCalls_, 3u)
+    << "the gap was polled past its escalation limit";
+  EXPECT_EQ(0u, assembler.consecutiveGapTimeouts());
+}
+
+/// @brief With no limit set the feed remains the only thing that can give up.
+TEST(QuickFAST, testGapTimeoutLimitDefaultsToNeverGivingUp)
+{
+  Codecs::FixedSizeHeaderAnalyzer packetHeader(0, true, 4, 0, 0, 4);
+  Codecs::NoHeaderAnalyzer messageHeader;
+  RecordingBuilder builder;
+  auto recovery = std::make_shared<NeverFillingFeed>();
+  recovery->giveUpAfter_ = 8;
+  Codecs::PacketSequencingAssembler assembler(
+    trivialRegistry(), packetHeader, messageHeader, builder, 4, recovery);
+
+  feed(assembler, {packet(0), packet(10)});
+
+  ASSERT_FALSE(builder.gaps_.empty());
+  EXPECT_GE(recovery->stillWaitingCalls_, 8u)
+    << "an assembler with no limit gave up before its feed did";
+}
+
+/// @brief A sequence with no gap must not involve the recovery feed at all.
+TEST(QuickFAST, testUnbrokenSequenceLeavesTheTimeoutCountAtZero)
+{
+  Codecs::FixedSizeHeaderAnalyzer packetHeader(0, true, 4, 0, 0, 4);
+  Codecs::NoHeaderAnalyzer messageHeader;
+  RecordingBuilder builder;
+  auto recovery = std::make_shared<NeverFillingFeed>();
+  Codecs::PacketSequencingAssembler assembler(
+    trivialRegistry(), packetHeader, messageHeader, builder, 4, recovery);
+  assembler.setGapTimeoutLimit(1000);
+
+  feed(assembler, {packet(0), packet(1), packet(2)});
+
+  EXPECT_TRUE(builder.gaps_.empty());
+  EXPECT_EQ(3u, builder.messages_);
+  EXPECT_EQ(0u, assembler.consecutiveGapTimeouts());
+  EXPECT_EQ(0u, recovery->reportGapCalls_);
 }

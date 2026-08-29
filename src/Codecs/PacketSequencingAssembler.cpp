@@ -368,6 +368,7 @@ PacketSequencingAssembler::handleGap()
   {
     gapEnd_ = findGapEnd();
     gapWait_ = false;
+    consecutiveGapTimeouts_ = 0;
     if(recoveryFeed_)
     {
       // Initiate the process of filling the gap.
@@ -404,7 +405,25 @@ PacketSequencingAssembler::handleGap()
     // delay until the recovery feed has data (or times out)
     // The timeout is there in the unlikely event that the missing packet(s)
     // magically arrive(s) on one of the primary (A/B) feeds.
-    recoveryFeed_->waitGapFill(std::chrono::milliseconds(10));
+    if(recoveryFeed_->waitGapFill(std::chrono::milliseconds(10)))
+    {
+      consecutiveGapTimeouts_ = 0;
+    }
+    else
+    {
+      // Without this the caller has nothing to act on: a gap the feed keeps
+      // promising to fill but never does is re-polled at 100 Hz forever with
+      // no diagnostic. A feed that answers stillWaiting() honestly still
+      // escapes on its own; the limit is for the ones that do not.
+      ++consecutiveGapTimeouts_;
+      if(gapTimeoutLimit_ != 0 && consecutiveGapTimeouts_ >= gapTimeoutLimit_)
+      {
+        builder_.reportGap(nextSequenceNumber_, gapEnd_);
+        nextSequenceNumber_ = gapEnd_;
+        gapWait_ = false;
+        consecutiveGapTimeouts_ = 0;
+      }
+    }
   }
 }
 
