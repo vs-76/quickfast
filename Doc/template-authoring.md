@@ -1,3 +1,7 @@
+<!-- Copyright (c) 2026, QuickFAST contributors. -->
+<!-- All rights reserved. -->
+<!-- See the file license.txt for licensing information. -->
+
 # Template authoring notes
 
 Behaviours a template author needs to know about that are not obvious from the
