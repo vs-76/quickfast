@@ -95,7 +95,7 @@ FieldSet::isPresent(const FieldIdentity & identity) const
 {
   for(size_t index = 0; index < used_; ++index)
   {
-    if(identity == fields_[index].getIdentity())
+    if(identity.matches(fields_[index].getIdentity()))
     {
       return fields_[index].getField()->isDefined();
     }
@@ -122,7 +122,7 @@ FieldSet::replaceField(const FieldIdentity & identity,
 {
   for(size_t index = 0; index < used_; ++index)
   {
-    if(identity == fields_[index].getIdentity())
+    if(identity.matches(fields_[index].getIdentity()))
     {
       if(fields_[index].getField()->isDefined()) {
         (fields_ + index)->~MessageField();  // Explicit destroy
@@ -140,7 +140,7 @@ FieldSet::getField(const Messages::FieldIdentity & identity, FieldCPtr & value) 
   PROFILE_POINT("FieldSet::getField");
   for(size_t index = 0; index < used_; ++index)
   {
-    if(identity == fields_[index].getIdentity())
+    if(identity.matches(fields_[index].getIdentity()))
     {
       value = fields_[index].getField();
       return value->isDefined();

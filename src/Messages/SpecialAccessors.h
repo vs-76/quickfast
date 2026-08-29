@@ -140,7 +140,7 @@ namespace QuickFAST
     inline bool
     SingleFieldAccessor::isPresent(const FieldIdentity & identity)const
     {
-      return identity == messageField_.getIdentity();
+      return identity.matches(messageField_.getIdentity());
     }
     inline bool
     SingleFieldAccessor::getUnsignedInteger(const FieldIdentity & identity, ValueType::Type type, uint64 & value)const
