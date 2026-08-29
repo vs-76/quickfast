@@ -167,7 +167,13 @@ DecoderConnection::configure(
         throw std::invalid_argument(msg.str());
     }
     Codecs::XMLTemplateParser parser;
-    parser.setVerboseOutput(*verboseFile_);
+    // Same shape as the echo stream: verboseFile_ stays null without -vo, and
+    // forming a reference from it is undefined even though the parser stores
+    // the address and treats null as "not verbose".
+    if(verboseFile_ != nullptr)
+    {
+      parser.setVerboseOutput(*verboseFile_);
+    }
     parser.setNonstandard(configuration.nonstandard());
 
     registry_ = parser.parse(templates);
