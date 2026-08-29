@@ -1020,9 +1020,10 @@ namespace QuickFAST{
       value = 0;
 
       // Assume an 8 bit byte;
-      // Check the seven data bitsbit to make sure no significant
-      // information is lost.
-      unsigned short shift = ((sizeof(UnsignedIntType) * byteSize) / dataShift) * dataShift;
+      // Check the seven data bits to make sure no significant
+      // information is lost.  The mask must cover exactly the dataShift bits
+      // that the next "value <<= dataShift" would push off the top.
+      unsigned short shift = (sizeof(UnsignedIntType) * byteSize) - dataShift;
       UnsignedIntType overflowMask(UnsignedIntType(-1) << shift);
       UnsignedIntType overflowCheck(value << shift);
 

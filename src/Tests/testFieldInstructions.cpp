@@ -2400,3 +2400,97 @@ TEST(QuickFAST, test_issue_31)
   EXPECT_EQ((result), (testString));
   EXPECT_TRUE(pmap == pmapResult);
 }
+
+namespace
+{
+  // Decode a single mandatory integer field from a hand-built FAST stop-bit
+  // encoding.  Returns the decoded field so the caller can inspect the value.
+  template<typename InstructionType>
+  Messages::FieldCPtr decodeSingleIntegerField(const std::string & wire)
+  {
+    Codecs::DataSourceString source(wire);
+    Codecs::DictionaryIndexer indexer;
+    Codecs::PresenceMap pmap(1);
+
+    InstructionType field("Value", "");
+    field.indexDictionaries(indexer, "global", "", "");
+    Codecs::TemplateRegistryPtr registry(
+      new Codecs::TemplateRegistry(3, 3, indexer.size()));
+    field.finalize(*registry);
+
+    Codecs::Decoder decoder(registry);
+    Codecs::SingleMessageConsumer consumer;
+    Codecs::GenericMessageBuilder builder(consumer);
+
+    builder.startMessage("UNIT_TEST", "", 10);
+    field.decode(source, pmap, decoder, builder);
+    builder.endMessage(builder);
+
+    Messages::Message & fieldSet = consumer.message();
+    if(fieldSet.size() != 1)
+    {
+      return Messages::FieldCPtr();
+    }
+    return fieldSet.begin()->getField();
+  }
+}
+
+TEST(QuickFAST, testUnsignedIntegerOverflowIsDetected)
+{
+  // An encoding whose value does not fit the declared field width must be
+  // rejected with [ERR D2] rather than silently truncated.
+
+  // uInt8: 2^8 encoded in two bytes.
+  EXPECT_THROW(
+    decodeSingleIntegerField<Codecs::FieldInstructionUInt8>(
+      std::string("\x02\x80", 2)),
+    EncodingError);
+
+  // uInt16: 2^16 encoded in three bytes.
+  EXPECT_THROW(
+    decodeSingleIntegerField<Codecs::FieldInstructionUInt16>(
+      std::string("\x04\x00\x80", 3)),
+    EncodingError);
+
+  // uInt32: 2^32 encoded in five bytes.
+  EXPECT_THROW(
+    decodeSingleIntegerField<Codecs::FieldInstructionUInt32>(
+      std::string("\x10\x00\x00\x00\x80", 5)),
+    EncodingError);
+
+  // uInt32: 2^35-1, the largest five-byte encoding.
+  EXPECT_THROW(
+    decodeSingleIntegerField<Codecs::FieldInstructionUInt32>(
+      std::string("\x7F\x7F\x7F\x7F\xFF", 5)),
+    EncodingError);
+
+  // uInt64: 2^64 encoded in ten bytes.
+  EXPECT_THROW(
+    decodeSingleIntegerField<Codecs::FieldInstructionUInt64>(
+      std::string("\x02\x00\x00\x00\x00\x00\x00\x00\x00\x80", 10)),
+    EncodingError);
+}
+
+TEST(QuickFAST, testUnsignedIntegerMaximumIsAccepted)
+{
+  // The overflow check must not reject the largest value each type can hold.
+  EXPECT_NO_THROW(
+    decodeSingleIntegerField<Codecs::FieldInstructionUInt8>(
+      std::string("\x01\xFF", 2)));
+
+  EXPECT_NO_THROW(
+    decodeSingleIntegerField<Codecs::FieldInstructionUInt16>(
+      std::string("\x03\x7F\xFF", 3)));
+
+  Messages::FieldCPtr uint32Max =
+    decodeSingleIntegerField<Codecs::FieldInstructionUInt32>(
+      std::string("\x0F\x7F\x7F\x7F\xFF", 5));
+  ASSERT_TRUE(bool(uint32Max));
+  EXPECT_EQ((uint32Max->toUInt32()), (4294967295UL));
+
+  Messages::FieldCPtr uint64Max =
+    decodeSingleIntegerField<Codecs::FieldInstructionUInt64>(
+      std::string("\x01\x7F\x7F\x7F\x7F\x7F\x7F\x7F\x7F\xFF", 10));
+  ASSERT_TRUE(bool(uint64Max));
+  EXPECT_EQ((uint64Max->toUInt64()), (18446744073709551615ULL));
+}
