@@ -28,7 +28,7 @@ FieldInt8::toInt8() const
 {
   if(!valid_)
   {
-    FieldNotPresent ex("Field not present");
+    throw FieldNotPresent("Field not present");
   }
   return static_cast<int8>(signedInteger_);
 }

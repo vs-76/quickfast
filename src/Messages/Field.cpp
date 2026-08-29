@@ -130,10 +130,19 @@ Field::isSignedInteger()const
 const StringBuffer &
 Field::toString()const
 {
-  if(!valid_ || !isString())
+  // Absence and a wrong-type request are different complaints, and folding
+  // them together made an absent ascii field report "ascii cannot be converted
+  // to String" -- which reads as a type error for a conversion that is in fact
+  // supported. The typed accessors signal absence with FieldNotPresent, so
+  // strings do too.
+  if(!isString())
   {
     UnsupportedConversion ex(ValueType::typeName(getType()), "String");
     throw ex;
+  }
+  if(!valid_)
+  {
+    throw FieldNotPresent("Field not present");
   }
   return string_;
 }

@@ -28,7 +28,7 @@ FieldUInt64::toUInt64() const
 {
   if(!valid_)
   {
-    FieldNotPresent ex("Field not present");
+    throw FieldNotPresent("Field not present");
   }
   return unsignedInteger_;
 }
