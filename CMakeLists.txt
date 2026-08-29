@@ -8,6 +8,24 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 option(QUICKFAST_BUILD_TESTS "Build QuickFAST unit tests" ON)
 option(QUICKFAST_BUILD_EXAMPLES "Build QuickFAST example applications" ON)
+option(QUICKFAST_USE_LIBCXX
+  "Use LLVM libc++ instead of the default C++ standard library (Clang only)"
+  OFF)
+
+if(QUICKFAST_USE_LIBCXX)
+  if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
+          OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"))
+    message(FATAL_ERROR
+      "QUICKFAST_USE_LIBCXX=ON requires Clang or AppleClang "
+      "(CMAKE_CXX_COMPILER_ID=${CMAKE_CXX_COMPILER_ID})")
+  endif()
+  # Propagate to all CXX targets created after this point (including FetchContent
+  # deps such as GoogleTest). Prefer CMAKE_CXX_FLAGS over CMAKE_*_LINKER_FLAGS so
+  # C try-compiles (e.g. GoogleTest) are not passed -stdlib=.
+  if(NOT CMAKE_CXX_FLAGS MATCHES "(^|[ \t])-stdlib=libc\\+\\+([ \t]|$)")
+    string(APPEND CMAKE_CXX_FLAGS " -stdlib=libc++")
+  endif()
+endif()
 
 include(FetchContent)
 find_package(Threads REQUIRED)
@@ -236,3 +254,8 @@ endif()
 
 message(STATUS "QuickFAST ${PROJECT_VERSION}: C++${CMAKE_CXX_STANDARD}, XercesC ${XercesC_VERSION} (no Boost)")
 message(STATUS "Warning flags: ${QUICKFAST_WARNING_FLAGS}")
+if(QUICKFAST_USE_LIBCXX)
+  message(STATUS "C++ standard library: libc++ (-stdlib=libc++)")
+else()
+  message(STATUS "C++ standard library: default (set -DQUICKFAST_USE_LIBCXX=ON for libc++ with Clang)")
+endif()

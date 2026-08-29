@@ -10,6 +10,8 @@ which supports using QuickFAST in the .NET environment. Ask if you want support 
 
 ### Linux build (CMake + C++23)
 
+See **[BUILD.md](BUILD.md)** for g++ / clang++ command recipes (Release/Debug, tests, examples, libc++).
+
 Native library, examples, and tests no longer depend on Boost. Dependencies:
 
 - C++23 compiler (verified with g++ 16 and clang++ 22; GCC 13+ / Clang 16+ expected to work)
@@ -40,7 +42,15 @@ cmake -S . -B build-clang22 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clan
 cmake --build build-clang22 -j && ctest --test-dir build-clang22 --output-on-failure
 ```
 
-Optional flags: `-DQUICKFAST_BUILD_TESTS=OFF`, `-DQUICKFAST_BUILD_EXAMPLES=OFF`.
+Clang with libc++ (optional, default OFF):
+
+```bash
+cmake -S . -B build-clang22-libcxx -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_COMPILER=clang++-22 -DQUICKFAST_USE_LIBCXX=ON
+cmake --build build-clang22-libcxx -j && ctest --test-dir build-clang22-libcxx --output-on-failure
+```
+
+Optional flags: `-DQUICKFAST_BUILD_TESTS=OFF`, `-DQUICKFAST_BUILD_EXAMPLES=OFF`, `-DQUICKFAST_USE_LIBCXX=ON` (Clang only).
 
 The legacy MPC/`setup.sh` flow remains available for older toolchains; prefer CMake on modern Linux.
 
