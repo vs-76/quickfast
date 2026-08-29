@@ -28,7 +28,7 @@ FieldInt16::toInt16() const
 {
   if(!valid_)
   {
-    FieldNotPresent ex("Field not present");
+    throw FieldNotPresent("Field not present");
   }
   return static_cast<int16>(signedInteger_);
 }

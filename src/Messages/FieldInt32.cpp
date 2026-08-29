@@ -28,7 +28,7 @@ FieldInt32::toInt32() const
 {
   if(!valid_)
   {
-    FieldNotPresent ex("Field not present");
+    throw FieldNotPresent("Field not present");
   }
   return static_cast<int32>(signedInteger_);
 }

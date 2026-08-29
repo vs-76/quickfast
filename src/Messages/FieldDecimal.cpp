@@ -36,7 +36,7 @@ FieldDecimal::toDecimal() const
 {
   if(!valid_)
   {
-    FieldNotPresent ex("Field not present");
+    throw FieldNotPresent("Field not present");
   }
   return Decimal(signedInteger_, exponent_);
 }
