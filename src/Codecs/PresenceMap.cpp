@@ -252,11 +252,9 @@ PresenceMap::reset(size_t bitCount)
       bytePosition_ = bytes;
     }
   }
-  bits_[0] = 0;
-  if(bytePosition_ != 0)
-  {
-    memset(bits_ + 1, 0, byteCapacity_ - 1);
-  }
+  // decode() leaves bytePosition_ at zero, so keying the clear off it left
+  // every byte but the first holding the previous message's bits.
+  memset(bits_, 0, byteCapacity_);
   rewind();
 
 }

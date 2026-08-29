@@ -201,3 +201,34 @@ TEST(QuickFAST, testPresenceMapGrowsGeometrically)
     EXPECT_TRUE(pmap.checkNextField());
   }
 }
+
+TEST(QuickFAST, testPresenceMapResetClearsEveryByte)
+{
+  // decode() leaves bytePosition_ at zero, and reset() skipped its memset in
+  // exactly that case, clearing only the first byte.  Every later byte kept
+  // the previous message's bits, so a template asking for more bits than the
+  // wire pmap carried would read stale bits as "field present".
+  const std::string threeFullBytes("\x7F\x7F\xFF", 3);
+
+  // Sanity: this map really does set bits beyond the first byte.
+  {
+    Codecs::PresenceMap populated(1);
+    Codecs::DataSourceString source(threeFullBytes);
+    populated.decode(source);
+    for(size_t bit = 0; bit < 21; ++bit)
+    {
+      ASSERT_TRUE(populated.checkNextField());
+    }
+  }
+
+  Codecs::PresenceMap pmap(1);
+  Codecs::DataSourceString source(threeFullBytes);
+  pmap.decode(source);
+  // No checkNextField() in between, so bytePosition_ is still zero here.
+  pmap.reset();
+
+  for(size_t bit = 0; bit < 21; ++bit)
+  {
+    EXPECT_TRUE(!pmap.checkNextField());
+  }
+}
