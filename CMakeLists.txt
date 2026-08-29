@@ -11,6 +11,21 @@ option(QUICKFAST_BUILD_EXAMPLES "Build QuickFAST example applications" ON)
 option(QUICKFAST_USE_LIBCXX
   "Use LLVM libc++ instead of the default C++ standard library (Clang only)"
   OFF)
+option(QUICKFAST_ENABLE_COVERAGE
+  "Instrument QuickFAST and tests for gcov coverage (GCC; use with gcovr)"
+  OFF)
+
+if(QUICKFAST_ENABLE_COVERAGE)
+  if(NOT QUICKFAST_BUILD_TESTS)
+    message(FATAL_ERROR
+      "QUICKFAST_ENABLE_COVERAGE=ON requires QUICKFAST_BUILD_TESTS=ON")
+  endif()
+  if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    message(STATUS
+      "QUICKFAST_ENABLE_COVERAGE=ON with CMAKE_BUILD_TYPE=Release; "
+      "prefer Debug for accurate coverage maps")
+  endif()
+endif()
 
 if(QUICKFAST_USE_LIBCXX)
   if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
@@ -155,6 +170,10 @@ target_link_libraries(QuickFAST
 )
 
 target_compile_options(QuickFAST PRIVATE ${QUICKFAST_WARNING_FLAGS})
+if(QUICKFAST_ENABLE_COVERAGE)
+  target_compile_options(QuickFAST PRIVATE --coverage)
+  target_link_options(QuickFAST PRIVATE --coverage)
+endif()
 
 set_target_properties(QuickFAST PROPERTIES
   OUTPUT_NAME QuickFAST
@@ -196,6 +215,10 @@ if(QUICKFAST_BUILD_TESTS)
       GTest::gmock
   )
   target_compile_options(QuickFASTTest PRIVATE ${QUICKFAST_WARNING_FLAGS})
+  if(QUICKFAST_ENABLE_COVERAGE)
+    target_compile_options(QuickFASTTest PRIVATE --coverage)
+    target_link_options(QuickFASTTest PRIVATE --coverage)
+  endif()
   set_target_properties(QuickFASTTest PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
   )
@@ -204,6 +227,17 @@ if(QUICKFAST_BUILD_TESTS)
     PROPERTIES ENVIRONMENT "QUICKFAST_ROOT=${CMAKE_SOURCE_DIR}"
     DISCOVERY_MODE PRE_TEST
   )
+
+  if(QUICKFAST_ENABLE_COVERAGE)
+    find_program(QUICKFAST_GCOVR NAMES gcovr)
+    if(QUICKFAST_GCOVR)
+      include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/Coverage.cmake")
+    else()
+      message(STATUS
+        "Coverage: gcovr not found; instrumentation enabled but target "
+        "'coverage' not created (install gcovr)")
+    endif()
+  endif()
 endif()
 
 if(QUICKFAST_BUILD_EXAMPLES)
@@ -287,4 +321,7 @@ if(QUICKFAST_USE_LIBCXX)
   message(STATUS "C++ standard library: libc++ (-stdlib=libc++)")
 else()
   message(STATUS "C++ standard library: default (set -DQUICKFAST_USE_LIBCXX=ON for libc++ with Clang)")
+endif()
+if(QUICKFAST_ENABLE_COVERAGE)
+  message(STATUS "Coverage: instrumentation ON (--coverage on QuickFAST + QuickFASTTest)")
 endif()
