@@ -13,6 +13,8 @@
 #include <Common/StringBuffer.h>
 #include <Messages/Group_fwd.h>
 #include <Messages/Sequence_fwd.h>
+
+#include <mutex>
 namespace QuickFAST{
   namespace Messages{
     /// @brief The value of a field -- for use in Message and Dictionary.
@@ -42,11 +44,27 @@ namespace QuickFAST{
       }
 
       /// @brief display the value as a string.  Low performance
+      ///
+      /// Safe to call concurrently on a shared field, which matters because
+      /// fields travel as FieldCPtr -- shared_ptr<const Field> -- and that
+      /// conventionally means shareable. The cache fill mutates a mutable
+      /// StringBuffer from a const method, so two threads formatting the same
+      /// decoded field used to race on its pointer, size and capacity.
       virtual const StringBuffer & displayString() const
       {
-        if(valid_ && !isString() && string_.empty())
+        if(valid_ && !isString())
         {
-          valueToStringBuffer();
+          // One lock for all fields: formatting is documented low performance,
+          // and a per-field mutex would grow an object the decoder creates
+          // millions of.
+          std::lock_guard<std::mutex> guard(displayStringMutex());
+          if(!stringCached_)
+          {
+            valueToStringBuffer();
+            // Keyed on a flag rather than on string_.empty(), so a value that
+            // formats to nothing is not re-rendered on every call.
+            stringCached_ = true;
+          }
         }
         return string_;
       }
@@ -334,7 +352,11 @@ namespace QuickFAST{
       size_t stringLength_ = 0;
       ///@brief Buffer containing string value. Owned by this object
       mutable StringBuffer string_;
+      ///@brief Has displayString() already rendered a non-string value?
+      mutable bool stringCached_ = false;
 
+      /// @brief Guards the displayString() cache fill for every Field.
+      static std::mutex & displayStringMutex();
     };
   }
 }
