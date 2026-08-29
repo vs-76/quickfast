@@ -49,7 +49,7 @@ StreamingAssembler::serviceQueue(
     {
       headerIsComplete_ = headerAnalyzer_.analyzeHeader(*this, blockSize_, skipBlock_);
     }
-    more = headerIsComplete_ && !stopping_;
+    more = headerIsComplete_;
 
     if(more)
     {
