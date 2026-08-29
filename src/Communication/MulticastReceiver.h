@@ -57,7 +57,7 @@ namespace QuickFAST
           return !readInProgress_;
         }
 
-        bool initializeReceiver()
+        void initializeReceiver()
         {
           socket_.open(endpoint_.protocol());
           socket_.set_option(asio::ip::udp::socket::reuse_address(true));
@@ -70,7 +70,6 @@ namespace QuickFAST
             listenInterface_.to_v4());
           socket_.set_option(joinRequest);
           joined_ = true;
-          return true;
         }
 
         bool fillBuffer(LinkedBuffer * buffer, std::unique_lock<std::mutex> &)
@@ -323,7 +322,7 @@ namespace QuickFAST
                 << ':' << feeds_[nFeed]->endpoint().port();
               assembler_->logMessage(Common::Logger::QF_LOG_INFO, msg.str());
             }
-            ok = feeds_[nFeed]->initializeReceiver();
+            feeds_[nFeed]->initializeReceiver();
           }
         }
         catch (const std::exception & exception)

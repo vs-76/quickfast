@@ -65,12 +65,12 @@ namespace QuickFAST
         bool result = reader_.read(pcapBuffer, pcapSize);
         if(result)
         {
-          if(pcapSize <= buffer->capacity())
+          if(pcapSize > buffer->capacity())
           {
-            memcpy(buffer->get(), pcapBuffer, pcapSize);
-            acceptFullBuffer(buffer, pcapSize, lock);
-            result = true;
+            return false;
           }
+          memcpy(buffer->get(), pcapBuffer, pcapSize);
+          acceptFullBuffer(buffer, pcapSize, lock);
         }
         return result;
       }
