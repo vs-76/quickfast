@@ -541,3 +541,42 @@ TEST(QuickFAST, TestWorkingBufferEquality)
   other.push('d');
   EXPECT_TRUE(!(forward == other));
 }
+
+TEST(QuickFAST, TestWorkingBufferAppendAfterPopFront)
+{
+  // append() sizes its grow request from size(), which excludes the bytes
+  // already consumed by pop_front().  With startPos_ > 0 that request is
+  // smaller than the current capacity, and grow() then copies capacity_ bytes
+  // into the smaller allocation.  Run under -fsanitize=address to see it.
+  WorkingBuffer buffer;
+  buffer.clear(false);
+  const size_t capacity = buffer.capacity();
+  std::string expected;
+  for(size_t n = 0; n < capacity; ++n)
+  {
+    const uchar byte = uchar('a' + (n % 26));
+    buffer.push(byte);
+    expected += char(byte);
+  }
+  ASSERT_EQ((buffer.capacity()), (capacity));
+
+  const size_t dropped = 5;
+  for(size_t n = 0; n < dropped; ++n)
+  {
+    buffer.pop_front();
+  }
+  expected.erase(0, dropped);
+
+  WorkingBuffer tail;
+  tail.clear(false);
+  tail.push('!');
+  tail.push('?');
+  expected += "!?";
+
+  buffer.append(tail);
+
+  EXPECT_EQ((buffer.size()), (expected.size()));
+  EXPECT_EQ(
+    (std::string(reinterpret_cast<const char *>(buffer.begin()), buffer.size())),
+    (expected));
+}
