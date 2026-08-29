@@ -297,7 +297,12 @@ FieldInstruction::decodeByteVector(
   WorkingBuffer & buffer,
   size_t length)
 {
-  buffer.clear(false, length);
+  // The length arrived on the wire and the buffer belongs to the Context, so
+  // it outlives the message.  Reserve only a plausible amount up front and let
+  // push() grow the buffer as bytes actually arrive; anything longer than the
+  // input runs out of data and reports [ERR U03] before the memory is claimed.
+  static const size_t maxSpeculativeReservation = 64 * 1024;
+  buffer.clear(false, std::min(length, maxSpeculativeReservation));
   for(size_t pos = 0;
     pos < length;
     ++pos)

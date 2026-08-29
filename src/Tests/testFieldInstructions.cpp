@@ -2494,3 +2494,60 @@ TEST(QuickFAST, testUnsignedIntegerMaximumIsAccepted)
   ASSERT_TRUE(bool(uint64Max));
   EXPECT_EQ((uint64Max->toUInt64()), (18446744073709551615ULL));
 }
+
+TEST(QuickFAST, testByteVectorLengthIsNotPreallocated)
+{
+  // A wire-supplied length must not be handed straight to the allocator: the
+  // working buffer lives in the Context and outlives the message, so a few
+  // bytes of hostile input would permanently balloon the decoder.
+  Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(1, 1, 0));
+  Codecs::Decoder decoder(registry);
+
+  const size_t claimedLength = 100000000u;
+  const std::string noPayload;
+  Codecs::DataSourceString source(noPayload);
+  WorkingBuffer buffer;
+
+  EXPECT_THROW(
+    Codecs::FieldInstruction::decodeByteVector(
+      decoder, source, "blob", buffer, claimedLength),
+    EncodingError);
+  EXPECT_LT((buffer.capacity()), (claimedLength));
+
+  // The same length arriving through a real byteVector instruction.
+  // 0x2F 0x57 0x42 0x80 is the stop-bit encoding of 100000000, with no
+  // payload bytes following it.
+  Codecs::DataSourceString wireSource(std::string("\x2F\x57\x42\x80", 4));
+  Codecs::DictionaryIndexer indexer;
+  Codecs::PresenceMap pmap(1);
+  Codecs::FieldInstructionByteVector field("blob", "");
+  field.indexDictionaries(indexer, "global", "", "");
+  Codecs::TemplateRegistryPtr wireRegistry(
+    new Codecs::TemplateRegistry(3, 3, indexer.size()));
+  field.finalize(*wireRegistry);
+  Codecs::Decoder wireDecoder(wireRegistry);
+  Codecs::SingleMessageConsumer consumer;
+  Codecs::GenericMessageBuilder builder(consumer);
+  builder.startMessage("UNIT_TEST", "", 10);
+
+  EXPECT_THROW(
+    field.decode(wireSource, pmap, wireDecoder, builder),
+    EncodingError);
+  EXPECT_LT((wireDecoder.getWorkingBuffer().capacity()), (claimedLength));
+}
+
+TEST(QuickFAST, testByteVectorOfHonestLengthStillDecodes)
+{
+  // The cap on speculative reservation must not truncate a real payload.
+  const size_t payloadLength = 300000u;
+  std::string payload(payloadLength, 'x');
+  Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(1, 1, 0));
+  Codecs::Decoder decoder(registry);
+  Codecs::DataSourceString source(payload);
+  WorkingBuffer buffer;
+
+  Codecs::FieldInstruction::decodeByteVector(
+    decoder, source, "blob", buffer, payloadLength);
+  EXPECT_EQ((buffer.size()), (payloadLength));
+  EXPECT_EQ((std::string(reinterpret_cast<const char *>(buffer.begin()), buffer.size())), (payload));
+}
