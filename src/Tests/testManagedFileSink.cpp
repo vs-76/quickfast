@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <format>
 #include <fstream>
 #include <functional>
 #include <string>
@@ -485,6 +486,104 @@ TEST_F(ManagedFileSinkTest, MultipleRotationsInSameSecondGetSequenceSuffix)
   // Every rotation must survive: three distinct names, two carrying a ".N" suffix.
   EXPECT_EQ(3u, rotated);
   EXPECT_EQ(2u, sequenced);
+}
+
+TEST(ManagedFileSinkScheduleTest, NextRotationSurvivesDstTransitions)
+{
+  // Zones that shift the clock at 24:00 make the default midnight rotation a
+  // non-existent local time once a year; the classic 02:00 and 01:00 gaps cover
+  // the northern-hemisphere cases.
+  struct Case
+  {
+    const char * zone;
+    int hour;
+    int minute;
+  };
+  const std::vector<Case> cases = {
+    {"America/Santiago", 0, 0},
+    {"America/Havana", 0, 0},
+    {"Asia/Beirut", 0, 0},
+    {"Australia/Lord_Howe", 0, 0},
+    {"America/New_York", 2, 0},
+    {"Europe/London", 1, 0},
+    {"Europe/Moscow", 0, 0},
+    {"UTC", 0, 30},
+  };
+
+  for(const auto & c : cases)
+  {
+    const std::chrono::time_zone * zone = nullptr;
+    ASSERT_NO_THROW(zone = std::chrono::locate_zone(c.zone)) << "zone " << c.zone;
+
+    for(std::chrono::sys_days day{std::chrono::year{2024} / 1 / 1};
+        day < std::chrono::sys_days{std::chrono::year{2030} / 1 / 1};
+        day += std::chrono::days{1})
+    {
+      // Sample around the clock so the candidate lands both before and after
+      // "now" on transition days.
+      for(const int atHour : {0, 1, 2, 3, 12, 23})
+      {
+        const auto from =
+          std::chrono::system_clock::time_point{day} + std::chrono::hours{atHour};
+        std::chrono::system_clock::time_point next{};
+        ASSERT_NO_THROW(
+          next = managed_file_sink_mt::next_rotation_after(zone, from, c.hour, c.minute))
+          << "zone " << c.zone << " hour " << c.hour << " from "
+          << std::format("{:%Y-%m-%d %H:%M}", from);
+        EXPECT_GT(next, from) << "zone " << c.zone;
+        EXPECT_LE(next, from + std::chrono::hours{26}) << "zone " << c.zone;
+      }
+    }
+  }
+}
+
+TEST(ManagedFileSinkScheduleTest, NextRotationLandsOnRequestedLocalTime)
+{
+  const auto * zone = std::chrono::locate_zone("Europe/Moscow");
+  const auto from = std::chrono::sys_days{std::chrono::year{2026} / 3 / 15}
+                    + std::chrono::hours{9};
+  const auto next = managed_file_sink_mt::next_rotation_after(zone, from, 3, 30);
+
+  const std::chrono::zoned_time zt{zone, next};
+  EXPECT_EQ("2026-03-16 03:30", std::format("{:%Y-%m-%d %H:%M}", zt));
+}
+
+TEST_F(ManagedFileSinkTest, RotationFailureCountersStayCleanInNormalUse)
+{
+  ManagedFileSinkConfig cfg = defaultConfig();
+  cfg.max_file_bytes = 256;
+  auto logger = makeLogger(cfg, "mfs_counters");
+  for(int i = 0; i < 40; ++i)
+  {
+    logger->info(std::string(32, 'x'));
+  }
+  logger->flush();
+  ASSERT_TRUE(sink_->wait_for_compression_idle(std::chrono::seconds(5)));
+  sink_->rotate_now();
+
+  EXPECT_EQ(0u, sink_->rotation_failures());
+  EXPECT_FALSE(sink_->rotation_schedule_lost());
+}
+
+TEST_F(ManagedFileSinkTest, SinkConstructsInZonesWithMidnightDstShift)
+{
+  // A gap on the transition day must not stop the sink from scheduling.
+  for(const char * zoneName : {"America/Santiago", "America/Havana", "Asia/Beirut"})
+  {
+    ManagedFileSinkConfig cfg = defaultConfig();
+    cfg.base_path = dir_ / (std::string("dst_") + "app.log");
+    cfg.compress = false;
+    cfg.time_zone = zoneName;
+
+    ASSERT_NO_THROW({
+      auto logger = makeLogger(cfg, std::string("mfs_dst_") + zoneName);
+      logger->info("payload");
+      logger->flush();
+      sink_->request_shutdown();
+      logger.reset();
+      sink_.reset();
+    }) << "zone " << zoneName;
+  }
 }
 
 TEST_F(ManagedFileSinkTest, RotatedNamesUseWholeSecondsWithoutFractions)

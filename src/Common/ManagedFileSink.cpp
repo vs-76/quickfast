@@ -296,19 +296,36 @@ managed_file_sink_mt::resolve_zone_() const
 }
 
 std::chrono::system_clock::time_point
-managed_file_sink_mt::next_rotation_tp_(std::chrono::system_clock::time_point from) const
+managed_file_sink_mt::next_rotation_after(
+  const std::chrono::time_zone * zone,
+  std::chrono::system_clock::time_point from,
+  int hour,
+  int minute)
 {
   using namespace std::chrono;
-  const zoned_time zt{zone_, floor<seconds>(from)};
+  const zoned_time zt{zone, floor<seconds>(from)};
   const local_time<seconds> local = zt.get_local_time();
   const local_days day = floor<days>(local);
   local_time<seconds> candidate =
-    local_time<seconds>{day} + hours{cfg_.rotation_hour} + minutes{cfg_.rotation_minute};
+    local_time<seconds>{day} + hours{hour} + minutes{minute};
   if(candidate <= local)
   {
     candidate += days{1};
   }
-  return zoned_time{zone_, candidate}.get_sys_time();
+  // choose::latest is required, not a preference: the two-argument zoned_time
+  // throws when the local time falls in a DST gap or is ambiguous, and midnight
+  // is exactly such a time once a year in zones that shift the clock at 24:00
+  // (America/Santiago, America/Havana, Asia/Beirut, ...). A throw here would
+  // escape the Asio completion handler and tear down the shared io_context.
+  // For a gap this yields the instant the offset changes; for an ambiguous time,
+  // the later of the two.
+  return zoned_time{zone, candidate, choose::latest}.get_sys_time();
+}
+
+std::chrono::system_clock::time_point
+managed_file_sink_mt::next_rotation_tp_(std::chrono::system_clock::time_point from) const
+{
+  return next_rotation_after(zone_, from, cfg_.rotation_hour, cfg_.rotation_minute);
 }
 
 void
@@ -430,13 +447,60 @@ managed_file_sink_mt::on_rotation_timer_(const asio::error_code & ec)
   {
     return;
   }
-  std::lock_guard<std::mutex> lock(base_sink<std::mutex>::mutex_);
-  if(shutting_down_)
+  // This runs as an Asio completion handler on an io_context the application also
+  // uses for its feed handlers. An escaping exception would propagate out of
+  // io_context::run() and take that thread down, so losing a rotation is always
+  // preferable to letting one out.
+  try
   {
-    return;
+    std::lock_guard<std::mutex> lock(base_sink<std::mutex>::mutex_);
+    if(shutting_down_)
+    {
+      return;
+    }
+    rotate_unlocked_(std::chrono::system_clock::now());
+    arm_rotation_timer_unlocked_();
   }
-  rotate_unlocked_(std::chrono::system_clock::now());
-  arm_rotation_timer_unlocked_();
+  catch(...)
+  {
+    rotation_failures_.fetch_add(1, std::memory_order_relaxed);
+    reschedule_after_failure_();
+  }
+}
+
+void
+managed_file_sink_mt::reschedule_after_failure_()
+{
+  // Keep the schedule alive so one failed rotation does not disable time-based
+  // rotation until the process restarts.
+  try
+  {
+    std::lock_guard<std::mutex> lock(base_sink<std::mutex>::mutex_);
+    if(!shutting_down_)
+    {
+      arm_rotation_timer_unlocked_();
+    }
+  }
+  catch(...)
+  {
+    // Re-arming failed too, so there is no live timer any more and nothing else is
+    // safe to attempt from a completion handler. Publish the state instead of
+    // swallowing it: size-based rotation in sink_it_() still works, but scheduled
+    // rotation is gone until the process restarts.
+    rotation_schedule_lost_.store(true, std::memory_order_relaxed);
+  }
+}
+
+std::uint64_t
+managed_file_sink_mt::rotation_failures() const noexcept
+{
+  return rotation_failures_.load(std::memory_order_relaxed);
+}
+
+bool
+managed_file_sink_mt::rotation_schedule_lost() const noexcept
+{
+  return rotation_schedule_lost_.load(std::memory_order_relaxed);
 }
 
 void

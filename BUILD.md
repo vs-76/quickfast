@@ -269,6 +269,21 @@ keeps running. Beyond shutdown, the sink exposes `rotate_now()` (on-demand
 rotation, e.g. from a `SIGHUP` handler), `wait_for_compression_idle(timeout)`,
 and `managed_bytes()`.
 
+Scheduling is DST-safe. The rotation time is resolved with
+`std::chrono::choose::latest`, because a local time such as midnight does not
+exist on one day a year in zones that shift the clock at 24:00
+(`America/Santiago`, `America/Havana`, `Asia/Beirut`), and the two-argument
+`zoned_time` throws on such a time. A gap resolves to the instant the offset
+changes; an ambiguous time resolves to the later of its two instants. See
+`managed_file_sink_mt::next_rotation_after()`, which is public and testable.
+
+Because the rotation timer runs on an `io_context` the application also uses for
+its feed handlers, the handler never lets an exception escape — that would
+propagate out of `io_context::run()` and take the thread down. Failures are
+counted in `rotation_failures()`, and `rotation_schedule_lost()` becomes true if
+a failure also prevented the timer being re-armed (size-based rotation keeps
+working; scheduled rotation stops until restart). Both are worth alerting on.
+
 The `FilesystemFreePercent` policy needs free space to be queryable (`statvfs`
 on POSIX, `GetDiskFreeSpaceEx` on Windows); when the query fails the policy is
 treated as not triggered rather than evicting on a guess.

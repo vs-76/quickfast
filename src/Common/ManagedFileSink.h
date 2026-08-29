@@ -23,6 +23,7 @@
 #include <deque>
 #include <filesystem>
 #include <memory>
+#include <atomic>
 #include <mutex>
 #include <optional>
 #include <set>
@@ -131,6 +132,38 @@ namespace QuickFAST
       /// Total size of managed files (active + rotated + compressed).
       std::uint64_t managed_bytes();
 
+      /// @brief Count of scheduled rotations that raised an error.
+      ///
+      /// A rotation handler must never let an exception reach the shared
+      /// @c io_context, so failures are counted here instead. Non-zero is worth
+      /// alerting on.
+      std::uint64_t rotation_failures() const noexcept;
+
+      /// @brief True once a failed rotation also failed to re-arm its timer.
+      ///
+      /// Size-based rotation still works; time-based rotation does not until the
+      /// process restarts.
+      bool rotation_schedule_lost() const noexcept;
+
+      /// @brief First instant at or after @p from at which @p hour:@p minute occurs
+      ///        in @p zone.
+      ///
+      /// DST-safe: a local time inside a DST gap resolves to the instant the offset
+      /// changes, and an ambiguous local time to the later of its two instants.
+      /// Never throws for a valid zone.
+      ///
+      /// @par Example
+      /// @code
+      /// const auto next = managed_file_sink_mt::next_rotation_after(
+      ///   std::chrono::locate_zone("America/Santiago"),
+      ///   std::chrono::system_clock::now(), 0, 0);
+      /// @endcode
+      static std::chrono::system_clock::time_point next_rotation_after(
+        const std::chrono::time_zone * zone,
+        std::chrono::system_clock::time_point from,
+        int hour,
+        int minute);
+
 #if defined(QUICKFAST_ENABLE_TEST_HOOKS)
       /// Test helper: cancel current schedule and fire the Asio rotation timer soon.
       void arm_rotation_after_for_test(std::chrono::milliseconds delay);
@@ -148,6 +181,7 @@ namespace QuickFAST
       void arm_rotation_timer_unlocked_();
       void async_wait_rotation_unlocked_();
       void on_rotation_timer_(const asio::error_code & ec);
+      void reschedule_after_failure_();
       void detach_timer_state_();
 
       void enqueue_compress_unlocked_(std::filesystem::path path);
@@ -191,6 +225,9 @@ namespace QuickFAST
 
       std::shared_ptr<RotationTimerState> timer_state_ =
         std::make_shared<RotationTimerState>();
+
+      std::atomic<std::uint64_t> rotation_failures_{0};
+      std::atomic<bool> rotation_schedule_lost_{false};
 
       std::FILE * file_ = nullptr;
       std::size_t current_size_ = 0;
