@@ -205,7 +205,13 @@ PacketSequencingAssembler::addToDeferred(Communication::LinkedBuffer * buffer, s
   }
 
   /// because it's likely that this goes at the end of the queue, check that before walking the queue.
-  sequence_t deferredSequenceNumber = packetHeaderAnalyzer_.getSequenceNumber(deferredQueue_.peek_tail()->get());
+  Communication::LinkedBuffer * tail = deferredQueue_.peek_tail();
+  if(tail == 0)
+  {
+    deferredQueue_.push_front(buffer);
+    return;
+  }
+  sequence_t deferredSequenceNumber = packetHeaderAnalyzer_.getSequenceNumber(tail->get());
   if(sequenceNumber == deferredSequenceNumber)
   {
     releasePacket(buffer);
