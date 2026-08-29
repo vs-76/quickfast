@@ -373,11 +373,11 @@ FieldInstructionAscii::encodeNop(
   {
     if(!isMandatory())
     {
-      encodeNullableAscii(destination, *value);
+      encodeNullableAscii(destination, encoder, *value, identity_.name());
     }
     else
     {
-      encodeAscii(destination, *value);
+      encodeAscii(destination, encoder, *value, identity_.name());
     }
   }
   else // not defined in accessor
@@ -444,12 +444,12 @@ FieldInstructionAscii::encodeDefault(
       if(!isMandatory())
       {
 //        std::cout << "   and send nullable value" << std::endl;
-        encodeNullableAscii(destination, *value);
+        encodeNullableAscii(destination, encoder, *value, identity_.name());
       }
       else
       {
 //        std::cout << "   and send normal value" << std::endl;
-        encodeAscii(destination, *value);
+        encodeAscii(destination, encoder, *value, identity_.name());
       }
     }
   }
@@ -515,11 +515,11 @@ FieldInstructionAscii::encodeCopy(
       pmap.setNextField(true);// value in stream
       if(!isMandatory())
       {
-        encodeNullableAscii(destination, *value);
+        encodeNullableAscii(destination, encoder, *value, identity_.name());
       }
       else
       {
-        encodeAscii(destination, *value);
+        encodeAscii(destination, encoder, *value, identity_.name());
       }
       fieldOp_->setDictionaryValue(encoder, *value);
     }
@@ -594,7 +594,7 @@ FieldInstructionAscii::encodeDelta(
     std::cout << "count:" << deltaCount << " Delta["<< deltaValue << ']' << std::endl;
 #endif
     encodeSignedInteger(destination, encoder.getWorkingBuffer(), deltaCount);
-    encodeAscii(destination, deltaValue);
+    encodeAscii(destination, encoder, deltaValue, identity_.name());
 
     if(previousStatus != Context::OK_VALUE  || value != previousValue)
     {
@@ -654,11 +654,11 @@ FieldInstructionAscii::encodeTail(
       pmap.setNextField(true);
       if(!isMandatory())
       {
-        encodeNullableAscii(destination, tailValue);
+        encodeNullableAscii(destination, encoder, tailValue, identity_.name());
       }
       else
       {
-        encodeAscii(destination, tailValue);
+        encodeAscii(destination, encoder, tailValue, identity_.name());
       }
     }
     if(previousStatus != Context::OK_VALUE  || value != previousValue)

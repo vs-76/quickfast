@@ -717,17 +717,25 @@ FieldInstruction::encodeUnsignedInteger(DataDestination & destination, WorkingBu
 #endif
 
 void
-FieldInstruction::encodeNullableAscii(DataDestination & destination, const StringBuffer & value)
+FieldInstruction::encodeNullableAscii(
+  DataDestination & destination,
+  Context & context,
+  const StringBuffer & value,
+  const std::string & name)
 {
   if(value.empty() || value[0] == '\0')
   {
     destination.putByte(nullableStringPreamble);
   }
-  encodeAscii(destination, value);
+  encodeAscii(destination, context, value, name);
 }
 
 void
-FieldInstruction::encodeAscii(DataDestination & destination, const StringBuffer & value)
+FieldInstruction::encodeAscii(
+  DataDestination & destination,
+  Context & context,
+  const StringBuffer & value,
+  const std::string & name)
 {
   if(value.empty())
   {
@@ -735,6 +743,23 @@ FieldInstruction::encodeAscii(DataDestination & destination, const StringBuffer 
   }
   else
   {
+    // The stop bit is the eighth, so ascii has no room for a byte that already
+    // uses it. Written verbatim such a byte terminates the string early; as the
+    // final byte the stop-bit OR is a no-op and the decoder masks the bit off,
+    // changing the value. Both outcomes are well-formed FAST, so nothing
+    // downstream can tell. Refusing is the only honest option, and the loop
+    // below has to walk every byte regardless.
+    for(size_t pos = 0; pos < value.size(); ++pos)
+    {
+      if((value[pos] & stopBit) != 0)
+      {
+        context.reportError("[ERR D1]",
+          "Value contains a byte that an ascii field cannot carry;"
+          " use a byteVector for eight bit data.",
+          name);
+      }
+    }
+
     if (value[0] == '\0')
     {
       destination.putByte(leadingZeroBytePreamble);
