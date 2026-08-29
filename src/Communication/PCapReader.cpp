@@ -227,7 +227,6 @@ PCapReader::PCapReader()
 bool
 PCapReader::open(const char * filename, std::ostream * dumpFile)
 {
-  ok_ = true;
   FILE * file = fopen(filename, "rb");
   ok_ = file != 0;
   if(ok_)
