@@ -183,6 +183,13 @@ Field::toSequence() const
   throw ex;
 }
 
+std::mutex &
+Field::displayStringMutex()
+{
+  static std::mutex mutex;
+  return mutex;
+}
+
 void
 Field::valueToStringBuffer() const
 {
@@ -198,14 +205,26 @@ Field::operator == (const Field & rhs)const
   {
     return false;
   }
+  // "Absent" and "zero" are different answers in FAST, and every value member
+  // is default initialized, so an undefined field carries the same zero an
+  // ordinary zero-valued field does. Comparing only the values called them
+  // equal.
+  if(valid_ != rhs.valid_)
+  {
+    return false;
+  }
+  if(!valid_)
+  {
+    // Both absent, and the values behind them mean nothing.
+    return true;
+  }
   if(isString())
   {
     return string_ == rhs.string_;
   }
   else
   {
-    // compare integral or decimal values.  Unused fields
-    // will compare equal.
+    // compare integral or decimal values.
     return unsignedInteger_ == rhs.unsignedInteger_
         && signedInteger_ == rhs.signedInteger_
         && exponent_ == rhs.exponent_;
