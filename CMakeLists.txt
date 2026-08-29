@@ -28,8 +28,11 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 # The test-only sink hook is compiled into the shared library, so a shipping build
 # (QUICKFAST_BUILD_TESTS=OFF) must not carry it.
 option(QUICKFAST_ENABLE_TEST_HOOKS
-  "Expose managed_file_sink_mt test-only hooks (default: follow QUICKFAST_BUILD_TESTS)"
+  "Expose managed_file_sink_mt / PCapReader test-only hooks (default: follow QUICKFAST_BUILD_TESTS)"
   ${QUICKFAST_BUILD_TESTS})
+option(QUICKFAST_BUILD_FUZZERS
+  "Build libFuzzer harnesses (requires Clang; enables test hooks)"
+  OFF)
 
 if(QUICKFAST_ENABLE_COVERAGE)
   if(NOT QUICKFAST_BUILD_TESTS)
@@ -244,9 +247,12 @@ endif()
 if(QUICKFAST_USE_SPDLOG)
   target_compile_definitions(QuickFAST PUBLIC QUICKFAST_HAS_SPDLOG=1)
   target_link_libraries(QuickFAST PUBLIC spdlog::spdlog ZLIB::ZLIB)
-  if(QUICKFAST_ENABLE_TEST_HOOKS)
-    target_compile_definitions(QuickFAST PUBLIC QUICKFAST_ENABLE_TEST_HOOKS=1)
-  endif()
+endif()
+
+# Test/fuzz hooks live in the shared library (ManagedFileSink, PCapReader).
+# Fuzzers need PCapReader::dissectFrameForTest even when tests are off.
+if(QUICKFAST_ENABLE_TEST_HOOKS OR QUICKFAST_BUILD_FUZZERS)
+  target_compile_definitions(QuickFAST PUBLIC QUICKFAST_ENABLE_TEST_HOOKS=1)
 endif()
 
 target_compile_options(QuickFAST PRIVATE ${QUICKFAST_WARNING_FLAGS})
@@ -423,4 +429,8 @@ else()
   message(STATUS
     "libpcap: OFF -- PCapReader will refuse to open capture files "
     "(set -DQUICKFAST_USE_LIBPCAP=ON)")
+endif()
+
+if(QUICKFAST_BUILD_FUZZERS)
+  add_subdirectory(tests/fuzz)
 endif()

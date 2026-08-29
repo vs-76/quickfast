@@ -84,6 +84,26 @@ namespace QuickFAST
       /// @returns true if the read was successful.  False usually means end of data
       bool read(const unsigned char *& buffer, size_t & size);
 
+#if defined(QUICKFAST_ENABLE_TEST_HOOKS)
+      /// @brief Expose link-layer dissection for unit tests and libFuzzer.
+      ///
+      /// Sets the reader's link type for the duration of one call, then
+      /// restores the previous value. Does not open a capture file.
+      ///
+      /// @param linktype libpcap DLT_* value (1 = Ethernet, 113 = Linux cooked)
+      /// @param frame captured link-layer bytes
+      /// @param frameLength number of bytes in frame
+      /// @param[out] buffer points into frame at the UDP cargo on success
+      /// @param[out] size UDP cargo length on success
+      /// @returns true when a plausible UDP cargo was found
+      bool dissectFrameForTest(
+        int linktype,
+        const unsigned char * frame,
+        size_t frameLength,
+        const unsigned char *& buffer,
+        size_t & size);
+#endif
+
     private:
       /// Find the UDP cargo inside one captured link-layer frame.
       bool dissect(

@@ -39,7 +39,8 @@ With `-DQUICKFAST_USE_SPDLOG=ON` it also finds or fetches
 | `QUICKFAST_SANITIZE_THREAD` | `OFF` | ThreadSanitizer (`-fsanitize=thread`; incompatible with ASan/UBSan) |
 | `QUICKFAST_USE_SPDLOG` | `OFF` | Build `SpdlogLogger` + `managed_file_sink_mt` (find/FetchContent spdlog; requires zlib, tzdata) |
 | `QUICKFAST_USE_LIBPCAP` | `ON` | Read capture files through libpcap (adds pcapng and nanosecond pcap); requires `libpcap-dev` |
-| `QUICKFAST_ENABLE_TEST_HOOKS` | follows `QUICKFAST_BUILD_TESTS` | Compile `managed_file_sink_mt` test-only hooks into the library; keep `OFF` for shipping builds |
+| `QUICKFAST_ENABLE_TEST_HOOKS` | follows `QUICKFAST_BUILD_TESTS` | Compile test-only hooks (`managed_file_sink_mt`, `PCapReader::dissectFrameForTest`); keep `OFF` for shipping builds |
+| `QUICKFAST_BUILD_FUZZERS` | `OFF` | Build libFuzzer harnesses under `tests/fuzz/` (**Clang only**; implies test hooks) |
 | `QUICKFAST_ENABLE_PVS_STUDIO` | `ON` | Create `pvs-studio` target if `pvs-studio-analyzer` is installed |
 | `CMAKE_BUILD_TYPE` | (unset) | Prefer `Release` or `Debug` |
 | `CMAKE_CXX_COMPILER` | system default | e.g. `g++-16`, `clang++-22` |
@@ -385,6 +386,57 @@ cmake --build build-cov -j --target coverage
 
 The `coverage` target builds `QuickFASTTest`, runs `ctest`, then generates a
 gcovr summary for first-party `src/` (deps under `_deps` are excluded).
+
+---
+
+## libFuzzer harnesses
+
+Clang-only. Builds five binaries that link libFuzzer with ASan and UBSan.
+Seed corpora live under `tests/fuzz/corpora/<harness>/`. Exceptions from
+malformed input are swallowed; sanitizer aborts are the signal.
+
+| Binary | Surface |
+| --- | --- |
+| `fuzz_decode_message` | `Decoder::decodeMessage` over FAST bytes |
+| `fuzz_pcap_dissect` | `PCapReader` Ethernet / Linux-SLL / raw UDP dissection |
+| `fuzz_decimal` | `Decimal` arithmetic and ordering trichotomy |
+| `fuzz_xml_template` | `XMLTemplateParser::parse` |
+| `fuzz_header_analyzer` | `FixedSizeHeaderAnalyzer` |
+
+```bash
+cmake -S . -B build-fuzz -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_CXX_COMPILER=clang++-22 \
+  -DQUICKFAST_BUILD_FUZZERS=ON \
+  -DQUICKFAST_BUILD_TESTS=OFF \
+  -DQUICKFAST_BUILD_EXAMPLES=OFF
+cmake --build build-fuzz -j
+```
+
+Short smoke run (also useful in CI). Pass a **copy** of the seed corpus so
+libFuzzer does not rewrite the checked-in seeds:
+
+```bash
+BIN=build-fuzz/bin
+SEED=tests/fuzz/corpora
+WORKDIR=$(mktemp -d)
+trap 'rm -rf "$WORKDIR"' EXIT
+for name in decode_message pcap_dissect decimal xml_template header_analyzer; do
+  mkdir -p "$WORKDIR/$name"
+  cp -a "$SEED/$name/." "$WORKDIR/$name/"
+done
+"$BIN/fuzz_decode_message" -max_total_time=30 -max_len=4096 \
+  -rss_limit_mb=2048 "$WORKDIR/decode_message"
+"$BIN/fuzz_pcap_dissect" -max_total_time=30 -max_len=2048 \
+  "$WORKDIR/pcap_dissect"
+"$BIN/fuzz_decimal" -max_total_time=30 "$WORKDIR/decimal"
+"$BIN/fuzz_xml_template" -max_total_time=30 -max_len=8192 \
+  "$WORKDIR/xml_template"
+"$BIN/fuzz_header_analyzer" -max_total_time=30 -max_len=512 \
+  "$WORKDIR/header_analyzer"
+```
+
+Do not combine with `QUICKFAST_SANITIZE_THREAD`. Shipping builds should leave
+`QUICKFAST_BUILD_FUZZERS=OFF` (and usually `QUICKFAST_ENABLE_TEST_HOOKS=OFF`).
 
 ---
 

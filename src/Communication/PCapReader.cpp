@@ -288,6 +288,23 @@ PCapReader::read(const unsigned char *& buffer, size_t & size)
 #endif // QUICKFAST_HAVE_LIBPCAP
 }
 
+#if defined(QUICKFAST_ENABLE_TEST_HOOKS)
+bool
+PCapReader::dissectFrameForTest(
+  int linktype,
+  const unsigned char * frame,
+  size_t frameLength,
+  const unsigned char *& buffer,
+  size_t & size)
+{
+  const int saved = linktype_;
+  linktype_ = linktype;
+  const bool ok = dissect(frame, frameLength, buffer, size);
+  linktype_ = saved;
+  return ok;
+}
+#endif
+
 bool
 PCapReader::dissect(
   const unsigned char * frame,
