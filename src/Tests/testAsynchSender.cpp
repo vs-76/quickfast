@@ -4,10 +4,9 @@
 #include <Common/QuickFASTPch.h>
 #ifdef _WIN32 // Asynchronous file writer only works on Win32 so disable this entire test on other platforms
 
-#define BOOST_TEST_NO_MAIN QuickFASTTest
-#include <boost/test/unit_test.hpp>
+#include <gtest/gtest.h>
 #include <Tests/TestPaths.h>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
 #include <Communication/BufferRecycler.h>
 #include <Communication/AsynchFileSender.h>
@@ -84,7 +83,7 @@ namespace
         // warning fails for files sizes larger than a long
         long offset = 0;
         {
-          boost::mutex::scoped_lock lock(fileMutex_);
+          std::unique_lock<std::mutex> lock(fileMutex_);
 
           if(std::feof(in_))
           {
@@ -117,18 +116,18 @@ namespace
 
       FILE * in_;
       // protects access to the file when we are potentially mutlithreading
-      boost::mutex fileMutex_;
+      std::mutex fileMutex_;
     };
 }
 
 
-BOOST_AUTO_TEST_CASE(TestAsynchFileWriter)
+TEST(QuickFAST, TestAsynchFileWriter)
 {
   std::string root = QuickFAST::TestPaths::root();
   std::string workingDirectory = root + "/src/Tests/resources/";
   std::string inputFile = workingDirectory + "fileCopyTest.dat";
   std::string outputFile = workingDirectory + "fileCopyTest.out";
-  boost::filesystem::remove(outputFile);
+  std::filesystem::remove(outputFile);
 
   const size_t bufferCount = 5;
   const size_t bufferSize = 10; // force a lot of I/O
@@ -142,28 +141,28 @@ BOOST_AUTO_TEST_CASE(TestAsynchFileWriter)
   copier.go();
 
   FILE * ifile = std::fopen(inputFile.c_str(), "rb");
-  BOOST_REQUIRE(ifile != 0);
+  ASSERT_TRUE(ifile != 0);
   std::fseek(ifile, 0, SEEK_END);
   long ilen = ftell(ifile);
   std::fseek(ifile, 0, SEEK_SET);
-  boost::scoped_array<char> ibuff(new char[ilen]);
-  BOOST_REQUIRE_EQUAL(ilen, std::fread(ibuff.get(), 1, ilen, ifile));
+  std::unique_ptr<char[]> ibuff(new char[ilen]);
+  ASSERT_EQ((ilen), (std::fread(ibuff.get(), 1, ilen, ifile)));
   std::fclose(ifile);
 
   FILE * ofile = std::fopen(outputFile.c_str(), "rb");
-  BOOST_REQUIRE(ofile != 0);
+  ASSERT_TRUE(ofile != 0);
   std::fseek(ofile, 0, SEEK_END);
   long olen = ftell(ofile);
   std::fseek(ofile, 0, SEEK_SET);
-  boost::scoped_array<char> obuff(new char[olen]);
-  BOOST_REQUIRE_EQUAL(olen, std::fread(obuff.get(), 1, olen, ofile));
+  std::unique_ptr<char[]> obuff(new char[olen]);
+  ASSERT_EQ((olen), (std::fread(obuff.get(), 1, olen, ofile)));
   std::fclose(ofile);
 
 
-  BOOST_REQUIRE_EQUAL(ilen, olen);
-  BOOST_REQUIRE_EQUAL(0, std::memcmp(ibuff.get(), obuff.get(), ilen));
+  ASSERT_EQ((ilen), (olen));
+  ASSERT_EQ((0), (std::memcmp(ibuff.get(), obuff.get(), ilen)));
 
-  boost::filesystem::remove(outputFile);
+  std::filesystem::remove(outputFile);
 }
 
 #endif // _WIN32

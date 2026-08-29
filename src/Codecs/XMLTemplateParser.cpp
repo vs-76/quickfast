@@ -32,6 +32,7 @@
 #include <Codecs/FieldOpTail.h>
 
 #include <Common/Exceptions.h>
+#include <Common/LexicalCast.h>
 
 #include <xercesc/framework/MemBufInputSource.hpp>
 #include <xercesc/util/PlatformUtils.hpp>
@@ -92,10 +93,10 @@ namespace
     {
       for (size_t index = 0; index < attributes.getLength(); ++index)
       {
-        boost::shared_array<char> nameRaw(XMLString::transcode(attributes.getQName(index)),
+        std::shared_ptr<char[]> nameRaw(XMLString::transcode(attributes.getQName(index)),
           XMLStringReleaser());
         std::string name(nameRaw.get());
-        boost::shared_array<char> valueRaw(XMLString::transcode(attributes.getValue(index)),
+        std::shared_ptr<char[]> valueRaw(XMLString::transcode(attributes.getValue(index)),
           XMLStringReleaser());
         std::string value(valueRaw.get());
         attrs[name] = value;
@@ -123,7 +124,7 @@ namespace
       makeAttrs(attributes, attributeMap);
 
       // then switch on element tag
-      boost::shared_array<char> tagRaw(XMLString::transcode(localname),
+      std::shared_ptr<char[]> tagRaw(XMLString::transcode(localname),
           XMLStringReleaser());
       std::string tag(tagRaw.get());
       if(out_)
@@ -259,7 +260,7 @@ namespace
       const XMLCh* const qname
       )
     {
-      boost::shared_array<char> tagRaw(XMLString::transcode(localname),
+      std::shared_ptr<char[]> tagRaw(XMLString::transcode(localname),
           XMLStringReleaser());
       std::string tag(tagRaw.get());
 
@@ -308,7 +309,7 @@ namespace
       )
     {
       std::stringstream msg;
-      boost::shared_array<char> msgRaw(XMLString::transcode(exc.getMessage()),
+      std::shared_ptr<char[]> msgRaw(XMLString::transcode(exc.getMessage()),
           XMLStringReleaser());
       msg << "[ERR S1] Template file warning at line " << exc.getLineNumber()
           << " column " << exc.getColumnNumber()
@@ -321,7 +322,7 @@ namespace
       )
     {
       std::stringstream msg;
-      boost::shared_array<char> msgRaw(XMLString::transcode(exc.getMessage()),
+      std::shared_ptr<char[]> msgRaw(XMLString::transcode(exc.getMessage()),
           XMLStringReleaser());
       msg << "[ERR S1] Template file error at line " << exc.getLineNumber()
           << " column " << exc.getColumnNumber()
@@ -334,7 +335,7 @@ namespace
       )
     {
       std::stringstream msg;
-      boost::shared_array<char> msgRaw(XMLString::transcode(exc.getMessage()),
+      std::shared_ptr<char[]> msgRaw(XMLString::transcode(exc.getMessage()),
           XMLStringReleaser());
       msg << "[ERR S1] Template file fatal error at line " << exc.getLineNumber()
           << " column " << exc.getColumnNumber()
@@ -538,7 +539,7 @@ TemplateBuilder::parseTemplate(const std::string & tag, const AttributeMap& attr
   if (getOptionalAttribute(attributes, "id", id))
   {
     target->setId(
-      boost::lexical_cast<template_id_t>(id)
+      QuickFAST::lexical_cast<template_id_t>(id)
       );
   }
 
@@ -1086,7 +1087,7 @@ XMLTemplateParser::parse(
     );
 
   TemplateBuilder templateBuilder(templateRegistry, out_, nonstandard_);
-  boost::shared_ptr<SAX2XMLReader> reader(XMLReaderFactory::createXMLReader());
+  std::shared_ptr<SAX2XMLReader> reader(XMLReaderFactory::createXMLReader());
   reader->setContentHandler(&templateBuilder);
   reader->setErrorHandler(&templateBuilder);
   reader->setFeature(xercesc::XMLUni::fgXercesSchema, true);
@@ -1101,7 +1102,7 @@ XMLTemplateParser::parse(
   int length = int(xmlData.tellg());
   xmlData.seekg(0, std::ios::beg);
 
-  boost::scoped_array<char> data(new char[length]);
+  std::unique_ptr<char[]> data(new char[length]);
   xmlData.read(data.get(), length);
 
   // Adapt the stream to what Xerces wants to see

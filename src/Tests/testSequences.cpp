@@ -3,9 +3,8 @@
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
 
-#define BOOST_TEST_NO_MAIN QuickFASTTest
-#include <boost/test/unit_test.hpp>
-#include <boost/filesystem.hpp>
+#include <gtest/gtest.h>
+#include <filesystem>
 
 #include <Codecs/XMLTemplateParser.h>
 #include <Codecs/TemplateRegistry.h>
@@ -199,12 +198,12 @@ namespace
 
   void validateMessage1(Messages::Message & message)
   {
-    BOOST_CHECK_EQUAL(message.getApplicationType(), "nxAccountGroupDefinition");
+    EXPECT_EQ((message.getApplicationType()), ("nxAccountGroupDefinition"));
     Messages::FieldCPtr value;
   }
 }
 
-BOOST_AUTO_TEST_CASE(TestSequences)
+TEST(QuickFAST, TestSequences)
 {
   bool verbose = false;
   Messages::MessageFormatter formatter(std::cout);
@@ -344,5 +343,5 @@ BOOST_AUTO_TEST_CASE(TestSequences)
   {
     reencoded.hexDisplay(std::cout);
   }
-  BOOST_CHECK(fastMsg == reencoded);
+  EXPECT_TRUE(fastMsg == reencoded);
 }

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(QuickFAST VERSION 1.5.0 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -9,9 +9,22 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 option(QUICKFAST_BUILD_TESTS "Build QuickFAST unit tests" ON)
 option(QUICKFAST_BUILD_EXAMPLES "Build QuickFAST example applications" ON)
 
-# Boost.System is header-only in 1.69+; do not require a system component.
-find_package(Boost 1.90 CONFIG REQUIRED COMPONENTS filesystem thread chrono date_time)
+include(FetchContent)
+find_package(Threads REQUIRED)
 find_package(XercesC REQUIRED)
+
+# Standalone Asio (header-only)
+FetchContent_Declare(
+  asio
+  GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git
+  GIT_TAG        asio-1-30-2
+  GIT_SHALLOW    TRUE
+)
+FetchContent_MakeAvailable(asio)
+add_library(asio INTERFACE)
+add_library(asio::asio ALIAS asio)
+target_include_directories(asio INTERFACE ${asio_SOURCE_DIR}/asio/include)
+target_compile_definitions(asio INTERFACE ASIO_STANDALONE ASIO_NO_DEPRECATED)
 
 set(QUICKFAST_LIB_SOURCES
   src/Application/CommandArgParser.cpp
@@ -113,11 +126,8 @@ target_include_directories(QuickFAST
 
 target_link_libraries(QuickFAST
   PUBLIC
-    Boost::headers
-    Boost::filesystem
-    Boost::thread
-    Boost::chrono
-    Boost::date_time
+    asio
+    Threads::Threads
     XercesC::XercesC
 )
 
@@ -135,26 +145,36 @@ set_target_properties(QuickFAST PROPERTIES
 )
 
 if(QUICKFAST_BUILD_TESTS)
-  find_package(Boost 1.90 CONFIG REQUIRED COMPONENTS unit_test_framework)
+  set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+  set(BUILD_GMOCK ON CACHE BOOL "" FORCE)
+  FetchContent_Declare(
+    googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG        v1.15.2
+    GIT_SHALLOW    TRUE
+  )
+  FetchContent_MakeAvailable(googletest)
+
   enable_testing()
+  include(GoogleTest)
 
   file(GLOB QUICKFAST_TEST_SOURCES CONFIGURE_DEPENDS src/Tests/*.cpp)
+  list(FILTER QUICKFAST_TEST_SOURCES EXCLUDE REGEX ".*/main\\.cpp$")
 
   add_executable(QuickFASTTest ${QUICKFAST_TEST_SOURCES})
-  target_compile_definitions(QuickFASTTest PRIVATE BOOST_TEST_DYN_LINK)
   target_link_libraries(QuickFASTTest
     PRIVATE
       QuickFAST
-      Boost::unit_test_framework
-      Boost::filesystem
+      GTest::gtest_main
+      GTest::gmock
   )
   set_target_properties(QuickFASTTest PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
   )
 
-  add_test(NAME QuickFASTTest COMMAND QuickFASTTest)
-  set_tests_properties(QuickFASTTest PROPERTIES
-    ENVIRONMENT "QUICKFAST_ROOT=${CMAKE_SOURCE_DIR}"
+  gtest_discover_tests(QuickFASTTest
+    PROPERTIES ENVIRONMENT "QUICKFAST_ROOT=${CMAKE_SOURCE_DIR}"
+    DISCOVERY_MODE PRE_TEST
   )
 endif()
 
@@ -203,4 +223,4 @@ if(QUICKFAST_BUILD_EXAMPLES)
     src/Examples/PCapToMulticast/main.cpp)
 endif()
 
-message(STATUS "QuickFAST ${PROJECT_VERSION}: Boost ${Boost_VERSION}, XercesC ${XercesC_VERSION}")
+message(STATUS "QuickFAST ${PROJECT_VERSION}: C++${CMAKE_CXX_STANDARD}, XercesC ${XercesC_VERSION} (no Boost)")

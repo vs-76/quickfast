@@ -50,18 +50,18 @@ FieldByteVector::toByteVector() const
 FieldCPtr
 FieldByteVector::create(const std::string & value)
 {
-  return new FieldByteVector(value);
+  return FieldCPtr(new FieldByteVector(value));
 }
 
 FieldCPtr
 FieldByteVector::create(const uchar * buffer, size_t length)
 {
-  return new FieldByteVector(buffer, length);
+  return FieldCPtr(new FieldByteVector(buffer, length));
 }
 
 FieldCPtr
 FieldByteVector::createNull()
 {
-  return new FieldByteVector;
+  return FieldCPtr(new FieldByteVector);
 }
 

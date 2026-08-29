@@ -329,7 +329,7 @@ PacketSequencingAssembler::handleGap()
     // delay until the recovery feed has data (or times out)
     // The timeout is there in the unlikely event that the missing packet(s)
     // magically arrive(s) on one of the primary (A/B) feeds.
-    recoveryFeed_->waitGapFill(boost::posix_time::millisec(10));
+    recoveryFeed_->waitGapFill(std::chrono::milliseconds(10));
   }
 }
 

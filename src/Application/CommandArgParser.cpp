@@ -117,7 +117,7 @@ CommandArgParser::parseFile(const char * filename)
   {
     return true;
   }
-  boost::scoped_array<char> buffer(new char[optionsSize + 1]);
+  std::unique_ptr<char[]> buffer(new char[optionsSize + 1]);
   size_t bytesRead = std::fread(buffer.get(), 1, optionsSize, optionsFile);
   std::fclose(optionsFile);
   buffer[bytesRead] = '\0';
@@ -134,20 +134,71 @@ CommandArgParser::tokenizeAndParseLine(char * buffer, size_t bytesRead)
 {
   std::vector< std::string > args;
 
-  // backslash is escape; whitespace is delimiter; single or double quotes
-  typedef boost::escaped_list_separator<char> TokenFunction;
-  typedef boost::tokenizer<TokenFunction, const char *, std::string> EscapedQuotedTokenizer;
-  typedef EscapedQuotedTokenizer::iterator TokenIterator;
-  TokenFunction tokenFunction("\\", " \t\r\n", "\"'");
-  EscapedQuotedTokenizer tokenizer (buffer, buffer + bytesRead, tokenFunction);
-
-  for(TokenIterator pToken  = tokenizer.begin(); pToken != tokenizer.end(); ++pToken)
+  // Mimic boost::escaped_list_separator: backslash escapes;
+  // whitespace is delimiter; single or double quotes group tokens.
+  std::string token;
+  bool inToken = false;
+  char quote = '\0';
+  bool escaped = false;
+  const char * begin = buffer;
+  const char * end = buffer + bytesRead;
+  auto flushToken = [&]()
   {
-    args.push_back(*pToken);
+    if(inToken)
+    {
+      args.push_back(token);
+      token.clear();
+      inToken = false;
+    }
+  };
+
+  for(const char * p = begin; p != end; ++p)
+  {
+    const char c = *p;
+    if(escaped)
+    {
+      token.push_back(c);
+      inToken = true;
+      escaped = false;
+      continue;
+    }
+    if(c == '\\')
+    {
+      escaped = true;
+      inToken = true;
+      continue;
+    }
+    if(quote != '\0')
+    {
+      if(c == quote)
+      {
+        quote = '\0';
+      }
+      else
+      {
+        token.push_back(c);
+      }
+      inToken = true;
+      continue;
+    }
+    if(c == '"' || c == '\'')
+    {
+      quote = c;
+      inToken = true;
+      continue;
+    }
+    if(c == ' ' || c == '\t' || c == '\r' || c == '\n')
+    {
+      flushToken();
+      continue;
+    }
+    token.push_back(c);
+    inToken = true;
   }
+  flushToken();
 
   size_t size = args.size();
-  boost::scoped_array<char *> argv(new char *[size + 1]);
+  std::unique_ptr<char *[]> argv(new char *[size + 1]);
   size_t argc = 0;
   for(size_t pos = 0; pos < size; ++pos)
   {

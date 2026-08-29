@@ -14,9 +14,9 @@ namespace QuickFAST{
     typedef FieldSet Group;
 
     /// @brief Smart pointer to a Group.
-    typedef boost::shared_ptr<Group> GroupPtr;
+    typedef std::shared_ptr<Group> GroupPtr;
     /// @brief Smart pointer to a const Group.
-    typedef boost::shared_ptr<const Group> GroupCPtr;
+    typedef std::shared_ptr<const Group> GroupCPtr;
   }
 }
 

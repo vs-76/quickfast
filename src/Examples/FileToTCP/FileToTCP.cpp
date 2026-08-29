@@ -6,11 +6,12 @@
 #include <Examples/ExamplesPch.h>
 #include "FileToTCP.h"
 
-#include <boost/asio.hpp>
+#include <asio.hpp>
+#include <Common/LexicalCast.h>
 
 using namespace QuickFAST;
 using namespace Examples;
-using boost::asio::ip::tcp;
+using asio::ip::tcp;
 
 FileToTCP::FileToTCP()
 : portNumber_(9876)
@@ -48,12 +49,12 @@ FileToTCP::parseSingleArg(int argc, char * argv[])
     }
     else if(opt == "-p" && argc > 1)
     {
-      portNumber_ = boost::lexical_cast<unsigned short>(argv[1]);
+      portNumber_ = QuickFAST::lexical_cast<unsigned short>(argv[1]);
       consumed = 2;
     }
     else if(opt == "-c" && argc > 1)
     {
-      sendCount_ = boost::lexical_cast<size_t>(argv[1]);
+      sendCount_ = QuickFAST::lexical_cast<size_t>(argv[1]);
       consumed = 2;
     }
     else if(opt == "-hack")

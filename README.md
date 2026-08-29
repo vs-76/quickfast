@@ -8,15 +8,18 @@ Because FAST not specific to market data or the financial industry, there are op
 QuickFAST is written to be portable to many platforms. It is routinely tested on Windows and Linux. The project also includes a .NET wrapper 
 which supports using QuickFAST in the .NET environment. Ask if you want support for other platforms.
 
-### Linux build (CMake + Boost 1.90)
+### Linux build (CMake + C++23)
 
-Dependencies (Ubuntu/Debian example):
+Native library, examples, and tests no longer depend on Boost. Dependencies:
+
+- C++23 compiler (GCC 13+ / Clang 16+)
+- [Xerces-C++](https://xerces.apache.org/xerces-c/)
+- Standalone [Asio](https://github.com/chriskohlhoff/asio) and [GoogleTest](https://github.com/google/googletest) / GoogleMock (fetched by CMake)
+
+Ubuntu/Debian packages:
 
 ```bash
-sudo apt-get install -y cmake build-essential \
-  libboost-dev libboost-filesystem-dev libboost-thread-dev \
-  libboost-chrono-dev libboost-date-time-dev libboost-test-dev \
-  libxerces-c-dev
+sudo apt-get install -y cmake build-essential libxerces-c-dev
 ```
 
 Configure and build:

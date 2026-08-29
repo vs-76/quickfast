@@ -13,9 +13,9 @@ namespace QuickFAST{
     /// @brief An implementation for the &lt;mantissa> field instruction within a &lt;decimal>.
     typedef FieldInstructionInteger<mantissa_t, ValueType::MANTISSA, true> FieldInstructionMantissa;
     /// @brief a pointer to a FieldInstrucionMantissa
-    typedef boost::shared_ptr<FieldInstructionMantissa> FieldInstructionMantissaPtr;
+    typedef std::shared_ptr<FieldInstructionMantissa> FieldInstructionMantissaPtr;
     /// @brief a const pointer to a FieldInstrucionMantissa
-    typedef boost::shared_ptr<const FieldInstructionMantissa> FieldInstructionMantissaCPtr;
+    typedef std::shared_ptr<const FieldInstructionMantissa> FieldInstructionMantissaCPtr;
   }
 }
 #endif // FIELDINSTRUCTIONMANTISSA_H

@@ -18,7 +18,7 @@ namespace QuickFAST
     class MessagePerPacketAssembler;
 
     ///@brief smart pointer to MessagePerPacketAssembler
-    typedef boost::shared_ptr<MessagePerPacketAssembler> MessagePerPacketAssemblerPtr;
+    typedef std::shared_ptr<MessagePerPacketAssembler> MessagePerPacketAssemblerPtr;
   }
 }
 #endif // MESSAGEPERPACKETASSEMBLER_FWD_H

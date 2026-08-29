@@ -57,7 +57,7 @@ namespace QuickFAST
       /// The unused scoped lock parameter indicates this method should be protected.
       /// @param buffer is the buffer to be added to the queue
       /// @returns true if if the queue needs to be serviced
-      bool push(LinkedBuffer * buffer, boost::mutex::scoped_lock &)
+      bool push(LinkedBuffer * buffer, std::unique_lock<std::mutex> &)
       {
         //std::ostringstream msg;
         //msg << "Q:{"<< (void *) this <<  "} push @" <<(void *)buffer << std::endl;
@@ -80,7 +80,7 @@ namespace QuickFAST
       /// The unused scoped lock parameter indicates this method should be protected.
       ///
       /// @returns true if if the queue is now ready to be serviced
-      bool startService(boost::mutex::scoped_lock &)
+      bool startService(std::unique_lock<std::mutex> &)
       {
         if(busy_)
         {
@@ -141,7 +141,7 @@ namespace QuickFAST
       ///        willing to continue servicing the queue.
       /// @param lock unused parameter to be sure the mutex is locked.
       /// @returns true if there are more entries to be serviced.
-      bool endService(bool recheck, boost::mutex::scoped_lock & lock)
+      bool endService(bool recheck, std::unique_lock<std::mutex> & lock)
       {
         assert(busy_);
         busy_ = false;
@@ -162,7 +162,7 @@ namespace QuickFAST
       /// @param lock is used for the wait.  It also confirms that the caller has locked the mutex.
       /// @param wait is true if this call should wait for incoming buffers to be available.
       /// @returns true if the incoming buffer queue has changed from empty to populated
-      bool refresh(boost::mutex::scoped_lock & lock, bool wait)
+      bool refresh(std::unique_lock<std::mutex> & lock, bool wait)
       {
         assert(busy_);
         bool wasEmpty = incoming_.isEmpty();
@@ -193,7 +193,7 @@ namespace QuickFAST
       /// The unused scoped lock parameter indicates this method should be protected.
       ///
       /// @param f is the function to apply
-      void apply(boost::function<void (LinkedBuffer *)> f, boost::mutex::scoped_lock &)
+      void apply(std::function<void (LinkedBuffer *)> f, std::unique_lock<std::mutex> &)
       {
         LinkedBuffer * buffer = outgoing_.peek();
         while(buffer != 0)
@@ -211,7 +211,7 @@ namespace QuickFAST
     private:
       BufferQueue incoming_;
       BufferQueue outgoing_;
-      boost::condition_variable condition_;
+      std::condition_variable condition_;
       bool busy_;
       // todo: statistics would be interesting
     };

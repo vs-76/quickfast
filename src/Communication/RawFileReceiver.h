@@ -48,7 +48,7 @@ namespace QuickFAST
       }
 
       // Implement Receiver method
-      bool fillBuffer(LinkedBuffer * buffer, boost::mutex::scoped_lock& lock)
+      bool fillBuffer(LinkedBuffer * buffer, std::unique_lock<std::mutex>& lock)
       {
         bool filling = false;
         if(!stopping_ && stream_.good() && !stream_.eof())

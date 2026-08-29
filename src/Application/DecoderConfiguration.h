@@ -9,6 +9,7 @@
 #define DECODERCONFIGURATION_H
 #include "DecoderConfiguration_fwd.h"
 #include <Codecs/DataSource.h>
+#include <Common/LexicalCast.h>
 
 namespace
 {
@@ -850,7 +851,7 @@ namespace QuickFAST{
         }
         else if(opt == "-limit" && argc > 1)
         {
-          setHead(boost::lexical_cast<size_t>(argv[1]));
+          setHead(QuickFAST::lexical_cast<size_t>(argv[1]));
           consumed = 2;
         }
         else if(opt == "-reset")
@@ -960,7 +961,7 @@ namespace QuickFAST{
           setMulticastGroupIP(address.substr(0, colon));
           if(colon != std::string::npos)
           {
-            setPortNumber(boost::lexical_cast<unsigned short>(
+            setPortNumber(QuickFAST::lexical_cast<unsigned short>(
               address.substr(colon+1)));
           }
           consumed = 2;
@@ -1018,7 +1019,7 @@ namespace QuickFAST{
         else if(opt == "-hfix" && argc > 1) // n             : Header contains fixed size fields; block size field is n bytes" << std::endl;
         {
           setMessageHeaderType(FIXED_HEADER);
-          setMessageHeaderMessageSizeBytes(boost::lexical_cast<size_t>(argv[1]));
+          setMessageHeaderMessageSizeBytes(QuickFAST::lexical_cast<size_t>(argv[1]));
           consumed = 2;
         }
         else if(opt == "-hfast" ) //              : Header contains fast encoded fields" << std::endl;
@@ -1028,12 +1029,12 @@ namespace QuickFAST{
         }
         else if(opt == "-hprefix" && argc > 1) // n            : 'n' bytes (fixed) or fields (FAST) preceed block size" << std::endl;
         {
-          setMessageHeaderPrefixCount(boost::lexical_cast<size_t>(argv[1]));
+          setMessageHeaderPrefixCount(QuickFAST::lexical_cast<size_t>(argv[1]));
           consumed = 2;
         }
         else if(opt == "-hsuffix" && argc > 1) // n            : 'n' bytes (fixed) or fields (FAST) follow block size" << std::endl;
         {
-          setMessageHeaderSuffixCount(boost::lexical_cast<size_t>(argv[1]));
+          setMessageHeaderSuffixCount(QuickFAST::lexical_cast<size_t>(argv[1]));
           consumed = 2;
         }
         else if(opt == "-hbig" ) //                 : fixed size header is big-endian" << std::endl;
@@ -1062,7 +1063,7 @@ namespace QuickFAST{
         else if(opt == "-pfix" && argc > 1) // n             : Header contains fixed size fields; block size field is n bytes" << std::endl;
         {
           setPacketHeaderType(FIXED_HEADER);
-          setPacketHeaderMessageSizeBytes(boost::lexical_cast<size_t>(argv[1]));
+          setPacketHeaderMessageSizeBytes(QuickFAST::lexical_cast<size_t>(argv[1]));
           consumed = 2;
         }
         else if(opt == "-pfast" ) //              : Header contains fast encoded fields" << std::endl;
@@ -1072,12 +1073,12 @@ namespace QuickFAST{
         }
         else if(opt == "-pprefix" && argc > 1) // n            : 'n' bytes (fixed) or fields (FAST) preceed block size" << std::endl;
         {
-          setPacketHeaderPrefixCount(boost::lexical_cast<size_t>(argv[1]));
+          setPacketHeaderPrefixCount(QuickFAST::lexical_cast<size_t>(argv[1]));
           consumed = 2;
         }
         else if(opt == "-psuffix" && argc > 1) // n            : 'n' bytes (fixed) or fields (FAST) follow block size" << std::endl;
         {
-          setPacketHeaderSuffixCount(boost::lexical_cast<size_t>(argv[1]));
+          setPacketHeaderSuffixCount(QuickFAST::lexical_cast<size_t>(argv[1]));
           consumed = 2;
         }
         else if(opt == "-pbig" ) //                 : fixed size header is big-endian" << std::endl;
@@ -1105,22 +1106,22 @@ namespace QuickFAST{
         }
         else if(opt == "-testskip" && argc > 1)
         {
-          setTestSkip(boost::lexical_cast<size_t>(argv[1]));
+          setTestSkip(QuickFAST::lexical_cast<size_t>(argv[1]));
           consumed = 2;
         }
         else if(opt == "-buffersize" && argc > 1) // size         : Size of communication buffers. For multicast largest expected message. (default " << bufferSize_ << ")" << std::endl;
         {
-          setBufferSize(boost::lexical_cast<size_t>(argv[1]));
+          setBufferSize(QuickFAST::lexical_cast<size_t>(argv[1]));
           consumed = 2;
         }
         else if(opt == "-buffers" && argc > 1) // count      : Number of buffers. (default " << bufferCount_ << ")" << std::endl;
         {
-          setBufferCount(boost::lexical_cast<size_t>(argv[1]));
+          setBufferCount(QuickFAST::lexical_cast<size_t>(argv[1]));
           consumed = 2;
         }
         else if(opt == "-nonstandard" && argc > 1)
         {
-          setNonstandard(boost::lexical_cast<unsigned long>(argv[1]));
+          setNonstandard(QuickFAST::lexical_cast<unsigned long>(argv[1]));
           consumed = 2;
         }
         return consumed;

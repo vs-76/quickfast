@@ -34,7 +34,7 @@ namespace QuickFAST{
 
     private:
       bool first_;
-      boost::scoped_array<unsigned char> buffer_;
+      std::unique_ptr<unsigned char[]> buffer_;
       size_t pos_;
       size_t end_;
     };

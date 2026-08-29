@@ -326,7 +326,7 @@ DecoderConnection::configure(
       Communication::MulticastReceiver * receiver;
       if(configuration.privateIOService())
       {
-        ioService_.reset(new boost::asio::io_context);
+        ioService_.reset(new asio::io_context);
         receiver = new Communication::MulticastReceiver(*ioService_);
       }
       else
@@ -358,7 +358,7 @@ DecoderConnection::configure(
     {
       if(configuration.privateIOService())
       {
-        ioService_.reset(new boost::asio::io_context);
+        ioService_.reset(new asio::io_context);
           receiver_.reset(new Communication::TCPReceiver(
             *ioService_,
             configuration.hostName(),

@@ -3,9 +3,8 @@
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
 
-#define BOOST_TEST_NO_MAIN QuickFASTTest
-#include <boost/test/unit_test.hpp>
-#include <boost/filesystem.hpp>
+#include <gtest/gtest.h>
+#include <filesystem>
 
 #include <Codecs/XMLTemplateParser.h>
 #include <Codecs/TemplateRegistry.h>
@@ -64,26 +63,26 @@ namespace
 
   void validateMessage1(Messages::Message & message)
   {
-    BOOST_CHECK_EQUAL(message.getApplicationType(), "unittestdata");
+    EXPECT_EQ((message.getApplicationType()), ("unittestdata"));
     Messages::FieldCPtr value;
 
     //<group name="Group" presence="optional">
-    BOOST_REQUIRE(message.getField("Group", value));
+    ASSERT_TRUE(message.getField("Group", value));
 
     Messages::FieldSetCPtr group = value->toGroup();
 
   //<uInt32 name="field1" id="A">
-    BOOST_CHECK(group->getField("field1", value));
-    BOOST_CHECK_EQUAL(value->toUInt32(), 1);
+    EXPECT_TRUE(group->getField("field1", value));
+    EXPECT_EQ((value->toUInt32()), (1));
 
   //<uInt32 name="field2" id="B">
-    BOOST_CHECK(group->getField("field2", value));
-    BOOST_CHECK_EQUAL(value->toUInt32(), 2);
+    EXPECT_TRUE(group->getField("field2", value));
+    EXPECT_EQ((value->toUInt32()), (2));
 
   }
 
 
-  BOOST_AUTO_TEST_CASE(TestGroupReferences)
+  TEST(QuickFAST, TestGroupReferences)
   {
 //    _crtBreakAlloc = 15607;
 //    _crtBreakAlloc = 15613;
@@ -130,7 +129,7 @@ namespace
 
     destination.clear();
 
-    BOOST_CHECK(fastString == reencoded);
+    EXPECT_TRUE(fastString == reencoded);
   }
 }
 

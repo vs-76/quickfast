@@ -68,7 +68,7 @@ namespace QuickFAST
 
     private:
       size_t lookAheadCount_;
-      boost::scoped_array<Communication::LinkedBuffer *> lookAhead_;
+      std::unique_ptr<Communication::LinkedBuffer *[]> lookAhead_;
       bool first_;
       sequence_t nextSequenceNumber_;
       bool gapWait_;

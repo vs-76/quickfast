@@ -85,7 +85,7 @@ namespace QuickFAST
       }
 
     private:
-      boost::scoped_array<unsigned char> buffer_;
+      std::unique_ptr<unsigned char[]> buffer_;
       size_t fileSize_;
       size_t pos_;
       bool ok_;

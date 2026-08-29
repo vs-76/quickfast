@@ -16,6 +16,7 @@
 #include <Messages/Field.h>
 
 #include <Common/Profiler.h>
+#include <Common/LexicalCast.h>
 
 namespace QuickFAST{
   namespace Codecs{
@@ -189,7 +190,7 @@ namespace QuickFAST{
       {
         if(SIGNED)
         {
-          int64 v = boost::lexical_cast<int64>(value);
+          int64 v = QuickFAST::lexical_cast<int64>(value);
           typedValue_ = INTEGER_TYPE(v);
           if(v != int64(typedValue_))
           {
@@ -199,7 +200,7 @@ namespace QuickFAST{
         }
         else
         {
-          uint64 v = boost::lexical_cast<uint64>(value);
+          uint64 v = QuickFAST::lexical_cast<uint64>(value);
           typedValue_ = INTEGER_TYPE(v);
           if(v != uint64(typedValue_))
           {

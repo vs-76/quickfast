@@ -67,7 +67,7 @@ WorkingBuffer::clear(bool reverse, size_t capacity)
   reverse_ = reverse;
   if(capacity > capacity_)
   {
-    boost::scoped_array<uchar> newBuffer(new uchar[capacity]);
+    std::unique_ptr<uchar[]> newBuffer(new uchar[capacity]);
     buffer_.swap(newBuffer);
     capacity_ = capacity;
   }
@@ -132,7 +132,7 @@ WorkingBuffer::grow(size_t newCapacity)
   {
     newCapacity = initialCapacity;
   }
-  boost::scoped_array<uchar> newBuffer(new uchar[newCapacity]);
+  std::unique_ptr<uchar[]> newBuffer(new uchar[newCapacity]);
   size_t delta = 0;
   if(reverse_)
   {

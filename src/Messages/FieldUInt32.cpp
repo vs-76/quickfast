@@ -7,7 +7,7 @@
 using namespace ::QuickFAST;
 using namespace ::QuickFAST::Messages;
 
-FieldCPtr FieldUInt32::nullField_ = new FieldUInt32;
+FieldCPtr FieldUInt32::nullField_ = FieldCPtr(new FieldUInt32);
 
 FieldUInt32::FieldUInt32(uint32 value)
   : Field(ValueType::UINT32, true)
@@ -37,16 +37,8 @@ FieldUInt32::toUInt32() const
 FieldCPtr
 FieldUInt32::create(uint32 value)
 {
-  return new
-    FieldUInt32(value);
+  return FieldCPtr(new FieldUInt32(value));
 }
-
-void
-FieldUInt32::freeField()const
-{
-  delete this;
-}
-
 
 FieldCPtr
 FieldUInt32::createNull()

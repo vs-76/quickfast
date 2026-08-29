@@ -17,7 +17,7 @@ namespace QuickFAST
   {
     class SchemaElement;
     /// A smart pointer to a SchemaElement
-    typedef boost::shared_ptr<SchemaElement> SchemaElementPtr;
+    typedef std::shared_ptr<SchemaElement> SchemaElementPtr;
   }
 }
 

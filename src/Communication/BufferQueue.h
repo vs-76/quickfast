@@ -11,6 +11,7 @@
 //#include <Common/QuickFAST_Export.h>
 #include "BufferQueue_fwd.h"
 #include <Communication/LinkedBuffer.h>
+#include <cassert>
 
 namespace QuickFAST
 {

@@ -64,8 +64,8 @@ namespace QuickFAST{
       bool verbose_;
 
       Communication::AsioService ioService_;
-      boost::asio::io_context::strand strand_;
-      boost::asio::steady_timer timer_;
+      asio::io_context::strand strand_;
+      asio::steady_timer timer_;
 
       Application::CommandArgParser commandArgParser_;
       FILE * dataFile_;
@@ -74,7 +74,7 @@ namespace QuickFAST{
       typedef std::vector<MessagePosition> MessageIndex;
       MessageIndex messageIndex_;
 
-      boost::scoped_array<unsigned char> buffer_;
+      std::unique_ptr<unsigned char[]> buffer_;
       size_t bufferSize_;
       size_t nPass_;
       size_t nMsg_;

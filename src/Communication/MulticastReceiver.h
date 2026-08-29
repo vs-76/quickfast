@@ -36,10 +36,10 @@ namespace QuickFAST
           )
         : parent_(parent)
         , name_(name)
-        , listenInterface_(boost::asio::ip::make_address(listenInterfaceIP))
+        , listenInterface_(asio::ip::make_address(listenInterfaceIP))
         , portNumber_(portNumber)
-        , multicastGroup_(boost::asio::ip::make_address(multicastGroupIP))
-        , bindAddress_(boost::asio::ip::make_address(bindIP))
+        , multicastGroup_(asio::ip::make_address(multicastGroupIP))
+        , bindAddress_(asio::ip::make_address(bindIP))
         , endpoint_(listenInterface_, portNumber)
         , socket_(ioService)
         , joined_(false)
@@ -60,12 +60,12 @@ namespace QuickFAST
         bool initializeReceiver()
         {
           socket_.open(endpoint_.protocol());
-          socket_.set_option(boost::asio::ip::udp::socket::reuse_address(true));
-          boost::asio::ip::udp::endpoint bindpoint(bindAddress_, portNumber_);
+          socket_.set_option(asio::ip::udp::socket::reuse_address(true));
+          asio::ip::udp::endpoint bindpoint(bindAddress_, portNumber_);
           socket_.bind(bindpoint);
 
           // Join the multicast group
-          boost::asio::ip::multicast::join_group joinRequest(
+          asio::ip::multicast::join_group joinRequest(
             multicastGroup_.to_v4(),
             listenInterface_.to_v4());
           socket_.set_option(joinRequest);
@@ -73,7 +73,7 @@ namespace QuickFAST
           return true;
         }
 
-        bool fillBuffer(LinkedBuffer * buffer, boost::mutex::scoped_lock &)
+        bool fillBuffer(LinkedBuffer * buffer, std::unique_lock<std::mutex> &)
         {
           if(readInProgress_)
           {
@@ -82,19 +82,17 @@ namespace QuickFAST
           readInProgress_ = true;
 //          std::cout << "Start read on feed: " << name_ << std::endl;
           socket_.async_receive_from(
-            boost::asio::buffer(buffer->get(), buffer->capacity()),
+            asio::buffer(buffer->get(), buffer->capacity()),
             senderEndpoint_,
-            boost::bind(&MulticastFeed::handleReceive,
-              this,
-              boost::asio::placeholders::error,
-              buffer,
-              boost::asio::placeholders::bytes_transferred)
-            );
+            [this, buffer](const asio::error_code& error, std::size_t bytes_transferred)
+            {
+              this->handleReceive(error, buffer, bytes_transferred);
+            });
           return true;
         }
 
         void handleReceive(
-          const boost::system::error_code& error,
+          const asio::error_code& error,
           LinkedBuffer * buffer,
           size_t bytesReceived)
         {
@@ -107,7 +105,7 @@ namespace QuickFAST
             if(joined_)
             {
               // leave the multicast group
-              boost::asio::ip::multicast::leave_group leaveRequest(
+              asio::ip::multicast::leave_group leaveRequest(
                 multicastGroup_.to_v4(),
                 listenInterface_.to_v4());
               socket_.set_option(leaveRequest);
@@ -133,7 +131,7 @@ namespace QuickFAST
           // Temporarily leave the group
           if(joined_)
           {
-            boost::asio::ip::multicast::leave_group leaveRequest(
+            asio::ip::multicast::leave_group leaveRequest(
               multicastGroup_.to_v4(),
               listenInterface_.to_v4());
             socket_.set_option(leaveRequest);
@@ -146,7 +144,7 @@ namespace QuickFAST
           if(!joined_)
           {
             // rejoin the multicast group
-            boost::asio::ip::multicast::join_group joinRequest(
+            asio::ip::multicast::join_group joinRequest(
               multicastGroup_.to_v4(),
               listenInterface_.to_v4());
             socket_.set_option(joinRequest);
@@ -154,7 +152,7 @@ namespace QuickFAST
           }
         }
 
-        boost::asio::ip::address listenInterface()const
+        asio::ip::address listenInterface()const
         {
           return listenInterface_;
         }
@@ -164,27 +162,27 @@ namespace QuickFAST
           return portNumber_;
         }
 
-        boost::asio::ip::address multicastGroup()const
+        asio::ip::address multicastGroup()const
         {
           return multicastGroup_;
         }
 
-        boost::asio::ip::address bindAddress()const
+        asio::ip::address bindAddress()const
         {
           return bindAddress_;
         }
 
-        boost::asio::ip::udp::endpoint endpoint()const
+        asio::ip::udp::endpoint endpoint()const
         {
           return endpoint_;
         }
 
-        boost::asio::ip::udp::endpoint senderEndpoint()const
+        asio::ip::udp::endpoint senderEndpoint()const
         {
           return senderEndpoint_;
         }
 
-        boost::asio::ip::udp::socket & socket()
+        asio::ip::udp::socket & socket()
         {
           return socket_;
         }
@@ -205,17 +203,17 @@ namespace QuickFAST
       private:
         MulticastReceiver & parent_;
         std::string name_;
-        boost::asio::ip::address listenInterface_;
+        asio::ip::address listenInterface_;
         unsigned short portNumber_;
-        boost::asio::ip::address multicastGroup_;
-        boost::asio::ip::address bindAddress_;
-        boost::asio::ip::udp::endpoint endpoint_;
-        boost::asio::ip::udp::endpoint senderEndpoint_;
-        boost::asio::ip::udp::socket socket_;
+        asio::ip::address multicastGroup_;
+        asio::ip::address bindAddress_;
+        asio::ip::udp::endpoint endpoint_;
+        asio::ip::udp::endpoint senderEndpoint_;
+        asio::ip::udp::socket socket_;
         bool joined_;
         bool readInProgress_;
       };
-      typedef boost::shared_ptr<MulticastFeed> MulticastFeedPtr;
+      typedef std::shared_ptr<MulticastFeed> MulticastFeedPtr;
       typedef std::vector<MulticastFeedPtr> MulticastFeedVector;
 
     public:
@@ -227,7 +225,7 @@ namespace QuickFAST
       }
 
       /// @brief construct given shared io_service
-      MulticastReceiver(boost::asio::io_context & ioService)
+      MulticastReceiver(asio::io_context & ioService)
         : AsynchReceiver(ioService)
       {
       }
@@ -263,7 +261,7 @@ namespace QuickFAST
       /// @param bindIP the IP to be used to bind the socket.
       /// @param portNumber port number
       MulticastReceiver(
-        boost::asio::io_context & ioService,
+        asio::io_context & ioService,
         const std::string & multicastGroupIP,
         const std::string & listenInterfaceIP,
         const std::string & bindIP,
@@ -382,7 +380,7 @@ namespace QuickFAST
       }
 
     private:
-      bool fillBuffer(LinkedBuffer * buffer, boost::mutex::scoped_lock & lock)
+      bool fillBuffer(LinkedBuffer * buffer, std::unique_lock<std::mutex> & lock)
       {
         // consider fairness/round robin
         for(size_t nFeed = 0; nFeed < feeds_.size(); ++nFeed)

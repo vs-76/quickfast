@@ -3,8 +3,7 @@
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
 
-#define BOOST_TEST_NO_MAIN QuickFASTTest
-#include <boost/test/unit_test.hpp>
+#include <gtest/gtest.h>
 #include <Codecs/XMLTemplateParser.h>
 #include <Codecs/DataDestination.h>
 #include <Codecs/DataSourceString.h>
@@ -55,9 +54,9 @@ namespace{
 
 }
 
-BOOST_AUTO_TEST_CASE(testNestedSequences)
+TEST(QuickFAST, testNestedSequences)
 {
-  BOOST_TEST_PASSPOINT();
+  SCOPED_TRACE("");
   std::stringstream templateStream(templates);
   Codecs::XMLTemplateParser parser;
   Codecs::TemplateRegistryPtr templateRegistry = parser.parse(templateStream);
@@ -91,7 +90,7 @@ BOOST_AUTO_TEST_CASE(testNestedSequences)
 
   Codecs::TemplateCPtr tpl;
 
-  BOOST_REQUIRE(enc.findTemplate("Test1Message", "", tpl));
+  ASSERT_TRUE(enc.findTemplate("Test1Message", "", tpl));
   Codecs::DataDestination dest;
   enc.encodeMessage(dest, tpl->getId(), *msg);
 //  std::cout << "encoded" << std::endl;
@@ -108,24 +107,24 @@ BOOST_AUTO_TEST_CASE(testNestedSequences)
 
   Messages::FieldCPtr decodedParties;
   message.getField("Parties", decodedParties);
-  BOOST_REQUIRE(decodedParties);
+  ASSERT_TRUE(decodedParties);
   Messages::SequenceCPtr decodedPartiesSequence = decodedParties->toSequence();
-  BOOST_REQUIRE(decodedPartiesSequence);
+  ASSERT_TRUE(decodedPartiesSequence);
 
   Messages::FieldSetCPtr decodedPartyItem = (*decodedPartiesSequence)[0];
-  BOOST_REQUIRE(decodedPartyItem);
+  ASSERT_TRUE(decodedPartyItem);
 
   // now get the nested sequence
   Messages::FieldCPtr decodedEntries;
   decodedPartyItem->getField("Entries", decodedEntries);
   Messages::SequenceCPtr decodedEntriesSequence = decodedEntries->toSequence();
-  BOOST_REQUIRE(decodedEntriesSequence);
+  ASSERT_TRUE(decodedEntriesSequence);
 
   Messages::FieldSetCPtr decodedEntry = (*decodedEntriesSequence)[0];
-  BOOST_REQUIRE(decodedEntry);
+  ASSERT_TRUE(decodedEntry);
 
   Messages::FieldCPtr decodedPrice;
   decodedEntry->getField("Price", decodedPrice);
-  BOOST_REQUIRE(decodedPrice);
-  BOOST_CHECK_EQUAL(decodedPrice->toDecimal(), Decimal(1,-1));
+  ASSERT_TRUE(decodedPrice);
+  EXPECT_EQ((decodedPrice->toDecimal()), (Decimal(1,-1)));
 }

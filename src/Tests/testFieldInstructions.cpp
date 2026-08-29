@@ -3,8 +3,7 @@
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
 
-#define BOOST_TEST_NO_MAIN QuickFASTTest
-#include <boost/test/unit_test.hpp>
+#include <gtest/gtest.h>
 #include <Codecs/FieldInstructionAscii.h>
 #include <Codecs/FieldInstructionUtf8.h>
 #include <Codecs/FieldInstructionByteVector.h>
@@ -41,13 +40,13 @@
 
 using namespace QuickFAST;
 
-BOOST_AUTO_TEST_CASE(theFirstTest)
+TEST(QuickFAST, theFirstTest)
 {
   // with any luck, this will be the first test run
 #ifdef _MSC_VER
   _CrtSetBreakAlloc(16586*10); // see documentation of this function for debugging memory leaks.
 #endif
-  BOOST_CHECK(true); // entertain boost test that objects to tests which don't actually test anything.
+  EXPECT_TRUE(true); // entertain boost test that objects to tests which don't actually test anything.
 }
 
 namespace
@@ -58,18 +57,18 @@ namespace
     bool acceptsOperator = true,
     bool hasName = true)
   {
-    BOOST_CHECK(instruction.isMandatory());
+    EXPECT_TRUE(instruction.isMandatory());
     instruction.setPresence(false);
-    BOOST_CHECK(!instruction.isMandatory());
+    EXPECT_TRUE(!instruction.isMandatory());
 
     instruction.setId("id");
-    BOOST_CHECK_EQUAL(instruction.getId(), "id");
+    EXPECT_EQ((instruction.getId()), ("id"));
 
     Messages::FieldIdentity identity(instruction.getIdentity());
-    BOOST_CHECK_EQUAL(identity.id(),"id");
+    EXPECT_EQ((identity.id()), ("id"));
     if(hasName)
     {
-      BOOST_CHECK_EQUAL(identity.name(), "NS::Name");
+      EXPECT_EQ((identity.name()), ("NS::Name"));
     }
 
     Codecs::DictionaryIndexer indexer;
@@ -79,7 +78,7 @@ namespace
 
     if(acceptsOperator)
     {
-      BOOST_CHECK_EQUAL(instruction.getPresenceMapBitsUsed(), 0);
+      EXPECT_EQ((instruction.getPresenceMapBitsUsed()), (0));
       Codecs::FieldOpPtr fieldOp(new Codecs::FieldOpNop);
       fieldOp->setKey("alternate");
       fieldOp->setDictionaryName("global");
@@ -87,94 +86,94 @@ namespace
 
       instruction.setFieldOp(Codecs::FieldOpPtr(new Codecs::FieldOpConstant));
       instruction.finalize(*registry);
-      BOOST_CHECK_EQUAL(instruction.getPresenceMapBitsUsed(), expectPresenceMapBits);
+      EXPECT_EQ((instruction.getPresenceMapBitsUsed()), (expectPresenceMapBits));
       instruction.setFieldOp(Codecs::FieldOpPtr(new Codecs::FieldOpCopy));
       instruction.finalize(*registry);
-      BOOST_CHECK_EQUAL(instruction.getPresenceMapBitsUsed(), expectPresenceMapBits);
+      EXPECT_EQ((instruction.getPresenceMapBitsUsed()), (expectPresenceMapBits));
       instruction.setFieldOp(Codecs::FieldOpPtr(new Codecs::FieldOpDefault));
       instruction.finalize(*registry);
-      BOOST_CHECK_EQUAL(instruction.getPresenceMapBitsUsed(), expectPresenceMapBits);
+      EXPECT_EQ((instruction.getPresenceMapBitsUsed()), (expectPresenceMapBits));
       instruction.setFieldOp(Codecs::FieldOpPtr(new Codecs::FieldOpDelta));
       instruction.finalize(*registry);
-      BOOST_CHECK_EQUAL(instruction.getPresenceMapBitsUsed(), 0);
+      EXPECT_EQ((instruction.getPresenceMapBitsUsed()), (0));
     }
   }
 }
 
-BOOST_AUTO_TEST_CASE(testFieldInstructionAscii)
+TEST(QuickFAST, testFieldInstructionAscii)
 {
   Codecs::FieldInstructionAscii instruction("Name", "NS");
   testFieldInstructionBaseClass(instruction, 1);
 }
 
-BOOST_AUTO_TEST_CASE(testFieldInstructionUtf8)
+TEST(QuickFAST, testFieldInstructionUtf8)
 {
   Codecs::FieldInstructionUtf8 instruction("Name", "NS");
   testFieldInstructionBaseClass(instruction, 1);
 }
 
-BOOST_AUTO_TEST_CASE(testFieldInstructionByteVector)
+TEST(QuickFAST, testFieldInstructionByteVector)
 {
   Codecs::FieldInstructionByteVector instruction("Name", "NS");
   testFieldInstructionBaseClass(instruction, 1);
 }
 
-BOOST_AUTO_TEST_CASE(testFieldInstructionInt8)
+TEST(QuickFAST, testFieldInstructionInt8)
 {
   Codecs::FieldInstructionInt8 instruction("Name", "NS");
   testFieldInstructionBaseClass(instruction, 1);
 }
 
-BOOST_AUTO_TEST_CASE(testFieldInstructionUInt8)
+TEST(QuickFAST, testFieldInstructionUInt8)
 {
   Codecs::FieldInstructionUInt8 instruction("Name", "NS");
   testFieldInstructionBaseClass(instruction, 1);
 }
 
-BOOST_AUTO_TEST_CASE(testFieldInstructionInt16)
+TEST(QuickFAST, testFieldInstructionInt16)
 {
   Codecs::FieldInstructionInt16 instruction("Name", "NS");
   testFieldInstructionBaseClass(instruction, 1);
 }
 
-BOOST_AUTO_TEST_CASE(testFieldInstructionUInt16)
+TEST(QuickFAST, testFieldInstructionUInt16)
 {
   Codecs::FieldInstructionUInt16 instruction("Name", "NS");
   testFieldInstructionBaseClass(instruction, 1);
 }
 
-BOOST_AUTO_TEST_CASE(testFieldInstructionInt32)
+TEST(QuickFAST, testFieldInstructionInt32)
 {
   Codecs::FieldInstructionInt32 instruction("Name", "NS");
   testFieldInstructionBaseClass(instruction, 1);
 }
 
-BOOST_AUTO_TEST_CASE(testFieldInstructionUInt32)
+TEST(QuickFAST, testFieldInstructionUInt32)
 {
   Codecs::FieldInstructionUInt32 instruction("Name", "NS");
   testFieldInstructionBaseClass(instruction, 1);
 }
 
-BOOST_AUTO_TEST_CASE(testFieldInstructionInt64)
+TEST(QuickFAST, testFieldInstructionInt64)
 {
   Codecs::FieldInstructionInt64 instruction("Name", "NS");
   testFieldInstructionBaseClass(instruction, 1);
 }
 
-BOOST_AUTO_TEST_CASE(testFieldInstructionUInt64)
+TEST(QuickFAST, testFieldInstructionUInt64)
 {
   Codecs::FieldInstructionUInt64 instruction("Name", "NS");
   testFieldInstructionBaseClass(instruction, 1);
 }
 
-BOOST_AUTO_TEST_CASE(testFieldInstructionDecimal)
+TEST(QuickFAST, testFieldInstructionDecimal)
 {
   Codecs::FieldInstructionDecimal instruction("Name", "NS");
   testFieldInstructionBaseClass(instruction, 1);
 }
 
 #if 0 // this test tries to finalize the template reference which doesn't work without a registry
-BOOST_AUTO_TEST_CASE(testFieldInstructionTemplateRef)
+TEST(QuickFAST, testFieldInstructionTemplateRef)
 {
   Codecs::FieldInstructionStaticTemplateRef instruction("Name", "NS");
   testFieldInstructionBaseClass(instruction, 0, false);
@@ -184,7 +183,7 @@ BOOST_AUTO_TEST_CASE(testFieldInstructionTemplateRef)
 }
 #endif
 
-BOOST_AUTO_TEST_CASE(testFieldInstructionGroup)
+TEST(QuickFAST, testFieldInstructionGroup)
 {
   // First without fields
   Codecs::FieldInstructionGroup instruction("Name", "NS");
@@ -208,7 +207,7 @@ BOOST_AUTO_TEST_CASE(testFieldInstructionGroup)
 }
 
 #if 0
-BOOST_AUTO_TEST_CASE(testFieldInstructionSequence)
+TEST(QuickFAST, testFieldInstructionSequence)
 {
   // to make this test work, populate the sequence.
   Codecs::FieldInstructionSequence instruction("Name", "NS");
@@ -216,7 +215,7 @@ BOOST_AUTO_TEST_CASE(testFieldInstructionSequence)
 }
 #endif
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_1_1)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_1_1)
 {
   // <int32 id="1" presence="optional" name="Value"/>
   // Input Value    942755
@@ -241,7 +240,7 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_1_1)
 
   // verify no presence map needed
   field.finalize(*registry);
-  BOOST_CHECK_EQUAL(field.getPresenceMapBitsUsed(), 0);
+  EXPECT_EQ((field.getPresenceMapBitsUsed()), (0));
 
   // We neeed the helper routines in the decoder
   Codecs::Decoder decoder(registry);
@@ -251,21 +250,21 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_1_1)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   Messages::Message & fieldSet = consumer.message();
   // should generate 1 field
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::INT32));
-  BOOST_CHECK_EQUAL(pFieldEntry->getField()->toInt32(), 942755);
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::INT32));
+  EXPECT_EQ((pFieldEntry->getField()->toInt32()), (942755));
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -277,11 +276,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_1_1)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_1_2)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_1_2)
 {
 //Int32 Example – Mandatory Positive Number
 //<int32 id="1" presence="mandatory" name="Value"/>
@@ -304,7 +303,7 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_1_2)
   Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(3,3,indexer.size()));
   // verify no presence map needed
   field.finalize(*registry);
-  BOOST_CHECK_EQUAL(field.getPresenceMapBitsUsed(), 0);
+  EXPECT_EQ((field.getPresenceMapBitsUsed()), (0));
 
   // We neeed the helper routines in the decoder
   Codecs::Decoder decoder(registry);
@@ -314,21 +313,21 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_1_2)
 
   builder.startMessage("UNIT_TEST", "", 10);
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::INT32));
-  BOOST_CHECK_EQUAL(pFieldEntry->getField()->toInt32(), 942755);
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::INT32));
+  EXPECT_EQ((pFieldEntry->getField()->toInt32()), (942755));
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
     // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -340,12 +339,12 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_1_2)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_1_3)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_1_3)
 {
 //Int32 Example – Optional Negative Number
 //<int32 id="1" presence="optional" name="Value"/>
@@ -368,7 +367,7 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_1_3)
   Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(3,3,indexer.size()));
   // verify no presence map needed
   field.finalize(*registry);
-  BOOST_CHECK_EQUAL(field.getPresenceMapBitsUsed(), 0);
+  EXPECT_EQ((field.getPresenceMapBitsUsed()), (0));
 
   // We neeed the helper routines in the decoder
   Codecs::Decoder decoder(registry);
@@ -378,21 +377,21 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_1_3)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::INT32));
-  BOOST_CHECK_EQUAL(pFieldEntry->getField()->toInt32(), -942755);
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::INT32));
+  EXPECT_EQ((pFieldEntry->getField()->toInt32()), (-942755));
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -404,11 +403,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_1_3)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_1_4)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_1_4)
 {
 //Int32 Example – Mandatory Negative Number
 //<int32 id="1" presence="mandatory" name="Value"/>
@@ -431,7 +430,7 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_1_4)
   Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(3,3,indexer.size()));
   // verify no presence map needed
   field.finalize(*registry);
-  BOOST_CHECK_EQUAL(field.getPresenceMapBitsUsed(), 0);
+  EXPECT_EQ((field.getPresenceMapBitsUsed()), (0));
 
   // We neeed the helper routines in the decoder
   Codecs::Decoder decoder(registry);
@@ -441,21 +440,21 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_1_4)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::INT32));
-  BOOST_CHECK_EQUAL(pFieldEntry->getField()->toInt32(), -7942755);
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::INT32));
+  EXPECT_EQ((pFieldEntry->getField()->toInt32()), (-7942755));
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -467,11 +466,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_1_4)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_1_5)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_1_5)
 {
 //Int32 Example – Mandatory Positive Number with sign-bit extension
 //<int32 id="1" presence="mandatory" name="Value"/>
@@ -495,7 +494,7 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_1_5)
   Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(3,3,indexer.size()));
   // verify no presence map needed
   field.finalize(*registry);
-  BOOST_CHECK_EQUAL(field.getPresenceMapBitsUsed(), 0);
+  EXPECT_EQ((field.getPresenceMapBitsUsed()), (0));
 
   // We neeed the helper routines in the decoder
   Codecs::Decoder decoder(registry);
@@ -506,20 +505,20 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_1_5)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::INT32));
-  BOOST_CHECK_EQUAL(pFieldEntry->getField()->toInt32(), 8193);
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::INT32));
+  EXPECT_EQ((pFieldEntry->getField()->toInt32()), (8193));
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -531,11 +530,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_1_5)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_1_6)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_1_6)
 {
 //Int32 Example – Mandatory Negative Number with sign-bit extension
 //<int32 id="1" presence="mandatory" name="Value"/>
@@ -561,7 +560,7 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_1_6)
   Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(3,3,indexer.size()));
   // verify no presence map needed
   field.finalize(*registry);
-  BOOST_CHECK_EQUAL(field.getPresenceMapBitsUsed(), 0);
+  EXPECT_EQ((field.getPresenceMapBitsUsed()), (0));
 
   // We neeed the helper routines in the decoder
   Codecs::Decoder decoder(registry);
@@ -571,21 +570,21 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_1_6)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::INT32));
-  BOOST_CHECK_EQUAL(pFieldEntry->getField()->toInt32(), -8193);
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::INT32));
+  EXPECT_EQ((pFieldEntry->getField()->toInt32()), (-8193));
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -597,11 +596,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_1_6)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_1a)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_2_1a)
 {
 //uInt32 Example – Optional Number
 //<uInt32 id="1" presence="optional" name="Value"/>
@@ -627,7 +626,7 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_1a)
   Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(3,3,indexer.size()));
   // verify no presence map needed
   field.finalize(*registry);
-  BOOST_CHECK_EQUAL(field.getPresenceMapBitsUsed(), 0);
+  EXPECT_EQ((field.getPresenceMapBitsUsed()), (0));
 
   // We neeed the helper routines in the decoder
   Codecs::Decoder decoder(registry);
@@ -637,17 +636,17 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_1a)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate nothing (Missing optional field)
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 0);
+  EXPECT_EQ((fieldSet.size()), (0));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -659,11 +658,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_1a)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_1b)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_2_1b)
 {
 //uInt32 Example – Optional Number
 //<uInt32 id="1" presence="optional" name="Value"/>
@@ -689,7 +688,7 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_1b)
   Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(3,3,indexer.size()));
   // verify no presence map needed
   field.finalize(*registry);
-  BOOST_CHECK_EQUAL(field.getPresenceMapBitsUsed(), 0);
+  EXPECT_EQ((field.getPresenceMapBitsUsed()), (0));
 
   // We neeed the helper routines in the decoder
   Codecs::Decoder decoder(registry);
@@ -700,20 +699,20 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_1b)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::UINT32));
-  BOOST_CHECK_EQUAL(pFieldEntry->getField()->toUInt32(), 0);
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::UINT32));
+  EXPECT_EQ((pFieldEntry->getField()->toUInt32()), (0));
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -725,11 +724,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_1b)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_1c)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_2_1c)
 {
 //uInt32 Example – Optional Number
 //<uInt32 id="1" presence="optional" name="Value"/>
@@ -755,7 +754,7 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_1c)
   Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(3,3,indexer.size()));
   // verify no presence map needed
   field.finalize(*registry);
-  BOOST_CHECK_EQUAL(field.getPresenceMapBitsUsed(), 0);
+  EXPECT_EQ((field.getPresenceMapBitsUsed()), (0));
 
   // We neeed the helper routines in the decoder
   Codecs::Decoder decoder(registry);
@@ -765,21 +764,21 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_1c)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::UINT32));
-  BOOST_CHECK_EQUAL(pFieldEntry->getField()->toUInt32(), 1);
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::UINT32));
+  EXPECT_EQ((pFieldEntry->getField()->toUInt32()), (1));
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -791,11 +790,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_1c)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_1d)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_2_1d)
 {
 //uInt32 Example – Optional Number
 //<uInt32 id="1" presence="optional" name="Value"/>
@@ -821,7 +820,7 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_1d)
   Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(3,3,indexer.size()));
   // verify no presence map needed
   field.finalize(*registry);
-  BOOST_CHECK_EQUAL(field.getPresenceMapBitsUsed(), 0);
+  EXPECT_EQ((field.getPresenceMapBitsUsed()), (0));
 
   // We neeed the helper routines in the decoder
   Codecs::Decoder decoder(registry);
@@ -832,20 +831,20 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_1d)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::UINT32));
-  BOOST_CHECK_EQUAL(pFieldEntry->getField()->toUInt32(), 942755);
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::UINT32));
+  EXPECT_EQ((pFieldEntry->getField()->toUInt32()), (942755));
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -857,11 +856,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_1d)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_2a)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_2_2a)
 {
 //uInt32 Example – Mandatory Number
 //<uInt32 id="1" presence="mandatory" name="Value"/>
@@ -887,7 +886,7 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_2a)
   Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(3,3,indexer.size()));
   // verify no presence map needed
   field.finalize(*registry);
-  BOOST_CHECK_EQUAL(field.getPresenceMapBitsUsed(), 0);
+  EXPECT_EQ((field.getPresenceMapBitsUsed()), (0));
 
   // We neeed the helper routines in the decoder
   Codecs::Decoder decoder(registry);
@@ -897,21 +896,21 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_2a)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::UINT32));
-  BOOST_CHECK_EQUAL(pFieldEntry->getField()->toUInt32(), 0);
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::UINT32));
+  EXPECT_EQ((pFieldEntry->getField()->toUInt32()), (0));
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -923,11 +922,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_2a)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_2b)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_2_2b)
 {
 //uInt32 Example – Mandatory Number
 //<uInt32 id="1" presence="mandatory" name="Value"/>
@@ -953,7 +952,7 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_2b)
   Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(3,3,indexer.size()));
   // verify no presence map needed
   field.finalize(*registry);
-  BOOST_CHECK_EQUAL(field.getPresenceMapBitsUsed(), 0);
+  EXPECT_EQ((field.getPresenceMapBitsUsed()), (0));
 
   // We neeed the helper routines in the decoder
   Codecs::Decoder decoder(registry);
@@ -964,20 +963,20 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_2b)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::UINT32));
-  BOOST_CHECK_EQUAL(pFieldEntry->getField()->toUInt32(), 1);
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::UINT32));
+  EXPECT_EQ((pFieldEntry->getField()->toUInt32()), (1));
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -989,11 +988,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_2b)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_2c)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_2_2c)
 {
 //uInt32 Example – Optional Number
 //<uInt32 id="1" presence="optional" name="Value"/>
@@ -1019,7 +1018,7 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_2c)
   Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(3,3,indexer.size()));
   // verify no presence map needed
   field.finalize(*registry);
-  BOOST_CHECK_EQUAL(field.getPresenceMapBitsUsed(), 0);
+  EXPECT_EQ((field.getPresenceMapBitsUsed()), (0));
 
   // We neeed the helper routines in the decoder
   Codecs::Decoder decoder(registry);
@@ -1029,21 +1028,21 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_2c)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::UINT32));
-  BOOST_CHECK_EQUAL(pFieldEntry->getField()->toUInt32(), 942755);
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::UINT32));
+  EXPECT_EQ((pFieldEntry->getField()->toUInt32()), (942755));
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -1055,11 +1054,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_2_2c)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_3_1a)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_3_1a)
 {
 // US ASCII string Example - Optional String
 // <string id="1" presence="optional" name="Value"/>
@@ -1085,7 +1084,7 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_3_1a)
   Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(3,3,indexer.size()));
   // verify no presence map needed
   field.finalize(*registry);
-  BOOST_CHECK_EQUAL(field.getPresenceMapBitsUsed(), 0);
+  EXPECT_EQ((field.getPresenceMapBitsUsed()), (0));
 
   // We neeed the helper routines in the decoder
   Codecs::Decoder decoder(registry);
@@ -1095,17 +1094,17 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_3_1a)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 0);
+  EXPECT_EQ((fieldSet.size()), (0));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -1117,11 +1116,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_3_1a)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_3_1b)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_3_1b)
 {
 // US ASCII string Example - Optional String
 // <string id="1" presence="optional" name="Value"/>
@@ -1147,7 +1146,7 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_3_1b)
   Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(3,3,indexer.size()));
   // verify no presence map needed
   field.finalize(*registry);
-  BOOST_CHECK_EQUAL(field.getPresenceMapBitsUsed(), 0);
+  EXPECT_EQ((field.getPresenceMapBitsUsed()), (0));
 
   // We neeed the helper routines in the decoder
   Codecs::Decoder decoder(registry);
@@ -1158,20 +1157,20 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_3_1b)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::ASCII));
-  BOOST_CHECK_EQUAL(pFieldEntry->getField()->toAscii(), "ABC");
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::ASCII));
+  EXPECT_EQ((pFieldEntry->getField()->toAscii()), ("ABC"));
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -1183,11 +1182,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_3_1b)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_3_1c)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_3_1c)
 {
 // US ASCII string Example - Optional String
 // <string id="1" presence="optional" name="Value"/>
@@ -1214,7 +1213,7 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_3_1c)
   Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(3,3,indexer.size()));
   // verify no presence map needed
   field.finalize(*registry);
-  BOOST_CHECK_EQUAL(field.getPresenceMapBitsUsed(), 0);
+  EXPECT_EQ((field.getPresenceMapBitsUsed()), (0));
 
   // We neeed the helper routines in the decoder
   Codecs::Decoder decoder(registry);
@@ -1224,21 +1223,21 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_3_1c)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::ASCII));
-  BOOST_CHECK(pFieldEntry->getField()->toAscii().empty());
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::ASCII));
+  EXPECT_TRUE(pFieldEntry->getField()->toAscii().empty());
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -1250,12 +1249,12 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_3_1c)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_3_2a)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_3_2a)
 {
 // US ASCII string Example - Mandatory String
 // <string id="1" presence="mandatory" name="Value"/>
@@ -1281,7 +1280,7 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_3_2a)
   Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(3,3,indexer.size()));
   // verify no presence map needed
   field.finalize(*registry);
-  BOOST_CHECK_EQUAL(field.getPresenceMapBitsUsed(), 0);
+  EXPECT_EQ((field.getPresenceMapBitsUsed()), (0));
 
   // We neeed the helper routines in the decoder
   Codecs::Decoder decoder(registry);
@@ -1292,20 +1291,20 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_3_2a)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::ASCII));
-  BOOST_CHECK_EQUAL(pFieldEntry->getField()->toAscii(), "ABC");
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::ASCII));
+  EXPECT_EQ((pFieldEntry->getField()->toAscii()), ("ABC"));
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -1317,11 +1316,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_3_2a)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_3_2b)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_3_2b)
 {
 // US ASCII string Example - Optional String
 // <string id="1" presence="optional" name="Value"/>
@@ -1347,7 +1346,7 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_3_2b)
   Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(3,3,indexer.size()));
   // verify no presence map needed
   field.finalize(*registry);
-  BOOST_CHECK_EQUAL(field.getPresenceMapBitsUsed(), 0);
+  EXPECT_EQ((field.getPresenceMapBitsUsed()), (0));
 
   // We neeed the helper routines in the decoder
   Codecs::Decoder decoder(registry);
@@ -1357,21 +1356,21 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_3_2b)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::ASCII));
-  BOOST_CHECK(pFieldEntry->getField()->toAscii().empty());
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::ASCII));
+  EXPECT_TRUE(pFieldEntry->getField()->toAscii().empty());
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -1383,11 +1382,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_3_2b)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_4_1a)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_4_1a)
 {
 // byteVector Example - Optional byteVector
 // <byteVector id="1" presence="optional" name="Value"/>
@@ -1413,7 +1412,7 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_4_1a)
   Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(3,3,indexer.size()));
   // verify no presence map needed
   field.finalize(*registry);
-  BOOST_CHECK_EQUAL(field.getPresenceMapBitsUsed(), 0);
+  EXPECT_EQ((field.getPresenceMapBitsUsed()), (0));
 
   // We neeed the helper routines in the decoder
   Codecs::Decoder decoder(registry);
@@ -1423,16 +1422,16 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_4_1a)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate no fields
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 0);
+  EXPECT_EQ((fieldSet.size()), (0));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -1444,12 +1443,12 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_4_1a)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_4_1b)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_4_1b)
 {
 // byteVector string Example - Optional ByteVector
 // <byteVector id="1" presence="optional" name="Value"/>
@@ -1475,7 +1474,7 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_4_1b)
   Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(3,3,indexer.size()));
   // verify no presence map needed
   field.finalize(*registry);
-  BOOST_CHECK_EQUAL(field.getPresenceMapBitsUsed(), 0);
+  EXPECT_EQ((field.getPresenceMapBitsUsed()), (0));
 
   // We neeed the helper routines in the decoder
   Codecs::Decoder decoder(registry);
@@ -1485,23 +1484,23 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_4_1b)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
 
   Messages::Message & fieldSet(consumer.message());
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::BYTEVECTOR));
-  BOOST_CHECK_EQUAL(pFieldEntry->getField()->toByteVector(), "ABC");
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::BYTEVECTOR));
+  EXPECT_EQ((pFieldEntry->getField()->toByteVector()), ("ABC"));
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -1513,11 +1512,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_4_1b)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_4_1c)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_4_1c)
 {
 // byteVector string Example - Optional ByteVector
 // <byteVector id="1" presence="optional" name="Value"/>
@@ -1543,7 +1542,7 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_4_1c)
   Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(3,3,indexer.size()));
   // verify no presence map needed
   field.finalize(*registry);
-  BOOST_CHECK_EQUAL(field.getPresenceMapBitsUsed(), 0);
+  EXPECT_EQ((field.getPresenceMapBitsUsed()), (0));
 
   // We neeed the helper routines in the decoder
   Codecs::Decoder decoder(registry);
@@ -1553,21 +1552,21 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_4_1c)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::BYTEVECTOR));
-  BOOST_CHECK(pFieldEntry->getField()->toByteVector().empty());
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::BYTEVECTOR));
+  EXPECT_TRUE(pFieldEntry->getField()->toByteVector().empty());
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -1579,11 +1578,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_4_1c)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_4_2a)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_4_2a)
 {
 // byteVector string Example - Mandatory ByteVector
 // <byteVector id="1" presence="mandatory" name="Value"/>
@@ -1609,7 +1608,7 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_4_2a)
   Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(3,3,indexer.size()));
   // verify no presence map needed
   field.finalize(*registry);
-  BOOST_CHECK_EQUAL(field.getPresenceMapBitsUsed(), 0);
+  EXPECT_EQ((field.getPresenceMapBitsUsed()), (0));
 
   // We neeed the helper routines in the decoder
   Codecs::Decoder decoder(registry);
@@ -1619,22 +1618,22 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_4_2a)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
   Messages::Message & fieldSet = consumer.message();
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::BYTEVECTOR));
-  BOOST_CHECK_EQUAL(pFieldEntry->getField()->toByteVector(), "ABC");
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::BYTEVECTOR));
+  EXPECT_EQ((pFieldEntry->getField()->toByteVector()), ("ABC"));
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
   Codecs::DataDestination destination;
@@ -1645,11 +1644,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_4_2a)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_4_2b)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_4_2b)
 {
 // byteVector string Example - Mandatory ByteVector
 // <byteVector id="1" presence="mandatory" name="Value"/>
@@ -1675,7 +1674,7 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_4_2b)
   Codecs::TemplateRegistryPtr registry(new Codecs::TemplateRegistry(3,3,indexer.size()));
   // verify no presence map needed
   field.finalize(*registry);
-  BOOST_CHECK_EQUAL(field.getPresenceMapBitsUsed(), 0);
+  EXPECT_EQ((field.getPresenceMapBitsUsed()), (0));
 
   // We neeed the helper routines in the decoder
   Codecs::Decoder decoder(registry);
@@ -1685,21 +1684,21 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_4_2b)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
   Messages::Message & fieldSet = consumer.message();
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::BYTEVECTOR));
-  BOOST_CHECK(pFieldEntry->getField()->toByteVector().empty());
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::BYTEVECTOR));
+  EXPECT_TRUE(pFieldEntry->getField()->toByteVector().empty());
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -1711,11 +1710,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_4_2b)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_5_1)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_5_1)
 {
 //Decimal Example – Mandatory Positive Decimal
 //<decimal id="1" presence="mandatory" name="Value"/>
@@ -1748,23 +1747,23 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_5_1)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
   Messages::Message & fieldSet = consumer.message();
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::DECIMAL));
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::DECIMAL));
   Decimal expected(942755, 2);
-  BOOST_CHECK(pFieldEntry->getField()->toDecimal() == expected);
+  EXPECT_TRUE(pFieldEntry->getField()->toDecimal() == expected);
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -1776,11 +1775,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_5_1)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_5_2)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_5_2)
 {
 //Decimal Example – Mandatory Positive Decimal with Scaled Mantissa
 //<decimal id="1" presence="mandatory" name="Value"/>
@@ -1813,22 +1812,22 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_5_2)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::DECIMAL));
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::DECIMAL));
   Decimal expected(942755, 2);
-  BOOST_CHECK(pFieldEntry->getField()->toDecimal() == expected);
+  EXPECT_TRUE(pFieldEntry->getField()->toDecimal() == expected);
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -1840,11 +1839,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_5_2)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_5_3)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_5_3)
 {
 //Decimal Example – Optional Positive Decimal
 //<decimal id="1" presence="optional" name="Value"/>
@@ -1877,22 +1876,22 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_5_3)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::DECIMAL));
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::DECIMAL));
   Decimal expected(942755, 2);
-  BOOST_CHECK(pFieldEntry->getField()->toDecimal() == expected);
+  EXPECT_TRUE(pFieldEntry->getField()->toDecimal() == expected);
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -1904,11 +1903,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_5_3)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_5_4)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_5_4)
 {
 //Decimal Example – Mandatory Positive Decimal negative exponent
 //<decimal id="1" presence="mandatory" name="Value"/>
@@ -1941,22 +1940,22 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_5_4)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::DECIMAL));
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::DECIMAL));
   Decimal expected(942755, -2);
-  BOOST_CHECK(pFieldEntry->getField()->toDecimal() == expected);
+  EXPECT_TRUE(pFieldEntry->getField()->toDecimal() == expected);
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -1968,11 +1967,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_5_4)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_5_5)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_5_5)
 {
 //Decimal Example – Optional Negative Decimal negative exponent
 //<decimal id="1" presence="optional" name="Value"/>
@@ -2004,22 +2003,22 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_5_5)
   Codecs::GenericMessageBuilder builder(consumer);
   builder.startMessage("UNIT_TEST", "", 10);
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
   Messages::Message & fieldSet = consumer.message();
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::DECIMAL));
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::DECIMAL));
   Decimal expected(-942755, -2);
-  BOOST_CHECK(pFieldEntry->getField()->toDecimal() == expected);
+  EXPECT_TRUE(pFieldEntry->getField()->toDecimal() == expected);
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -2031,11 +2030,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_5_5)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_5_6)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_5_6)
 {
 //Decimal Example – Optional Positive Decimal with single field operator
 //<decimal id="1" presence="optional" name="Value"> <copy/> </decimal>
@@ -2071,22 +2070,22 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_5_6)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::DECIMAL));
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::DECIMAL));
   Decimal expected(942755, -2);
-  BOOST_CHECK(pFieldEntry->getField()->toDecimal() == expected);
+  EXPECT_TRUE(pFieldEntry->getField()->toDecimal() == expected);
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -2098,11 +2097,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_5_6)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_OptionalDecimalZeroExponent)
+TEST(QuickFAST, test_OptionalDecimalZeroExponent)
 {
 //Decimal Example – Optional Positive Decimal with single field operator
 //<decimal id="1" presence="optional" name="Value"> <copy/> </decimal>
@@ -2138,22 +2137,22 @@ BOOST_AUTO_TEST_CASE(test_OptionalDecimalZeroExponent)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::DECIMAL));
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::DECIMAL));
   Decimal expected(942755, 0);
-  BOOST_CHECK(pFieldEntry->getField()->toDecimal() == expected);
+  EXPECT_TRUE(pFieldEntry->getField()->toDecimal() == expected);
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -2165,11 +2164,11 @@ BOOST_AUTO_TEST_CASE(test_OptionalDecimalZeroExponent)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_5_7)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_5_7)
 {
 //Decimal Example – Optional Positive Decimal with individual field operators
 // <decimal id="1" presence="optional" name="Value">
@@ -2210,22 +2209,22 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_5_7)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::DECIMAL));
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::DECIMAL));
   Decimal expected(942755, -2);
-  BOOST_CHECK(pFieldEntry->getField()->toDecimal() == expected);
+  EXPECT_TRUE(pFieldEntry->getField()->toDecimal() == expected);
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -2237,11 +2236,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_5_7)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_5_8)
+TEST(QuickFAST, test_Spec_1x1_Appendix3_1_5_8)
 {
     //Decimal Example – Optional Negative Decimal with sign bit extension
     // <decimal id="1" presence="optional" name="Value"/>
@@ -2269,22 +2268,22 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_5_8)
   builder.startMessage("UNIT_TEST", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
 
   // should generate 1 field
   Messages::Message & fieldSet = consumer.message();
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::DECIMAL));
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::DECIMAL));
   Decimal expected(-8193, -3);
-  BOOST_CHECK(pFieldEntry->getField()->toDecimal() == expected);
+  EXPECT_TRUE(pFieldEntry->getField()->toDecimal() == expected);
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -2296,11 +2295,11 @@ BOOST_AUTO_TEST_CASE(test_Spec_1x1_Appendix3_1_5_8)
   std::string result;
   destination.toString(result);
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }
 
-BOOST_AUTO_TEST_CASE(test_issue_31)
+TEST(QuickFAST, test_issue_31)
 {
   //Decimal Example – Decimal with individual field operators
   // Contained in optional group
@@ -2355,11 +2354,11 @@ BOOST_AUTO_TEST_CASE(test_issue_31)
   builder.startMessage("b", "", 10);
 
   field.decode(source, pmap, decoder, builder);
-  BOOST_REQUIRE(builder.endMessage(builder));
+  ASSERT_TRUE(builder.endMessage(builder));
 
   // Was all input consumed?
   uchar byte;
-  BOOST_CHECK(!source.getByte(byte));
+  EXPECT_TRUE(!source.getByte(byte));
   // should generate 1 field
   Messages::Message & fieldSet = consumer.message();
 #if 0
@@ -2369,20 +2368,20 @@ BOOST_AUTO_TEST_CASE(test_issue_31)
   std::cout << std::endl;
 #endif
 
-  BOOST_CHECK_EQUAL(fieldSet.size(), 1);
+  EXPECT_EQ((fieldSet.size()), (1));
   Messages::FieldSet::const_iterator pFieldEntry = fieldSet.begin();
-  BOOST_CHECK(pFieldEntry != fieldSet.end());
-  BOOST_CHECK(pFieldEntry->getField()->isType(ValueType::GROUP));
+  EXPECT_TRUE(pFieldEntry != fieldSet.end());
+  EXPECT_TRUE(pFieldEntry->getField()->isType(ValueType::GROUP));
   Messages::FieldSetCPtr group = pFieldEntry->getField()->toGroup();
-  BOOST_REQUIRE(bool(group));
+  ASSERT_TRUE(bool(group));
   Messages::FieldSet::const_iterator pGroupEntry = group->begin();
-  BOOST_CHECK(pGroupEntry->getField()->isType(ValueType::DECIMAL));
+  EXPECT_TRUE(pGroupEntry->getField()->isType(ValueType::DECIMAL));
   Decimal expected(942755, -2);
-  BOOST_CHECK(pGroupEntry->getField()->toDecimal() == expected);
+  EXPECT_TRUE(pGroupEntry->getField()->toDecimal() == expected);
   ++pGroupEntry;
-  BOOST_CHECK(pGroupEntry == group->end());
+  EXPECT_TRUE(pGroupEntry == group->end());
   ++pFieldEntry;
-  BOOST_CHECK(pFieldEntry == fieldSet.end());
+  EXPECT_TRUE(pFieldEntry == fieldSet.end());
 
   // Now reencode the data
   Codecs::PresenceMap pmapResult(1);
@@ -2398,6 +2397,6 @@ BOOST_AUTO_TEST_CASE(test_issue_31)
 //  resultBuffer.hexDisplay(std::cout);
 //  std::cout << std::endl;
   destination.clear();
-  BOOST_CHECK_EQUAL(result, testString);
-  BOOST_CHECK(pmap == pmapResult);
+  EXPECT_EQ((result), (testString));
+  EXPECT_TRUE(pmap == pmapResult);
 }

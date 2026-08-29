@@ -3,9 +3,7 @@
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
 
-#define BOOST_TEST_NO_MAIN QuickFASTTest
-#include <boost/test/unit_test.hpp>
-
+#include <gtest/gtest.h>
 #include <Codecs/XMLTemplateParser.h>
 #include <Codecs/TemplateRegistry.h>
 #include <Codecs/Encoder.h>
@@ -61,91 +59,91 @@ namespace{
 namespace{
   void validateMessage1(Messages::Message & message)
   {
-    BOOST_CHECK_EQUAL(message.getApplicationType(), "instrumentreferencedata");
+    EXPECT_EQ((message.getApplicationType()), ("instrumentreferencedata"));
     Messages::FieldCPtr value;
 
-    BOOST_CHECK(message.getField("timestamp", value));
-    BOOST_CHECK_EQUAL(value->toUInt32(), 1);
+    EXPECT_TRUE(message.getField("timestamp", value));
+    EXPECT_EQ((value->toUInt32()), (1));
 
-    BOOST_CHECK(message.getField("srcId", value));
-    BOOST_CHECK_EQUAL(value->toUInt32(), 2);
+    EXPECT_TRUE(message.getField("srcId", value));
+    EXPECT_EQ((value->toUInt32()), (2));
 
-    BOOST_CHECK(message.getField("seqNum", value));
-    BOOST_CHECK_EQUAL(value->toUInt32(), 3);
+    EXPECT_TRUE(message.getField("seqNum", value));
+    EXPECT_EQ((value->toUInt32()), (3));
 
-    BOOST_CHECK(message.getField("isix", value));
-    BOOST_CHECK_EQUAL(value->toUInt32(), 4);
+    EXPECT_TRUE(message.getField("isix", value));
+    EXPECT_EQ((value->toUInt32()), (4));
 
-    BOOST_CHECK(message.getField("isin", value));
-    BOOST_CHECK_EQUAL(value->toAscii(), "isin");
+    EXPECT_TRUE(message.getField("isin", value));
+    EXPECT_EQ((value->toAscii()), ("isin"));
 
-    BOOST_CHECK(message.getField("exchId", value));
-    BOOST_CHECK_EQUAL(value->toAscii(), "exchId");
+    EXPECT_TRUE(message.getField("exchId", value));
+    EXPECT_EQ((value->toAscii()), ("exchId"));
 
-    BOOST_CHECK(message.getField("instGrp", value));
-    BOOST_CHECK_EQUAL(value->toAscii(), "instGrp");
+    EXPECT_TRUE(message.getField("instGrp", value));
+    EXPECT_EQ((value->toAscii()), ("instGrp"));
 
-    BOOST_CHECK(message.getField("instTypCod", value));
-    BOOST_CHECK_EQUAL(value->toAscii(), "instTypCod");
+    EXPECT_TRUE(message.getField("instTypCod", value));
+    EXPECT_EQ((value->toAscii()), ("instTypCod"));
 
-    BOOST_CHECK(message.getField("currCode", value));
-    BOOST_CHECK_EQUAL(value->toAscii(), "currCode");
+    EXPECT_TRUE(message.getField("currCode", value));
+    EXPECT_EQ((value->toAscii()), ("currCode"));
 
-    BOOST_CHECK(message.getField("ticSiz", value));
-    BOOST_CHECK_EQUAL(value->toDecimal(), Decimal(123, -1));
+    EXPECT_TRUE(message.getField("ticSiz", value));
+    EXPECT_EQ((value->toDecimal()), (Decimal(123, -1)));
 
-    BOOST_CHECK(message.getField("setId", value));
-    BOOST_CHECK_EQUAL(value->toUInt32(), 5);
+    EXPECT_TRUE(message.getField("setId", value));
+    EXPECT_EQ((value->toUInt32()), (5));
 
-    BOOST_CHECK(message.getField("MDFeedTypes", value));
+    EXPECT_TRUE(message.getField("MDFeedTypes", value));
     const Messages::SequenceCPtr & mdft = value->toSequence();
-    BOOST_CHECK_EQUAL(mdft->size(), 2);
+    EXPECT_EQ((mdft->size()), (2));
     Messages::FieldSetCPtr seqEntry = (*mdft)[0];
 
     //entry->addField(identity_streamType, Messages::FieldAscii::create("streamType"));
-    BOOST_CHECK( seqEntry->getField("streamType", value));
-    BOOST_CHECK_EQUAL(value->toAscii(), "streamType");
+    EXPECT_TRUE(seqEntry->getField("streamType", value));
+    EXPECT_EQ((value->toAscii()), ("streamType"));
 
     //entry->addField(identity_streamService, Messages::FieldAscii::create("streamService"));
-    BOOST_CHECK( seqEntry->getField("streamService", value));
-    BOOST_CHECK_EQUAL(value->toAscii(), "streamService");
+    EXPECT_TRUE(seqEntry->getField("streamService", value));
+    EXPECT_EQ((value->toAscii()), ("streamService"));
 
     //entry->addField(identity_inetAddr, Messages::FieldAscii::create("inetAddr.com"));
-    BOOST_CHECK( seqEntry->getField("inetAddr", value));
-    BOOST_CHECK_EQUAL(value->toAscii(), "inetAddr.com");
+    EXPECT_TRUE(seqEntry->getField("inetAddr", value));
+    EXPECT_EQ((value->toAscii()), ("inetAddr.com"));
 
     //entry->addField(identity_port, Messages::FieldUInt32::create(2222));
-    BOOST_CHECK( seqEntry->getField("port", value));
-    BOOST_CHECK_EQUAL(value->toUInt32(), 2222);
+    EXPECT_TRUE(seqEntry->getField("port", value));
+    EXPECT_EQ((value->toUInt32()), (2222));
 
     //entry->addField(identity_mktDepth, Messages::FieldUInt32::create(10));
-    BOOST_CHECK( seqEntry->getField("mktDepth", value));
-    BOOST_CHECK_EQUAL(value->toUInt32(), 10);
+    EXPECT_TRUE(seqEntry->getField("mktDepth", value));
+    EXPECT_EQ((value->toUInt32()), (10));
 
     // optional field omitted
-    BOOST_CHECK(!seqEntry->getField("mdBookType", value));
+    EXPECT_TRUE(!seqEntry->getField("mdBookType", value));
 
     seqEntry = (*mdft)[1];
 
-    BOOST_CHECK( seqEntry->getField("streamType", value));
-    BOOST_CHECK_EQUAL(value->toAscii(), "streamType2");
+    EXPECT_TRUE(seqEntry->getField("streamType", value));
+    EXPECT_EQ((value->toAscii()), ("streamType2"));
 
-    BOOST_CHECK( seqEntry->getField("streamService", value));
-    BOOST_CHECK_EQUAL(value->toAscii(), "streamService2");
+    EXPECT_TRUE(seqEntry->getField("streamService", value));
+    EXPECT_EQ((value->toAscii()), ("streamService2"));
 
-    BOOST_CHECK( seqEntry->getField("inetAddr", value));
-    BOOST_CHECK_EQUAL(value->toAscii(), "inetAddr.org");
+    EXPECT_TRUE(seqEntry->getField("inetAddr", value));
+    EXPECT_EQ((value->toAscii()), ("inetAddr.org"));
 
-    BOOST_CHECK( seqEntry->getField("port", value));
-    BOOST_CHECK_EQUAL(value->toUInt32(), 2224);
+    EXPECT_TRUE(seqEntry->getField("port", value));
+    EXPECT_EQ((value->toUInt32()), (2224));
     // optional field omitted
-    BOOST_CHECK(!seqEntry->getField("mktDepth", value));
-    BOOST_CHECK(seqEntry->getField("mdBookType", value));
-    BOOST_CHECK_EQUAL(value->toUInt32(), 3);
+    EXPECT_TRUE(!seqEntry->getField("mktDepth", value));
+    EXPECT_TRUE(seqEntry->getField("mdBookType", value));
+    EXPECT_EQ((value->toUInt32()), (3));
   }
 }
 
-BOOST_AUTO_TEST_CASE(testRoundTripSequenceNoPMAP)
+TEST(QuickFAST, testRoundTripSequenceNoPMAP)
 {
   // Template from Issue #1
   std::string theTemplate =
@@ -206,8 +204,8 @@ BOOST_AUTO_TEST_CASE(testRoundTripSequenceNoPMAP)
   Codecs::TemplateRegistryPtr templateRegistry =
     parser.parse(templateStream);
 
-  BOOST_CHECK(templateRegistry);
-  BOOST_CHECK_EQUAL(templateRegistry->maxFieldCount(), 12);
+  EXPECT_TRUE(templateRegistry);
+  EXPECT_EQ((templateRegistry->maxFieldCount()), (12));
 
   Messages::MessagePtr msg(new Messages::Message(templateRegistry->maxFieldCount()));
 
@@ -300,5 +298,5 @@ BOOST_AUTO_TEST_CASE(testRoundTripSequenceNoPMAP)
 
   destination.clear();
 
-  BOOST_CHECK(fastString == reencoded);
+  EXPECT_TRUE(fastString == reencoded);
 }

@@ -44,19 +44,19 @@ FieldDecimal::toDecimal() const
 FieldCPtr
 FieldDecimal::create(const Decimal & value)
 {
-  return new FieldDecimal(value);
+  return FieldCPtr(new FieldDecimal(value));
 }
 
 FieldCPtr
 FieldDecimal::create(mantissa_t mantissa, exponent_t exponent)
 {
-  return new FieldDecimal(mantissa, exponent);
+  return FieldCPtr(new FieldDecimal(mantissa, exponent));
 }
 
 FieldCPtr
 FieldDecimal::createNull()
 {
-  return new FieldDecimal;
+  return FieldCPtr(new FieldDecimal);
 }
 
 void

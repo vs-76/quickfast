@@ -43,7 +43,7 @@ namespace QuickFAST{
       size_t pos_; // position within file
       size_t end_; // end of file
 
-      boost::scoped_array<uchar> buffer_;
+      std::unique_ptr<uchar[]> buffer_;
       size_t capacity_; // size of buffer
     };
   }

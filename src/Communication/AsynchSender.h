@@ -32,7 +32,7 @@ namespace QuickFAST
       /// @param recycler will receive empty buffers after their contents have been written
       /// @param name a name for this connection
       AsynchSender(
-        boost::asio::io_context & ioService,
+        asio::io_context & ioService,
         BufferRecycler & recycler,
         const char * name);
 
@@ -98,7 +98,7 @@ namespace QuickFAST
       /// @param buffer is the buffer that was written
       /// @param bytesWritten is the number of bytes written to the buffer
       void handleWrite(
-        const boost::system::error_code& error,
+        const asio::error_code& error,
         LinkedBuffer * buffer,
         size_t bytesWritten);
 
@@ -111,8 +111,8 @@ namespace QuickFAST
       /// needed for output-type service which may have nothing to write at the moment, unlike
       /// input-type services which should always have an outstanding read or an active handler
       /// callback.
-      typedef boost::asio::executor_work_guard<boost::asio::io_context::executor_type> WorkGuard;
-      boost::scoped_ptr<WorkGuard> keepAlive_;
+      typedef asio::executor_work_guard<asio::io_context::executor_type> WorkGuard;
+      std::unique_ptr<WorkGuard> keepAlive_;
     };
   }
 }

@@ -58,7 +58,7 @@ namespace QuickFAST
       }
 
       // Implement Receiver method
-      bool fillBuffer(LinkedBuffer * buffer, boost::mutex::scoped_lock& lock)
+      bool fillBuffer(LinkedBuffer * buffer, std::unique_lock<std::mutex>& lock)
       {
         const unsigned char * pcapBuffer;
         size_t pcapSize;

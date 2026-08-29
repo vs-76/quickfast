@@ -13,7 +13,7 @@
 
 // Boost.Asio 1.66+ removed class io_service (now a typedef of io_context).
 // Include the real header rather than forward-declaring a class.
-#include <boost/asio/io_context.hpp>
+#include <asio/io_context.hpp>
 
 namespace QuickFAST
 {

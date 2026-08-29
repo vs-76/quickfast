@@ -44,18 +44,18 @@ FieldAscii::toAscii() const
 FieldCPtr
 FieldAscii::create(const std::string & value)
 {
-  return new FieldAscii(value);
+  return FieldCPtr(new FieldAscii(value));
 }
 
 FieldCPtr
 FieldAscii::create(const uchar * buffer, size_t length)
 {
-  return new FieldAscii(buffer, length);
+  return FieldCPtr(new FieldAscii(buffer, length));
 }
 
 FieldCPtr
 FieldAscii::createNull()
 {
-  return new FieldAscii;
+  return FieldCPtr(new FieldAscii);
 }
 

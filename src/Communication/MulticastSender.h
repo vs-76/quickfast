@@ -43,7 +43,7 @@ namespace QuickFAST
       /// @param sendAddress multicast address as a text string
       /// @param portNumber port number
       MulticastSender(
-        boost::asio::io_context & ioService,
+        asio::io_context & ioService,
         BufferRecycler & recycler,
         const std::string & sendAddress,
         unsigned short portNumber
@@ -62,8 +62,8 @@ namespace QuickFAST
       ///@brief Prepare the sender to be used
       bool initializeSender()
       {
-        multicastAddress_ = boost::asio::ip::make_address(sendAddress_);
-        endpoint_ = boost::asio::ip::udp::endpoint(multicastAddress_, portNumber_);
+        multicastAddress_ = asio::ip::make_address(sendAddress_);
+        endpoint_ = asio::ip::udp::endpoint(multicastAddress_, portNumber_);
         socket_.open(endpoint_.protocol());
         return true;
       }
@@ -91,7 +91,7 @@ namespace QuickFAST
       }
 
       /// @brief Provide direct access to the internal asio socket.
-      boost::asio::ip::udp::socket & socket()
+      asio::ip::udp::socket & socket()
       {
         return socket_;
       }
@@ -117,8 +117,8 @@ namespace QuickFAST
       template<typename ConstBufferSequence>
       std::size_t send(
         const ConstBufferSequence & buffers,
-        boost::asio::ip::udp::socket::message_flags flags,
-        boost::system::error_code & ec)
+        asio::ip::udp::socket::message_flags flags,
+        asio::error_code & ec)
       {
         return socket_.send_to(buffers, flags, endpoint_);
       }
@@ -147,7 +147,7 @@ namespace QuickFAST
       template<typename ConstBufferSequence, typename WriteHandler>
       void asyncSend(
         const ConstBufferSequence & buffers,
-        boost::asio::ip::udp::socket::message_flags flags,
+        asio::ip::udp::socket::message_flags flags,
         WriteHandler handler)
       {
         socket_.async_send_to(buffers, flags, handler, endpoint_);
@@ -157,9 +157,9 @@ namespace QuickFAST
 //      AsioService ioService_;
       const std::string & sendAddress_;
       unsigned short portNumber_;
-      boost::asio::ip::address multicastAddress_;
-      boost::asio::ip::udp::endpoint endpoint_;
-      boost::asio::ip::udp::socket socket_;
+      asio::ip::address multicastAddress_;
+      asio::ip::udp::endpoint endpoint_;
+      asio::ip::udp::socket socket_;
     };
   }
 }

@@ -48,7 +48,7 @@ namespace QuickFAST
       bool acceptFullBuffer(
         LinkedBuffer * buffer,
         size_t bytesReceived,
-        boost::mutex::scoped_lock & lock
+        std::unique_lock<std::mutex> & lock
         )
       {
         bool needService = false;
@@ -76,7 +76,7 @@ namespace QuickFAST
         size_t count = 0;
         bool service = false;
         { // Scope for lock
-          boost::mutex::scoped_lock lock(bufferMutex_);
+          std::unique_lock<std::mutex> lock(bufferMutex_);
           service = queue_.startService(lock);
         }
         while(service && !stopping_)
@@ -142,7 +142,7 @@ namespace QuickFAST
           // more than one thread servicing a synchronous data source,
           // so only start the one.
           thread_.reset(
-            new boost::thread(boost::bind(&SynchReceiver::run, this)));
+            new std::thread([this]{ this->run(); }));
         }
       }
 
@@ -161,7 +161,7 @@ namespace QuickFAST
       }
 
     private:
-      boost::scoped_ptr<boost::thread> thread_;
+      std::unique_ptr<std::thread> thread_;
     };
   }
 }

@@ -36,13 +36,13 @@ FieldInt16::toInt16() const
 FieldCPtr
 FieldInt16::create(int16 value)
 {
-  return new FieldInt16(value);
+  return FieldCPtr(new FieldInt16(value));
 }
 
 FieldCPtr
 FieldInt16::createNull()
 {
-  return new FieldInt16;
+  return FieldCPtr(new FieldInt16);
 }
 
 void

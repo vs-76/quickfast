@@ -36,13 +36,13 @@ FieldInt64::toInt64() const
 FieldCPtr
 FieldInt64::create(int64 value)
 {
-  return new FieldInt64(value);
+  return FieldCPtr(new FieldInt64(value));
 }
 
 FieldCPtr
 FieldInt64::createNull()
 {
-  return new FieldInt64;
+  return FieldCPtr(new FieldInt64);
 }
 
 void

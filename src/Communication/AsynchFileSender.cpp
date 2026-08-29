@@ -24,7 +24,7 @@ AsynchFileSender::AsynchFileSender(
 {
 }
 AsynchFileSender::AsynchFileSender(
-  boost::asio::io_context & ioService,
+  asio::io_context & ioService,
   BufferRecycler & recycler,
   const char * fileName,
   unsigned long additionalAttributes)
@@ -92,16 +92,14 @@ AsynchFileSender::sendAt(LinkedBuffer * buffer, long long offset)
       << ": " << std::string((const char *)buffer->get(), bytesToWrite > 20 ? 20:bytesToWrite)
       << std::endl << "..." << std::endl;
 #endif
-    boost::asio::async_write_at(
+    asio::async_write_at(
       handle_,
-      (boost::uint64_t)offset,
-      boost::asio::buffer(buffer->get(), bytesToWrite),
-      boost::bind(&AsynchFileSender::handleWrite,
-        this,
-        boost::asio::placeholders::error,
-        buffer,
-        boost::asio::placeholders::bytes_transferred)
-      );
+      (std::uint64_t)offset,
+      asio::buffer(buffer->get(), bytesToWrite),
+      [this, buffer](const asio::error_code& error, std::size_t bytes_transferred)
+      {
+        this->handleWrite(error, buffer, bytes_transferred);
+      });
   }
   else
   {

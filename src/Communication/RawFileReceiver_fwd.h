@@ -15,7 +15,7 @@ namespace QuickFAST{
   namespace Communication{
     class RawFileReceiver;
     /// @brief smart pointer to a FileReceiver
-    typedef boost::shared_ptr<RawFileReceiver> RawFileReceiverPtr;
+    typedef std::shared_ptr<RawFileReceiver> RawFileReceiverPtr;
   }
 }
 #endif // RAWFILERECEIVER_FWD_H

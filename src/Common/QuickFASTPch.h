@@ -34,45 +34,31 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include <cassert>
 
-// If building for .NET, must link boost threads dynamically
-#define BOOST_THREAD_USE_DLL
-// This reports at compile time which boost libraries will be used
-// #define BOOST_LIB_DIAGNOSTIC
-
+#include <cstdint>
+#include <memory>
+#include <functional>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <chrono>
 #include <sstream>
 #include <string>
 #include <vector>
 #include <map>
 #include <stack>
 #include <stdexcept>
-#include <math.h>
+#include <cmath>
 #include <iostream>
 #include <iomanip>
 #include <fstream>
 #include <cstdlib>
-
-// Define BOOST_BIND_GLOBAL_PLACEHOLDERS before boost/bind to keep legacy placeholder use.
-#ifndef BOOST_BIND_GLOBAL_PLACEHOLDERS
-# define BOOST_BIND_GLOBAL_PLACEHOLDERS
-#endif
-
-#include <boost/date_time/gregorian/gregorian_types.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/weak_ptr.hpp>
-#include <boost/shared_array.hpp>
-#include <boost/enable_shared_from_this.hpp>
-#include <boost/scoped_ptr.hpp>
-#include <boost/intrusive_ptr.hpp>
-#include <boost/scoped_array.hpp>
-#include <boost/function.hpp>
-#include <boost/lexical_cast.hpp>
-#include <boost/operators.hpp>
-#include <boost/thread.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/cstdint.hpp>
-#include <boost/bind/bind.hpp>
+#include <algorithm>
+#include <utility>
+#include <limits>
+#include <cstdio>
+#include <cstring>
 
 ////////////////////////
 // Doxygen documentation

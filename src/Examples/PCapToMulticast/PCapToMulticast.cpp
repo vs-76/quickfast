@@ -6,6 +6,7 @@
 #include "PCapToMulticast.h"
 #include <Examples/StopWatch.h>
 #include <Common/Types.h>
+#include <Common/LexicalCast.h>
 using namespace QuickFAST;
 using namespace Examples;
 
@@ -65,12 +66,12 @@ PCapToMulticast::parseSingleArg(int argc, char * argv[])
     }
     else if(opt == "-p" && argc > 1)
     {
-      portNumber_ = boost::lexical_cast<unsigned short>(argv[1]);
+      portNumber_ = QuickFAST::lexical_cast<unsigned short>(argv[1]);
       consumed = 2;
     }
     else if(opt == "-r" && argc > 1)
     {
-      size_t mps = boost::lexical_cast<size_t>(argv[1]);
+      size_t mps = QuickFAST::lexical_cast<size_t>(argv[1]);
       if(mps > 0)
       {
         sendMicroseconds_ = 1000000/mps;
@@ -84,12 +85,12 @@ PCapToMulticast::parseSingleArg(int argc, char * argv[])
     }
     else if(opt == "-b" && argc > 1)
     {
-      burst_ = boost::lexical_cast<size_t>(argv[1]);
+      burst_ = QuickFAST::lexical_cast<size_t>(argv[1]);
       consumed = 2;
     }
     else if(opt == "-c" && argc > 1)
     {
-      sendCount_ = boost::lexical_cast<size_t>(argv[1]);
+      sendCount_ = QuickFAST::lexical_cast<size_t>(argv[1]);
       consumed = 2;
     }
     else if(opt == "-a" && argc > 1)
@@ -166,8 +167,8 @@ PCapToMulticast::applyArgs()
     }
     ok = ok && pcapReader_.open(dataFileName_.c_str());// for debugging dump to->, &std::cout);
 
-    multicastAddress_ = boost::asio::ip::make_address(sendAddress_);
-    endpoint_ = boost::asio::ip::udp::endpoint(multicastAddress_, portNumber_);
+    multicastAddress_ = asio::ip::make_address(sendAddress_);
+    endpoint_ = asio::ip::udp::endpoint(multicastAddress_, portNumber_);
     socket_.open(endpoint_.protocol());
     std::cout << "Opening multicast group: " << endpoint_.address().to_string() << ':' << endpoint_.port() << std::endl;
   }
@@ -189,8 +190,8 @@ PCapToMulticast::run()
       std::cout << " Configuring multicast: " << multicastAddress_ << '|' << sendAddress_ << ':' << portNumber_ << std::endl;
     }
 
-    boost::asio::dispatch(strand_,
-        boost::bind(&PCapToMulticast::sendBurst, this));
+    asio::dispatch(strand_,
+        [this]{ this->sendBurst(); });
     StopWatch lapse;
     this->ioService_.run();
     unsigned long sendLapse = lapse.freeze();
@@ -230,8 +231,8 @@ PCapToMulticast::sendBurst()
     {
       timer_.expires_after(std::chrono::microseconds(sendMicroseconds_));
       timer_.async_wait(
-        boost::asio::bind_executor(strand_,
-          boost::bind(&PCapToMulticast::sendBurst, this))
+        asio::bind_executor(strand_,
+          [this](const asio::error_code&){ this->sendBurst(); })
         );
     }
 
@@ -289,7 +290,7 @@ PCapToMulticast::sendBurst()
       {
         waitForEnter();
       }
-      socket_.send_to(boost::asio::buffer(msgBuffer, bytesRead), endpoint_);
+      socket_.send_to(asio::buffer(msgBuffer, bytesRead), endpoint_);
     }
   }
   catch (std::exception& e)

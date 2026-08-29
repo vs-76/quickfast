@@ -64,7 +64,7 @@ namespace QuickFAST
       ///
       /// @param buffer is the buffer to be added to the queue
       /// @returns true if if the queue needs to be serviced
-      bool push(LinkedBuffer * buffer, boost::mutex::scoped_lock &)
+      bool push(LinkedBuffer * buffer, std::unique_lock<std::mutex> &)
       {
         bool first = false;
         bool ok = false;
@@ -112,7 +112,7 @@ namespace QuickFAST
       /// service the queue.
       ///
       /// @returns true if if the queue is now ready to be serviced
-      bool startService(boost::mutex::scoped_lock &)
+      bool startService(std::unique_lock<std::mutex> &)
       {
         assert(busy_);
         promote();
@@ -154,7 +154,7 @@ namespace QuickFAST
       /// @param recheck should normally be true indicating that this thread is
       ///        willing to continue servicing the queue.
       /// @returns true if there are more entries to be serviced.
-      bool endService(bool recheck, boost::mutex::scoped_lock &)
+      bool endService(bool recheck, std::unique_lock<std::mutex> &)
       {
         assert(busy_);
         if(recheck)
@@ -181,7 +181,7 @@ namespace QuickFAST
       /// param unused scoped_lock is for legacy compatibility
       /// @param wait is true if this call should wait for incoming buffers to be available.
       /// Returns true if the incoming buffer queue has changed from empty to populated
-      bool refresh(boost::mutex::scoped_lock &, bool wait)
+      bool refresh(std::unique_lock<std::mutex> &, bool wait)
       {
         assert(busy_);
         if(!outgoing_.isEmpty())
@@ -197,7 +197,7 @@ namespace QuickFAST
         while(wait && incomingHead_ == 0)
         {
           {
-            boost::mutex::scoped_lock lock(waitMutex_);
+            std::unique_lock<std::mutex> lock(waitMutex_);
             condition_.wait(lock);
           }
           promote();
@@ -218,8 +218,8 @@ namespace QuickFAST
     private:
       AtomicPointer<LinkedBuffer> incomingHead_;
       BufferQueue outgoing_;
-      boost::mutex waitMutex_;
-      boost::condition_variable condition_;
+      std::mutex waitMutex_;
+      std::condition_variable condition_;
       volatile long busy_;
     };
   }

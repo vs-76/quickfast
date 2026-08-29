@@ -7,6 +7,8 @@
 #ifndef PROFILER_H
 #define PROFILER_H
 #include <Common/QuickFAST_Export.h>
+#include <chrono>
+#include <cassert>
 
 /// enable or disable generation of profiler code.
 #define PROFILER_ENABLEx
@@ -27,10 +29,9 @@ __declspec(dllimport) DWORD GetTickCount(void);
 # define PROFILER_TIME_TYPE DWORD
 # define PROFILER_DIFF_MSEC(a, b) (a - b)
 #else // _WIN32
-# include <boost/date_time/posix_time/posix_time.hpp>
-# define PROFILER_GET_TIME boost::posix_time::microsec_clock::universal_time()
-# define PROFILER_TIME_TYPE boost::posix_time::ptime
-# define PROFILER_DIFF_MSEC(a,b) ((a - b).total_milliseconds())
+# define PROFILER_GET_TIME std::chrono::steady_clock::now()
+# define PROFILER_TIME_TYPE std::chrono::steady_clock::time_point
+# define PROFILER_DIFF_MSEC(a,b) (std::chrono::duration_cast<std::chrono::milliseconds>((a) - (b)).count())
 #endif // _WIN32
 
 namespace QuickFAST{

@@ -3,8 +3,7 @@
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
 
-#define BOOST_TEST_NO_MAIN QuickFASTTest
-#include <boost/test/unit_test.hpp>
+#include <gtest/gtest.h>
 #include <Codecs/XMLTemplateParser.h>
 #include <Codecs/TemplateRegistry.h>
 #include <Codecs/Template.h>
@@ -87,14 +86,14 @@ namespace
 }
 
 using namespace QuickFAST;
-BOOST_AUTO_TEST_CASE(testStaticTemplateRefA)
+TEST(QuickFAST, testStaticTemplateRefA)
 {
   Codecs::XMLTemplateParser parser;
   std::stringstream templateSource(templatesXML);
   Codecs::TemplateRegistryPtr templateRegistry =
     parser.parse(templateSource);
 
-  BOOST_CHECK(templateRegistry);
+  EXPECT_TRUE(templateRegistry);
   std::string testString(template10MessageA);
   std::istringstream sourceStream(testString, std::ios::binary);
   Codecs::DataSourceStream source(sourceStream);
@@ -109,27 +108,27 @@ BOOST_AUTO_TEST_CASE(testStaticTemplateRefA)
   Messages::Message & msgOut(consumer.message());
 
   Messages::FieldCPtr value;
-  BOOST_REQUIRE(msgOut.getField("field0", value));
-  BOOST_CHECK_EQUAL(value->toUInt32(), 0);
+  ASSERT_TRUE(msgOut.getField("field0", value));
+  EXPECT_EQ((value->toUInt32()), (0));
 
-  BOOST_REQUIRE(msgOut.getField("field1", value));
-  BOOST_CHECK_EQUAL(value->toUInt32(), 11);
+  ASSERT_TRUE(msgOut.getField("field1", value));
+  EXPECT_EQ((value->toUInt32()), (11));
 
-  BOOST_REQUIRE(msgOut.getField("field2", value));
-  BOOST_CHECK_EQUAL(value->toUInt32(), 12);
+  ASSERT_TRUE(msgOut.getField("field2", value));
+  EXPECT_EQ((value->toUInt32()), (12));
 
-  BOOST_REQUIRE(msgOut.getField("field3", value));
-  BOOST_CHECK_EQUAL(value->toUInt32(), 3);
+  ASSERT_TRUE(msgOut.getField("field3", value));
+  EXPECT_EQ((value->toUInt32()), (3));
 }
 
-BOOST_AUTO_TEST_CASE(testStaticTemplateRefB)
+TEST(QuickFAST, testStaticTemplateRefB)
 {
   Codecs::XMLTemplateParser parser;
   std::stringstream templateSource(templatesXML);
   Codecs::TemplateRegistryPtr templateRegistry =
     parser.parse(templateSource);
 
-  BOOST_CHECK(templateRegistry);
+  EXPECT_TRUE(templateRegistry);
   std::string testString(template10MessageB);
   std::istringstream sourceStream(testString, std::ios::binary);
   Codecs::DataSourceStream source(sourceStream);
@@ -142,15 +141,15 @@ BOOST_AUTO_TEST_CASE(testStaticTemplateRefB)
   Messages::Message & msgOut(consumer.message());
 
   Messages::FieldCPtr value;
-  BOOST_REQUIRE(msgOut.getField("field0", value));
-  BOOST_CHECK_EQUAL(value->toUInt32(), 0);
+  ASSERT_TRUE(msgOut.getField("field0", value));
+  EXPECT_EQ((value->toUInt32()), (0));
 
-  BOOST_REQUIRE(msgOut.getField("field1", value));
-  BOOST_CHECK_EQUAL(value->toUInt32(), 1);
+  ASSERT_TRUE(msgOut.getField("field1", value));
+  EXPECT_EQ((value->toUInt32()), (1));
 
-  BOOST_REQUIRE(msgOut.getField("field2", value));
-  BOOST_CHECK_EQUAL(value->toUInt32(), 2);
+  ASSERT_TRUE(msgOut.getField("field2", value));
+  EXPECT_EQ((value->toUInt32()), (2));
 
-  BOOST_REQUIRE(msgOut.getField("field3", value));
-  BOOST_CHECK_EQUAL(value->toUInt32(), 3);
+  ASSERT_TRUE(msgOut.getField("field3", value));
+  EXPECT_EQ((value->toUInt32()), (3));
 }

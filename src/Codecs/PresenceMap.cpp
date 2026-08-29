@@ -81,7 +81,7 @@ void
 PresenceMap::grow()
 {
   // todo: consider reporting this as a recoverable error due to performance impact
-  boost::scoped_array<uchar> newBuffer(new uchar [byteCapacity_+1]);
+  std::unique_ptr<uchar[]> newBuffer(new uchar [byteCapacity_+1]);
   newBuffer[byteCapacity_] = 0;
   std::copy(bits_, bits_ + byteCapacity_, newBuffer.get());
   bits_ = newBuffer.get();

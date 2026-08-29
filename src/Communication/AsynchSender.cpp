@@ -21,7 +21,7 @@ AsynchSender::AsynchSender(
 }
 
 AsynchSender::AsynchSender(
-  boost::asio::io_context & ioService,
+  asio::io_context & ioService,
   BufferRecycler & recycler,
   const char * name)
     : Sender(recycler)
@@ -52,7 +52,7 @@ AsynchSender::close()
 
 void
 AsynchSender::handleWrite(
-  const boost::system::error_code& error,
+  const asio::error_code& error,
   LinkedBuffer * buffer,
   size_t bytesWritten)
 {

@@ -11,7 +11,7 @@
 #include <Common/QuickFAST_Export.h>
 #include <Common/Types.h>
 #include <Common/WorkingBuffer.h>
-#include <boost/asio.hpp>
+#include <asio.hpp>
 namespace QuickFAST{
   namespace Codecs{
     /// @brief An inteface for data destinations to be used by an Encoder.
@@ -243,17 +243,17 @@ namespace QuickFAST{
         }
 
         /// @brief dereference the iterator to find the actual buffer
-        boost::asio::const_buffer operator * () const
+        asio::const_buffer operator * () const
         {
           const WorkingBuffer & buffer(destination_[position_]);
-          return boost::asio::const_buffer(buffer.begin(), buffer.size());
+          return asio::const_buffer(buffer.begin(), buffer.size());
         }
 
         /// @brief dereference the iterator to find the actual buffer
-        boost::asio::const_buffer operator -> () const
+        asio::const_buffer operator -> () const
         {
           const WorkingBuffer & buffer(destination_[position_]);
-          return boost::asio::const_buffer(buffer.begin(), buffer.size());
+          return asio::const_buffer(buffer.begin(), buffer.size());
         }
 
         /// @brief compare iterators.

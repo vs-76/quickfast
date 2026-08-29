@@ -3,8 +3,7 @@
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
 
-#define BOOST_TEST_NO_MAIN QuickFASTTest
-#include <boost/test/unit_test.hpp>
+#include <gtest/gtest.h>
 #include <Codecs/XMLTemplateParser.h>
 #include <Codecs/TemplateRegistry.h>
 #include <Codecs/Template.h>
@@ -12,9 +11,9 @@
 #include <sstream>
 
 using namespace QuickFAST;
-BOOST_AUTO_TEST_CASE(testXMLTemplateParser)
+TEST(QuickFAST, testXMLTemplateParser)
 {
-  BOOST_TEST_CHECKPOINT("Start testXMLTemplateParser");
+  SCOPED_TRACE("Start testXMLTemplateParser");
   Codecs::XMLTemplateParser parser;
   std::stringstream myDocument;
 
@@ -46,38 +45,38 @@ BOOST_AUTO_TEST_CASE(testXMLTemplateParser)
   Codecs::TemplateRegistryPtr templateRegistry =
     parser.parse(myDocument);
 
-  BOOST_REQUIRE(templateRegistry);
+  ASSERT_TRUE(templateRegistry);
 
   Codecs::TemplateCPtr template203;
-  BOOST_CHECK(!templateRegistry->getTemplate(205, template203));
-  BOOST_CHECK(templateRegistry->getTemplate(203, template203));
-  BOOST_CHECK_EQUAL(template203->getId(), template_id_t(203));
-  BOOST_CHECK_EQUAL(template203->getTemplateName(), "Test1");
+  EXPECT_TRUE(!templateRegistry->getTemplate(205, template203));
+  EXPECT_TRUE(templateRegistry->getTemplate(203, template203));
+  EXPECT_EQ((template203->getId()), (template_id_t(203)));
+  EXPECT_EQ((template203->getTemplateName()), ("Test1"));
   Codecs::FieldInstructionCPtr instruction;
-  BOOST_CHECK(!template203->getInstruction("Int2", instruction));
-  BOOST_CHECK(template203->getInstruction("Int1", instruction));
-  BOOST_CHECK_EQUAL(instruction->getId(), field_id_t("23"));
-  BOOST_CHECK_EQUAL(instruction->getName(), "Int1");
+  EXPECT_TRUE(!template203->getInstruction("Int2", instruction));
+  EXPECT_TRUE(template203->getInstruction("Int1", instruction));
+  EXPECT_EQ((instruction->getId()), (field_id_t("23")));
+  EXPECT_EQ((instruction->getName()), ("Int1"));
   Codecs::FieldOpCPtr fieldOp;
   fieldOp = instruction->getFieldOp();
   // ...
 
-  BOOST_CHECK(template203->getInstruction("UInt1", instruction));
-  BOOST_CHECK_EQUAL(instruction->getId(), field_id_t());
-  BOOST_CHECK_EQUAL(instruction->getName(), "UInt1");
+  EXPECT_TRUE(template203->getInstruction("UInt1", instruction));
+  EXPECT_EQ((instruction->getId()), (field_id_t()));
+  EXPECT_EQ((instruction->getName()), ("UInt1"));
   fieldOp = instruction->getFieldOp();
 
-  BOOST_CHECK(template203->getInstruction("Decimal1", instruction));
-  BOOST_CHECK_EQUAL(instruction->getId(), field_id_t());
-  BOOST_CHECK_EQUAL(instruction->getName(), "Decimal1");
+  EXPECT_TRUE(template203->getInstruction("Decimal1", instruction));
+  EXPECT_EQ((instruction->getId()), (field_id_t()));
+  EXPECT_EQ((instruction->getName()), ("Decimal1"));
   fieldOp = instruction->getFieldOp();
   Codecs::FieldInstructionCPtr exponent;
-  BOOST_CHECK(instruction->getMantissaInstruction(exponent));
+  EXPECT_TRUE(instruction->getMantissaInstruction(exponent));
   Codecs::FieldInstructionCPtr mantissa;
-  BOOST_CHECK(instruction->getMantissaInstruction(mantissa));
+  EXPECT_TRUE(instruction->getMantissaInstruction(mantissa));
 }
 
-BOOST_AUTO_TEST_CASE(testXMLTemplateParser2)
+TEST(QuickFAST, testXMLTemplateParser2)
 {
   Codecs::XMLTemplateParser parser;
   std::stringstream myDocument;
@@ -102,39 +101,39 @@ BOOST_AUTO_TEST_CASE(testXMLTemplateParser2)
   Codecs::TemplateRegistryPtr templateRegistry =
     parser.parse(myDocument);
 
-  BOOST_REQUIRE(templateRegistry);
+  ASSERT_TRUE(templateRegistry);
 
   Codecs::TemplateCPtr template203;
-  BOOST_CHECK(!templateRegistry->getTemplate(205, template203));
-  BOOST_REQUIRE(templateRegistry->getTemplate(203, template203));
-  BOOST_CHECK_EQUAL(template203->getId(), template_id_t(203));
-  BOOST_CHECK_EQUAL(template203->getTemplateName(), "Test1");
+  EXPECT_TRUE(!templateRegistry->getTemplate(205, template203));
+  ASSERT_TRUE(templateRegistry->getTemplate(203, template203));
+  EXPECT_EQ((template203->getId()), (template_id_t(203)));
+  EXPECT_EQ((template203->getTemplateName()), ("Test1"));
   Codecs::FieldInstructionCPtr instruction;
-  BOOST_CHECK(!template203->getInstruction("Int2", instruction));
-  BOOST_CHECK(template203->getInstruction("Int1", instruction));
-  BOOST_CHECK_EQUAL(instruction->getId(), field_id_t("23"));
-  BOOST_CHECK_EQUAL(instruction->getName(), "Int1");
+  EXPECT_TRUE(!template203->getInstruction("Int2", instruction));
+  EXPECT_TRUE(template203->getInstruction("Int1", instruction));
+  EXPECT_EQ((instruction->getId()), (field_id_t("23")));
+  EXPECT_EQ((instruction->getName()), ("Int1"));
   Codecs::FieldOpCPtr fieldOp;
   fieldOp = instruction->getFieldOp();
   // ...
 
-  BOOST_REQUIRE(template203->getInstruction("UInt1", instruction));
-  BOOST_CHECK_EQUAL(instruction->getId(), field_id_t());
-  BOOST_CHECK_EQUAL(instruction->getName(), "UInt1");
+  ASSERT_TRUE(template203->getInstruction("UInt1", instruction));
+  EXPECT_EQ((instruction->getId()), (field_id_t()));
+  EXPECT_EQ((instruction->getName()), ("UInt1"));
   fieldOp = instruction->getFieldOp();
 
-  BOOST_REQUIRE(template203->getInstruction("Decimal1", instruction));
-  BOOST_CHECK_EQUAL(instruction->getId(), field_id_t());
-  BOOST_CHECK_EQUAL(instruction->getName(), "Decimal1");
+  ASSERT_TRUE(template203->getInstruction("Decimal1", instruction));
+  EXPECT_EQ((instruction->getId()), (field_id_t()));
+  EXPECT_EQ((instruction->getName()), ("Decimal1"));
   fieldOp = instruction->getFieldOp();
   Codecs::FieldInstructionCPtr exponent;
-  BOOST_CHECK(instruction->getMantissaInstruction(exponent));
+  EXPECT_TRUE(instruction->getMantissaInstruction(exponent));
   Codecs::FieldInstructionCPtr mantissa;
-  BOOST_CHECK(instruction->getMantissaInstruction(mantissa));
+  EXPECT_TRUE(instruction->getMantissaInstruction(mantissa));
 }
 
 
-BOOST_AUTO_TEST_CASE(testXMLTemplateParser3)
+TEST(QuickFAST, testXMLTemplateParser3)
 {
   Codecs::XMLTemplateParser parser;
   std::stringstream myDocument;
@@ -158,88 +157,88 @@ BOOST_AUTO_TEST_CASE(testXMLTemplateParser3)
   Codecs::TemplateRegistryPtr templateRegistry =
     parser.parse(myDocument);
 
-  BOOST_REQUIRE(templateRegistry);
+  ASSERT_TRUE(templateRegistry);
 
   Codecs::TemplateCPtr template1;
-  BOOST_REQUIRE(templateRegistry->getTemplate(1, template1));
-  BOOST_REQUIRE_EQUAL(template1->size(), 8);
+  ASSERT_TRUE(templateRegistry->getTemplate(1, template1));
+  ASSERT_EQ((template1->size()), (8));
   size_t fieldIndex = 0;
   Codecs::FieldOpCPtr fieldOp;
   Codecs::FieldInstructionCPtr instruction;
   //MsgType
   instruction = template1->getInstruction(fieldIndex++);
   fieldOp = instruction->getFieldOp();
-  BOOST_CHECK(!fieldOp->usesPresenceMap(true));
-  BOOST_CHECK_EQUAL(instruction->getPresenceMapBitsUsed(), 0);
+  EXPECT_TRUE(!fieldOp->usesPresenceMap(true));
+  EXPECT_EQ((instruction->getPresenceMapBitsUsed()), (0));
 
   //SymbolIndex
   instruction = template1->getInstruction(fieldIndex++);
   fieldOp = instruction->getFieldOp();
-  BOOST_CHECK( fieldOp->usesPresenceMap(true));
-  BOOST_CHECK_EQUAL(instruction->getPresenceMapBitsUsed(), 1);
+  EXPECT_TRUE(fieldOp->usesPresenceMap(true));
+  EXPECT_EQ((instruction->getPresenceMapBitsUsed()), (1));
 
   //SecurityIDSource
   instruction = template1->getInstruction(fieldIndex++);
   fieldOp = instruction->getFieldOp();
-  BOOST_CHECK( fieldOp->usesPresenceMap(true));
-  BOOST_CHECK_EQUAL(instruction->getPresenceMapBitsUsed(), 1);
+  EXPECT_TRUE(fieldOp->usesPresenceMap(true));
+  EXPECT_EQ((instruction->getPresenceMapBitsUsed()), (1));
 
   //SecurityID
   instruction = template1->getInstruction(fieldIndex++);
   fieldOp = instruction->getFieldOp();
-  BOOST_CHECK( fieldOp->usesPresenceMap(true));
-  BOOST_CHECK_EQUAL(instruction->getPresenceMapBitsUsed(), 1);
+  EXPECT_TRUE(fieldOp->usesPresenceMap(true));
+  EXPECT_EQ((instruction->getPresenceMapBitsUsed()), (1));
 
   //SourceTime
   instruction = template1->getInstruction(fieldIndex++);
   fieldOp = instruction->getFieldOp();
-  BOOST_CHECK(!fieldOp->usesPresenceMap(true));
-  BOOST_CHECK_EQUAL(instruction->getPresenceMapBitsUsed(), 0);
+  EXPECT_TRUE(!fieldOp->usesPresenceMap(true));
+  EXPECT_EQ((instruction->getPresenceMapBitsUsed()), (0));
 
   //SeriesSequenceNumber
   instruction = template1->getInstruction(fieldIndex++);
   fieldOp = instruction->getFieldOp();
-  BOOST_CHECK(!fieldOp->usesPresenceMap(true));
-  BOOST_CHECK_EQUAL(instruction->getPresenceMapBitsUsed(), 0);
+  EXPECT_TRUE(!fieldOp->usesPresenceMap(true));
+  EXPECT_EQ((instruction->getPresenceMapBitsUsed()), (0));
 
   //SnapshotFlag
   instruction = template1->getInstruction(fieldIndex++);
   fieldOp = instruction->getFieldOp();
-  BOOST_CHECK( fieldOp->usesPresenceMap(true));
-  BOOST_CHECK_EQUAL(instruction->getPresenceMapBitsUsed(), 1);
+  EXPECT_TRUE(fieldOp->usesPresenceMap(true));
+  EXPECT_EQ((instruction->getPresenceMapBitsUsed()), (1));
 
   //UpdateSubMsg
   instruction = template1->getInstruction(fieldIndex++);
   fieldOp = instruction->getFieldOp();
-  BOOST_CHECK( fieldOp->usesPresenceMap(true));
-  BOOST_CHECK_EQUAL(instruction->getPresenceMapBitsUsed(), 1);
+  EXPECT_TRUE(fieldOp->usesPresenceMap(true));
+  EXPECT_EQ((instruction->getPresenceMapBitsUsed()), (1));
 
   Codecs::SegmentBodyPtr segment;
-  BOOST_REQUIRE(instruction->getSegmentBody(segment));
+  ASSERT_TRUE(instruction->getSegmentBody(segment));
 
   // the pmap bit used by the Length field should be counted in the
   // enclosing segment.  The instructions in this segment use no
   // presence map bits.
-  BOOST_CHECK_EQUAL(segment->presenceMapBitCount(), 0);
+  EXPECT_EQ((segment->presenceMapBitCount()), (0));
 
   size_t segmentIndex = 0;
   //UpdateType
   instruction = segment->getInstruction(segmentIndex++);
   fieldOp = instruction->getFieldOp();
-  BOOST_CHECK(!fieldOp->usesPresenceMap(true));
-  BOOST_CHECK_EQUAL(instruction->getPresenceMapBitsUsed(), 0);
+  EXPECT_TRUE(!fieldOp->usesPresenceMap(true));
+  EXPECT_EQ((instruction->getPresenceMapBitsUsed()), (0));
 
   //Price
   instruction = segment->getInstruction(segmentIndex++);
   fieldOp = instruction->getFieldOp();
-  BOOST_CHECK(!fieldOp->usesPresenceMap(false));
-  BOOST_CHECK_EQUAL(instruction->getPresenceMapBitsUsed(), 0);
+  EXPECT_TRUE(!fieldOp->usesPresenceMap(false));
+  EXPECT_EQ((instruction->getPresenceMapBitsUsed()), (0));
 
   //Volume
   instruction = segment->getInstruction(segmentIndex++);
   fieldOp = instruction->getFieldOp();
-  BOOST_CHECK(!fieldOp->usesPresenceMap(true));
-  BOOST_CHECK_EQUAL(instruction->getPresenceMapBitsUsed(), 0);
+  EXPECT_TRUE(!fieldOp->usesPresenceMap(true));
+  EXPECT_EQ((instruction->getPresenceMapBitsUsed()), (0));
 }
 
 const char GroupSequencePMAPXML[] =
@@ -293,83 +292,83 @@ const char GroupSequencePMAPXML[] =
 </templates>\n\
 ";
 
-BOOST_AUTO_TEST_CASE(testGroupsAndSequencesVsPMAP)
+TEST(QuickFAST, testGroupsAndSequencesVsPMAP)
 {
-  BOOST_TEST_CHECKPOINT("Start testXMLTemplateParser");
+  SCOPED_TRACE("Start testXMLTemplateParser");
   Codecs::XMLTemplateParser parser;
   std::stringstream xmlin(GroupSequencePMAPXML);
 
   Codecs::TemplateRegistryPtr templateRegistry =
     parser.parse(xmlin);
 
-  BOOST_REQUIRE(templateRegistry);
+  ASSERT_TRUE(templateRegistry);
 
   /////////
   // Groups
   Codecs::TemplateCPtr template9998;
-  BOOST_REQUIRE(templateRegistry->getTemplate(9998, template9998));
-  BOOST_CHECK_EQUAL(template9998->presenceMapBitCount(), 3);
+  ASSERT_TRUE(templateRegistry->getTemplate(9998, template9998));
+  EXPECT_EQ((template9998->presenceMapBitCount()), (3));
 
   // noMapNoBit
   Codecs::FieldInstructionCPtr instruction;
-  BOOST_REQUIRE(template9998->getInstruction(0, instruction));
-  BOOST_CHECK_EQUAL(instruction->getPresenceMapBitsUsed(), 0);
+  ASSERT_TRUE(template9998->getInstruction(0, instruction));
+  EXPECT_EQ((instruction->getPresenceMapBitsUsed()), (0));
   Codecs::SegmentBodyPtr segment;
-  BOOST_REQUIRE(instruction->getSegmentBody(segment));
-  BOOST_CHECK_EQUAL(segment->presenceMapBitCount(), 0);
+  ASSERT_TRUE(instruction->getSegmentBody(segment));
+  EXPECT_EQ((segment->presenceMapBitCount()), (0));
 
   // BitNoMap
-  BOOST_REQUIRE(template9998->getInstruction(1, instruction));
-  BOOST_CHECK_EQUAL(instruction->getPresenceMapBitsUsed(), 1);
-  BOOST_REQUIRE(instruction->getSegmentBody(segment));
-  BOOST_CHECK_EQUAL(segment->presenceMapBitCount(), 0);
+  ASSERT_TRUE(template9998->getInstruction(1, instruction));
+  EXPECT_EQ((instruction->getPresenceMapBitsUsed()), (1));
+  ASSERT_TRUE(instruction->getSegmentBody(segment));
+  EXPECT_EQ((segment->presenceMapBitCount()), (0));
 
   // MapNoBit
-  BOOST_REQUIRE(template9998->getInstruction(2, instruction));
-  BOOST_CHECK_EQUAL(instruction->getPresenceMapBitsUsed(), 0);
-  BOOST_REQUIRE(instruction->getSegmentBody(segment));
-  BOOST_CHECK_EQUAL(segment->presenceMapBitCount(), 1);
+  ASSERT_TRUE(template9998->getInstruction(2, instruction));
+  EXPECT_EQ((instruction->getPresenceMapBitsUsed()), (0));
+  ASSERT_TRUE(instruction->getSegmentBody(segment));
+  EXPECT_EQ((segment->presenceMapBitCount()), (1));
 
   // BitAndMap
-  BOOST_REQUIRE(template9998->getInstruction(3, instruction));
-  BOOST_CHECK_EQUAL(instruction->getPresenceMapBitsUsed(), 1);
-  BOOST_REQUIRE(instruction->getSegmentBody(segment));
-  BOOST_CHECK_EQUAL(segment->presenceMapBitCount(), 1);
+  ASSERT_TRUE(template9998->getInstruction(3, instruction));
+  EXPECT_EQ((instruction->getPresenceMapBitsUsed()), (1));
+  ASSERT_TRUE(instruction->getSegmentBody(segment));
+  EXPECT_EQ((segment->presenceMapBitCount()), (1));
 
   ////////////
   // Sequences
 
   Codecs::TemplateCPtr template9997;
-  BOOST_REQUIRE(templateRegistry->getTemplate(9997, template9997));
-  BOOST_CHECK_EQUAL(template9997->presenceMapBitCount(), 4);
+  ASSERT_TRUE(templateRegistry->getTemplate(9997, template9997));
+  EXPECT_EQ((template9997->presenceMapBitCount()), (4));
 
   // noMapNoBit
-  BOOST_REQUIRE(template9997->getInstruction(0, instruction));
-  BOOST_CHECK_EQUAL(instruction->getPresenceMapBitsUsed(), 0);
-  BOOST_REQUIRE(instruction->getSegmentBody(segment));
-  BOOST_CHECK_EQUAL(segment->presenceMapBitCount(), 0);
+  ASSERT_TRUE(template9997->getInstruction(0, instruction));
+  EXPECT_EQ((instruction->getPresenceMapBitsUsed()), (0));
+  ASSERT_TRUE(instruction->getSegmentBody(segment));
+  EXPECT_EQ((segment->presenceMapBitCount()), (0));
 
   // BitNoMap
-  BOOST_REQUIRE(template9997->getInstruction(1, instruction));
-  BOOST_CHECK_EQUAL(instruction->getPresenceMapBitsUsed(), 1);
-  BOOST_REQUIRE(instruction->getSegmentBody(segment));
-  BOOST_CHECK_EQUAL(segment->presenceMapBitCount(), 0);
+  ASSERT_TRUE(template9997->getInstruction(1, instruction));
+  EXPECT_EQ((instruction->getPresenceMapBitsUsed()), (1));
+  ASSERT_TRUE(instruction->getSegmentBody(segment));
+  EXPECT_EQ((segment->presenceMapBitCount()), (0));
 
   // MapNoBit
-  BOOST_REQUIRE(template9997->getInstruction(2, instruction));
-  BOOST_CHECK_EQUAL(instruction->getPresenceMapBitsUsed(), 0);
-  BOOST_REQUIRE(instruction->getSegmentBody(segment));
-  BOOST_CHECK_EQUAL(segment->presenceMapBitCount(), 1);
+  ASSERT_TRUE(template9997->getInstruction(2, instruction));
+  EXPECT_EQ((instruction->getPresenceMapBitsUsed()), (0));
+  ASSERT_TRUE(instruction->getSegmentBody(segment));
+  EXPECT_EQ((segment->presenceMapBitCount()), (1));
 
   // BitAndMap
-  BOOST_REQUIRE(template9997->getInstruction(3, instruction));
-  BOOST_CHECK_EQUAL(instruction->getPresenceMapBitsUsed(), 1);
-  BOOST_REQUIRE(instruction->getSegmentBody(segment));
-  BOOST_CHECK_EQUAL(segment->presenceMapBitCount(), 1);
+  ASSERT_TRUE(template9997->getInstruction(3, instruction));
+  EXPECT_EQ((instruction->getPresenceMapBitsUsed()), (1));
+  ASSERT_TRUE(instruction->getSegmentBody(segment));
+  EXPECT_EQ((segment->presenceMapBitCount()), (1));
 
   // anotherBitNoMap
-  BOOST_REQUIRE(template9997->getInstruction(4, instruction));
-  BOOST_CHECK_EQUAL(instruction->getPresenceMapBitsUsed(), 1);
-  BOOST_REQUIRE(instruction->getSegmentBody(segment));
-  BOOST_CHECK_EQUAL(segment->presenceMapBitCount(), 0);
+  ASSERT_TRUE(template9997->getInstruction(4, instruction));
+  EXPECT_EQ((instruction->getPresenceMapBitsUsed()), (1));
+  ASSERT_TRUE(instruction->getSegmentBody(segment));
+  EXPECT_EQ((segment->presenceMapBitCount()), (0));
 }

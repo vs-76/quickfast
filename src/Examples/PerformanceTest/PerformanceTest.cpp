@@ -16,6 +16,7 @@
 
 #include <Examples/StopWatch.h>
 #include <Common/Profiler.h>
+#include <Common/LexicalCast.h>
 
 using namespace QuickFAST;
 using namespace Examples;
@@ -84,7 +85,7 @@ PerformanceTest::parseSingleArg(int argc, char * argv[])
     }
     else if(opt == "-i" && argc > 1)
     {
-      interpret_ = boost::lexical_cast<size_t>(argv[1]);
+      interpret_ = QuickFAST::lexical_cast<size_t>(argv[1]);
       consumed = 2;
     }
     else if(opt == "-null")
@@ -94,17 +95,17 @@ PerformanceTest::parseSingleArg(int argc, char * argv[])
     }
     else if(opt == "-head" && argc > 1)
     {
-      head_ = boost::lexical_cast<size_t>(argv[1]);
+      head_ = QuickFAST::lexical_cast<size_t>(argv[1]);
       consumed = 2;
     }
     else if(opt == "-c" && argc > 1)
     {
-      count_ = boost::lexical_cast<size_t>(argv[1]);
+      count_ = QuickFAST::lexical_cast<size_t>(argv[1]);
       consumed = 2;
     }
     else if(opt == "-hfix" && argc > 1)
     {
-      headerBytes_ = boost::lexical_cast<size_t>(argv[1]);
+      headerBytes_ = QuickFAST::lexical_cast<size_t>(argv[1]);
       consumed = 2;
     }
     else if(opt == "-e")
