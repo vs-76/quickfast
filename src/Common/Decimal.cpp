@@ -41,12 +41,6 @@ namespace {
     }
   }
 
-  /// @brief Narrow an exponent computed at full width.
-  ///
-  /// exponent_t is int8_t while normalize() permits 64, so a sum of two legal
-  /// exponents need not be legal. The narrowing is well-defined modular
-  /// conversion, so it wrapped silently: 64 + 64 became -128 and normalize
-  /// then reported an *underflow* for what was an overflow.
   /// @brief Is this a plain, optionally signed run of decimal digits?
   ///
   /// parse() splices the fractional part onto the whole part, so "1.2.3"
@@ -73,6 +67,12 @@ namespace {
     return true;
   }
 
+  /// @brief Narrow an exponent computed at full width.
+  ///
+  /// exponent_t is int8_t while normalize() permits 64, so a sum of two legal
+  /// exponents need not be legal. The narrowing is well-defined modular
+  /// conversion, so it wrapped silently: 64 + 64 became -128 and normalize
+  /// then reported an *underflow* for what was an overflow.
   exponent_t checkedExponent(int exponent)
   {
     if(exponent > 64)
