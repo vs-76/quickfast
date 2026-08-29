@@ -115,14 +115,9 @@ namespace QuickFAST
 
         void stop()
         {
-          try
-          {
-            // attempt to cancel any receive requests in progress.
-            socket_.cancel();
-          }
-          catch(...)
-          {
-          }
+          // attempt to cancel any receive requests in progress.
+          asio::error_code ec;
+          socket_.cancel(ec);
         }
 
         void pause()

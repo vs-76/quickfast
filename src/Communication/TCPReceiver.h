@@ -95,11 +95,8 @@ namespace QuickFAST
       virtual void stop()
       {
         Receiver::stop();
-        try
-        {
-          socket_.close();
-        }
-        catch(...){}
+        asio::error_code ec;
+        socket_.close(ec);
       }
 
       /// Provide direct access to the internal asio socket.
