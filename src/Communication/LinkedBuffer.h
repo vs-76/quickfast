@@ -52,6 +52,7 @@ namespace QuickFAST
         , capacity_(0)
         , used_(0)
         , extra_(0)
+        , flags_(0)
       {
       }
 
@@ -65,6 +66,7 @@ namespace QuickFAST
         , capacity_(0)
         , used_(used)
         , extra_(extra)
+        , flags_(0)
       {
       }
 

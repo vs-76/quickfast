@@ -40,7 +40,8 @@ namespace QuickFAST
     static const size_t npos = size_t(-1);
     /// @brief Construct an empty StringBufferT
     StringBufferT()
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(INTERNAL_CAPACITY)
       , growCount_(0)
@@ -52,7 +53,8 @@ namespace QuickFAST
     /// @brief Copy constructor
     /// @param rhs is the data to initialize the string buffer.
     StringBufferT(const StringBufferT& rhs)
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(INTERNAL_CAPACITY)
       , growCount_(0)
@@ -64,7 +66,8 @@ namespace QuickFAST
     /// @brief copy construct from a standard string
     /// @param rhs is the data to initialize the string buffer.
     StringBufferT(const std::string & rhs)
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(INTERNAL_CAPACITY)
       , growCount_(0)
@@ -83,7 +86,8 @@ namespace QuickFAST
       size_t pos,
       size_t length = npos
       )
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(INTERNAL_CAPACITY)
       , growCount_(0)
@@ -103,7 +107,8 @@ namespace QuickFAST
 
     /// @brief Construct from an unsigned C style null terminated string
     StringBufferT(const unsigned char* rhs)
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(INTERNAL_CAPACITY)
       , growCount_(0)
@@ -114,7 +119,8 @@ namespace QuickFAST
 
     /// @brief Construct from a C style null terminated string
     StringBufferT(const char* rhs)
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(INTERNAL_CAPACITY)
       , growCount_(0)
@@ -129,7 +135,8 @@ namespace QuickFAST
     ///
     /// This method is safe to use with non-null-terminated strings
     StringBufferT(const unsigned char* rhs, size_t length)
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(INTERNAL_CAPACITY)
       , growCount_(0)
@@ -140,7 +147,8 @@ namespace QuickFAST
 
     /// @brief construct a StringBufferT with a given length, filled with the specified character.
     StringBufferT(size_t length, unsigned char c)
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(INTERNAL_CAPACITY)
       , growCount_(0)
@@ -159,7 +167,8 @@ namespace QuickFAST
     /// @param delegateString points to the real string to be wrapped.
     ///        It must exist longer than the StringBufferT.
     StringBufferT(const std::string * delegateString)
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(0)
       , growCount_(0)

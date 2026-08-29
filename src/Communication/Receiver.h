@@ -23,7 +23,8 @@ namespace QuickFAST
     {
     public:
       Receiver()
-        : bufferSize_(1500)
+        : assembler_(0)
+        , bufferSize_(1500)
         , paused_(false)
         , stopping_(false)
         , readsInProgress_(0)
