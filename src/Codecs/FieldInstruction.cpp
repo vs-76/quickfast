@@ -502,48 +502,34 @@ FieldInstruction::encodeSignedInteger(DataDestination & destination, WorkingBuff
   }
   else
   {
-    // INT64_MIN cannot be negated in signed arithmetic (undefined behavior).
-    if(value == std::numeric_limits<int64>::min())
+    // The magnitude is taken in unsigned arithmetic: -value is undefined for
+    // INT64_MIN, and the hand-written special case that used to sidestep that
+    // is exactly what the ten-group branch below now produces anyway.
+    const uint64 absv = uint64(0) - uint64(value);
     {
-      // encode the most negative possible number
-      destination.putByte(0x7F);    // 8... .... .... ....
-      destination.putByte(0x00);    // 7F.. .... .... ....
-      destination.putByte(0x00);    // . FE .... .... ....
-      destination.putByte(0x00);    // ...1 FC.. .... ....
-      destination.putByte(0x00);    // .... .3F8 .... ....
-      destination.putByte(0x00);    // .... ...7 F... ....
-      destination.putByte(0x00);    // .... .... .FE. ....
-      destination.putByte(0x00);    // .... .... ...1 FC..
-      destination.putByte(0x00);    // .... .... .... 3F8.
-      destination.putByte(0x80);    // .... .... .... ..7f
-    }
-    else
-    {
-      // using absolute value avoids tricky word length issues
-      int64 absv = -value;
-      if (absv <= 0x0000000000000040LL)
+      if (absv <= 0x0000000000000040ULL)
       {
         destination.putByte(value & 0xFF); // .... .... .... ..7f
       }
-      else if (absv <= 0x0000000000002000LL)
+      else if (absv <= 0x0000000000002000ULL)
       {
         destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
         destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
       }
-      else if (absv <= 0x0000000000100000LL)
+      else if (absv <= 0x0000000000100000ULL)
       {
         destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
         destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
         destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
       }
-      else if (absv <= 0x0000000008000000LL)
+      else if (absv <= 0x0000000008000000ULL)
       {
         destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
         destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
         destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
         destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
       }
-      else if (absv <= 0x0000000400000000LL)
+      else if (absv <= 0x0000000400000000ULL)
       {
         destination.putByte(((value >> 28)  & 0x7F)); // .... ...7 F... ....
         destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
@@ -551,7 +537,7 @@ FieldInstruction::encodeSignedInteger(DataDestination & destination, WorkingBuff
         destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
         destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
       }
-      else if (absv <= 0x0000020000000000LL)
+      else if (absv <= 0x0000020000000000ULL)
       {
         destination.putByte(((value >> 35)  & 0x7F)); // .... .3F8 .... ....
         destination.putByte(((value >> 28)  & 0x7F)); // .... ...7 F... ....
@@ -560,7 +546,7 @@ FieldInstruction::encodeSignedInteger(DataDestination & destination, WorkingBuff
         destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
         destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
       }
-      else if (absv <= 0x0001000000000000LL)
+      else if (absv <= 0x0001000000000000ULL)
       {
         destination.putByte(((value >> 42)  & 0x7F));// ...1 FC.. .... ....
         destination.putByte(((value >> 35)  & 0x7F)); // .... .3F8 .... ....
@@ -570,8 +556,20 @@ FieldInstruction::encodeSignedInteger(DataDestination & destination, WorkingBuff
         destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
         destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
       }
-      else if (absv <= 0x0080000000000000LL)
+      else if (absv <= 0x0080000000000000ULL)
       {
+        destination.putByte(((value >> 49)  & 0x7F)); // ..FE .... .... ....
+        destination.putByte(((value >> 42)  & 0x7F)); // ...1 FC.. .... ....
+        destination.putByte(((value >> 35)  & 0x7F)); // .... .3F8 .... ....
+        destination.putByte(((value >> 28)  & 0x7F)); // .... ...7 F... ....
+        destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
+        destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
+        destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
+        destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
+      }
+      else if (absv <= 0x4000000000000000ULL)
+      {
+        destination.putByte(((value >> 56)  & 0x7F)); // 7F.. .... .... ....
         destination.putByte(((value >> 49)  & 0x7F)); // ..FE .... .... ....
         destination.putByte(((value >> 42)  & 0x7F)); // ...1 FC.. .... ....
         destination.putByte(((value >> 35)  & 0x7F)); // .... .3F8 .... ....
@@ -583,6 +581,12 @@ FieldInstruction::encodeSignedInteger(DataDestination & destination, WorkingBuff
       }
       else
       {
+        // Nine groups carry 63 signed bits, so they stop at -2^62. Below that
+        // the tenth group is the only place the sign can live; without it the
+        // truncated field's sign bit read as zero and the value came back
+        // positive. The arithmetic shift makes this group 0x7F, which is what
+        // the old INT64_MIN special case wrote by hand.
+        destination.putByte(((value >> 63)  & 0x7F)); // 8... .... .... ....
         destination.putByte(((value >> 56)  & 0x7F)); // 7F.. .... .... ....
         destination.putByte(((value >> 49)  & 0x7F)); // ..FE .... .... ....
         destination.putByte(((value >> 42)  & 0x7F)); // ...1 FC.. .... ....
