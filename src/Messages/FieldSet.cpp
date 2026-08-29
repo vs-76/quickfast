@@ -11,6 +11,20 @@
 using namespace ::QuickFAST;
 using namespace ::QuickFAST::Messages;
 
+// FieldSet manages raw storage and constructs elements in place. reserve()
+// would leak the new buffer and strand already-constructed elements if a copy
+// threw part way through, and replaceField() destroys a slot before rebuilding
+// it, so a throwing constructor would leave a destroyed-but-live element for
+// ~FieldSet to destroy a second time. Neither can happen while MessageField
+// copies nothing but a reference and a shared_ptr; this pins that down rather
+// than leaving it as an unstated assumption.
+static_assert(
+  std::is_nothrow_copy_constructible<MessageField>::value,
+  "FieldSet's in-place storage management assumes MessageField copies cannot throw");
+static_assert(
+  std::is_nothrow_constructible<MessageField, const FieldIdentity &, const FieldCPtr &>::value,
+  "FieldSet::replaceField assumes constructing a MessageField cannot throw");
+
 FieldSet::FieldSet(size_t res)
 : fields_(reinterpret_cast<MessageField *>(new unsigned char[sizeof(MessageField) * res]))
 , capacity_(res)
@@ -29,11 +43,14 @@ FieldSet::reserve(size_t capacity)
 {
   if(capacity > capacity_)
   {
-    MessageField * buffer = reinterpret_cast<MessageField *>(new unsigned char[sizeof(MessageField) * capacity]);
+    std::unique_ptr<unsigned char[]> storage(
+      new unsigned char[sizeof(MessageField) * capacity]);
+    MessageField * buffer = reinterpret_cast<MessageField *>(storage.get());
     for(size_t nField = 0; nField < used_; ++nField)
     {
       new(&buffer[nField]) MessageField(fields_[nField]);
     }
+    storage.release();
 
     MessageField * oldBuffer = fields_;
     size_t oldUsed = used_;

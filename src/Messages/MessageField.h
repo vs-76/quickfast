@@ -30,7 +30,10 @@ namespace QuickFAST{
     {
     public:
       /// @brief Construct from an identity and a typed value.
-      MessageField(const FieldIdentity & identity, const FieldCPtr & field)
+      ///
+      /// Binds a reference and copies a shared_ptr, neither of which can
+      /// throw. FieldSet manages its storage in place and depends on that.
+      MessageField(const FieldIdentity & identity, const FieldCPtr & field) noexcept
         : identity_(identity)
         , field_(field)
       {
@@ -38,7 +41,7 @@ namespace QuickFAST{
 
       /// @brief copy constructor
       /// @param rhs the source from which to copy
-      MessageField(const MessageField & rhs)
+      MessageField(const MessageField & rhs) noexcept
         : identity_(rhs.identity_)
         , field_(rhs.field_)
       {
