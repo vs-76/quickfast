@@ -3,9 +3,8 @@
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
 
-#define BOOST_TEST_NO_MAIN QuickFASTTest
-#include <boost/test/unit_test.hpp>
-#include <boost/filesystem.hpp>
+#include <gtest/gtest.h>
+#include <filesystem>
 
 #include <Codecs/XMLTemplateParser.h>
 #include <Codecs/FixedSizeHeaderAnalyzer.h>
@@ -82,7 +81,7 @@ namespace
   PACKET(28);
   PACKET(29);
 
-  Communication::LinkedBuffer * buffers[] =
+  [[maybe_unused]] Communication::LinkedBuffer * buffers[] =
   {
     & buffer0,& buffer1,& buffer2,& buffer3,& buffer4,& buffer5,& buffer6,& buffer7,& buffer8,& buffer9,
     & buffer10,& buffer11,& buffer12,& buffer13,& buffer14,& buffer15,& buffer16,& buffer17,& buffer18,& buffer19,
@@ -90,7 +89,7 @@ namespace
     0
   };
 
-  Communication::LinkedBuffer * bufferAs[] =
+  [[maybe_unused]] Communication::LinkedBuffer * bufferAs[] =
   {
     & bufferA0,& bufferA1,& bufferA2,& bufferA3,& bufferA4,& bufferA5,& bufferA6,& bufferA7,& bufferA8,& bufferA9,
     & bufferA10,& bufferA11,& bufferA12,& bufferA13,& bufferA14,& bufferA15,& bufferA16,& bufferA17,& bufferA18,& bufferA19,
@@ -167,7 +166,7 @@ namespace
 
     virtual bool fillBuffer(
       Communication::LinkedBuffer * buffer,
-      boost::mutex::scoped_lock& lock)
+      std::unique_lock<std::mutex>& lock)
     {
       return true;
     }
@@ -177,7 +176,7 @@ namespace
   };
 }
 
-BOOST_AUTO_TEST_CASE(TestPacketSequencingAssemblerReorderAndGapDetect)
+TEST(QuickFAST, TestPacketSequencingAssemblerReorderAndGapDetect)
 {
   std::stringstream templateStream(template_xml);
   Codecs::XMLTemplateParser parser;
@@ -203,28 +202,28 @@ BOOST_AUTO_TEST_CASE(TestPacketSequencingAssemblerReorderAndGapDetect)
   //////////////
   // Make sure it does nothing properly
   assembler.serviceQueue(receiver);
-  BOOST_CHECK_EQUAL(builder.valueCount(), 0);
-  BOOST_CHECK(!builder.hasGap());
-  BOOST_CHECK(!builder.hasError());
+  EXPECT_EQ((builder.valueCount()), (0));
+  EXPECT_TRUE(!builder.hasGap());
+  EXPECT_TRUE(!builder.hasError());
 
   ////////////////////
   // Decode one packet
   receiver.acceptBuffer(& buffer0);
   assembler.serviceQueue(receiver);
-  BOOST_REQUIRE_EQUAL(builder.valueCount(), 1);
-  BOOST_CHECK_EQUAL(builder.value(0), reinterpret_cast<std::ptrdiff_t> (buffer0.extra()));
-  BOOST_CHECK(!builder.hasGap());
-  BOOST_CHECK(!builder.hasError());
+  ASSERT_EQ((builder.valueCount()), (1));
+  EXPECT_EQ((builder.value(0)), (reinterpret_cast<std::ptrdiff_t> (buffer0.extra())));
+  EXPECT_TRUE(!builder.hasGap());
+  EXPECT_TRUE(!builder.hasError());
 
   ////////////////////
   // Decode one packet again
   builder.reset();
   receiver.acceptBuffer(& buffer1);
   assembler.serviceQueue(receiver);
-  BOOST_REQUIRE_EQUAL(builder.valueCount(), 1);
-  BOOST_CHECK_EQUAL(builder.value(0), reinterpret_cast<std::ptrdiff_t> (buffer1.extra()));
-  BOOST_CHECK(!builder.hasGap());
-  BOOST_CHECK(!builder.hasError());
+  ASSERT_EQ((builder.valueCount()), (1));
+  EXPECT_EQ((builder.value(0)), (reinterpret_cast<std::ptrdiff_t> (buffer1.extra())));
+  EXPECT_TRUE(!builder.hasGap());
+  EXPECT_TRUE(!builder.hasError());
 
   /////////////////////////////////////////
   // Decode look_ahead packets out of order
@@ -234,13 +233,13 @@ BOOST_AUTO_TEST_CASE(TestPacketSequencingAssemblerReorderAndGapDetect)
   receiver.acceptBuffer(&buffer4);
   receiver.acceptBuffer(&buffer2);
   assembler.serviceQueue(receiver);
-  BOOST_REQUIRE_EQUAL(builder.valueCount(), 4);
-  BOOST_CHECK(builder.value(0) == reinterpret_cast<std::ptrdiff_t> (buffer2.extra()));
-  BOOST_CHECK(builder.value(1) == reinterpret_cast<std::ptrdiff_t> (buffer3.extra()));
-  BOOST_CHECK(builder.value(2) == reinterpret_cast<std::ptrdiff_t> (buffer4.extra()));
-  BOOST_CHECK(builder.value(3) == reinterpret_cast<std::ptrdiff_t> (buffer5.extra()));
-  BOOST_CHECK(!builder.hasGap());
-  BOOST_CHECK(!builder.hasError());
+  ASSERT_EQ((builder.valueCount()), (4));
+  EXPECT_TRUE(builder.value(0) == reinterpret_cast<std::ptrdiff_t> (buffer2.extra()));
+  EXPECT_TRUE(builder.value(1) == reinterpret_cast<std::ptrdiff_t> (buffer3.extra()));
+  EXPECT_TRUE(builder.value(2) == reinterpret_cast<std::ptrdiff_t> (buffer4.extra()));
+  EXPECT_TRUE(builder.value(3) == reinterpret_cast<std::ptrdiff_t> (buffer5.extra()));
+  EXPECT_TRUE(!builder.hasGap());
+  EXPECT_TRUE(!builder.hasError());
 
   /////////////////////////////////////////
   // Decode look_ahead packets out of order
@@ -250,16 +249,16 @@ BOOST_AUTO_TEST_CASE(TestPacketSequencingAssemblerReorderAndGapDetect)
   receiver.acceptBuffer(&buffer7);
   receiver.acceptBuffer(&buffer8);
   assembler.serviceQueue(receiver);
-  BOOST_REQUIRE_EQUAL(builder.valueCount(), 0);
+  ASSERT_EQ((builder.valueCount()), (0));
   receiver.acceptBuffer(&buffer6);
   assembler.serviceQueue(receiver);
-  BOOST_REQUIRE_EQUAL(builder.valueCount(), 4);
-  BOOST_CHECK(builder.value(0) == reinterpret_cast<std::ptrdiff_t> (buffer6.extra()));
-  BOOST_CHECK(builder.value(1) == reinterpret_cast<std::ptrdiff_t> (buffer7.extra()));
-  BOOST_CHECK(builder.value(2) == reinterpret_cast<std::ptrdiff_t> (buffer8.extra()));
-  BOOST_CHECK(builder.value(3) == reinterpret_cast<std::ptrdiff_t> (buffer9.extra()));
-  BOOST_CHECK(!builder.hasGap());
-  BOOST_CHECK(!builder.hasError());
+  ASSERT_EQ((builder.valueCount()), (4));
+  EXPECT_TRUE(builder.value(0) == reinterpret_cast<std::ptrdiff_t> (buffer6.extra()));
+  EXPECT_TRUE(builder.value(1) == reinterpret_cast<std::ptrdiff_t> (buffer7.extra()));
+  EXPECT_TRUE(builder.value(2) == reinterpret_cast<std::ptrdiff_t> (buffer8.extra()));
+  EXPECT_TRUE(builder.value(3) == reinterpret_cast<std::ptrdiff_t> (buffer9.extra()));
+  EXPECT_TRUE(!builder.hasGap());
+  EXPECT_TRUE(!builder.hasError());
 
   //////////////////////////
   // Decode look_ahead and deferred packets
@@ -273,7 +272,7 @@ BOOST_AUTO_TEST_CASE(TestPacketSequencingAssemblerReorderAndGapDetect)
   // toss a duplicate in there just for fun
   receiver.acceptBuffer(&bufferA13);
   assembler.serviceQueue(receiver);
-  BOOST_REQUIRE_EQUAL(builder.valueCount(), 0);
+  ASSERT_EQ((builder.valueCount()), (0));
   // these will go in deferred queue
   receiver.acceptBuffer(&buffer16);
   receiver.acceptBuffer(&buffer15);
@@ -286,21 +285,21 @@ BOOST_AUTO_TEST_CASE(TestPacketSequencingAssemblerReorderAndGapDetect)
   // this will trigger decoding of 10-13 and move 15-17 to look_ahead array
   receiver.acceptBuffer(&buffer10);
   assembler.serviceQueue(receiver);
-  BOOST_REQUIRE_EQUAL(builder.valueCount(), 4);
-  BOOST_CHECK(builder.value(0) == reinterpret_cast<std::ptrdiff_t> (buffer10.extra()));
-  BOOST_CHECK(builder.value(1) == reinterpret_cast<std::ptrdiff_t> (buffer11.extra()));
-  BOOST_CHECK(builder.value(2) == reinterpret_cast<std::ptrdiff_t> (buffer12.extra()));
-  BOOST_CHECK(builder.value(3) == reinterpret_cast<std::ptrdiff_t> (buffer13.extra()));
+  ASSERT_EQ((builder.valueCount()), (4));
+  EXPECT_TRUE(builder.value(0) == reinterpret_cast<std::ptrdiff_t> (buffer10.extra()));
+  EXPECT_TRUE(builder.value(1) == reinterpret_cast<std::ptrdiff_t> (buffer11.extra()));
+  EXPECT_TRUE(builder.value(2) == reinterpret_cast<std::ptrdiff_t> (buffer12.extra()));
+  EXPECT_TRUE(builder.value(3) == reinterpret_cast<std::ptrdiff_t> (buffer13.extra()));
   // 15, 16, 17 should be in look_ahead array
   receiver.acceptBuffer(&buffer14);
   assembler.serviceQueue(receiver);
-  BOOST_REQUIRE_EQUAL(builder.valueCount(), 8);
-  BOOST_CHECK(builder.value(4) == reinterpret_cast<std::ptrdiff_t> (buffer14.extra()));
-  BOOST_CHECK(builder.value(5) == reinterpret_cast<std::ptrdiff_t> (buffer15.extra()));
-  BOOST_CHECK(builder.value(6) == reinterpret_cast<std::ptrdiff_t> (buffer16.extra()));
-  BOOST_CHECK(builder.value(7) == reinterpret_cast<std::ptrdiff_t> (buffer17.extra()));
-  BOOST_CHECK(!builder.hasGap());
-  BOOST_CHECK(!builder.hasError());
+  ASSERT_EQ((builder.valueCount()), (8));
+  EXPECT_TRUE(builder.value(4) == reinterpret_cast<std::ptrdiff_t> (buffer14.extra()));
+  EXPECT_TRUE(builder.value(5) == reinterpret_cast<std::ptrdiff_t> (buffer15.extra()));
+  EXPECT_TRUE(builder.value(6) == reinterpret_cast<std::ptrdiff_t> (buffer16.extra()));
+  EXPECT_TRUE(builder.value(7) == reinterpret_cast<std::ptrdiff_t> (buffer17.extra()));
+  EXPECT_TRUE(!builder.hasGap());
+  EXPECT_TRUE(!builder.hasError());
 
   ////////////////////////////
   // Test gap detection
@@ -310,17 +309,17 @@ BOOST_AUTO_TEST_CASE(TestPacketSequencingAssemblerReorderAndGapDetect)
   // and this should trigger a gap report
   // after which buffer22 should be processed.
   assembler.serviceQueue(receiver);
-  BOOST_REQUIRE(builder.hasGap());
-  BOOST_REQUIRE_EQUAL(builder.valueCount(), 1);
-  BOOST_REQUIRE(builder.value(0) == reinterpret_cast<std::ptrdiff_t> (buffer22.extra()));
+  ASSERT_TRUE(builder.hasGap());
+  ASSERT_EQ((builder.valueCount()), (1));
+  ASSERT_TRUE(builder.value(0) == reinterpret_cast<std::ptrdiff_t> (buffer22.extra()));
   // already skipped this message, so it should NOT be processed
   receiver.acceptBuffer(&buffer18);
   // but this one should be processed immediately
   receiver.acceptBuffer(&buffer23);
   assembler.serviceQueue(receiver);
-  BOOST_REQUIRE_EQUAL(builder.valueCount(), 2);
-  BOOST_REQUIRE(builder.value(1) == reinterpret_cast<std::ptrdiff_t> (buffer23.extra()));
-  BOOST_CHECK(!builder.hasError());
+  ASSERT_EQ((builder.valueCount()), (2));
+  ASSERT_TRUE(builder.value(1) == reinterpret_cast<std::ptrdiff_t> (buffer23.extra()));
+  EXPECT_TRUE(!builder.hasError());
 }
 
 void faultyHeader()
@@ -342,9 +341,9 @@ void faultyHeader()
       recoveryFeed);
 }
 
-BOOST_AUTO_TEST_CASE(TestPacketSequencingAssemblerDetectConfigError)
+TEST(QuickFAST, TestPacketSequencingAssemblerDetectConfigError)
 {
-  BOOST_CHECK_THROW(faultyHeader(), UsageError);
+  EXPECT_THROW(faultyHeader(), UsageError);
 }
 
 class TestRecoveryFeed : public Communication::RecoveryFeed
@@ -404,7 +403,7 @@ private:
 
 };
 
-BOOST_AUTO_TEST_CASE(TestPacketSequencingAssemblerGapFill)
+TEST(QuickFAST, TestPacketSequencingAssemblerGapFill)
 {
   std::stringstream templateStream(template_xml);
   Codecs::XMLTemplateParser parser;
@@ -437,11 +436,11 @@ BOOST_AUTO_TEST_CASE(TestPacketSequencingAssemblerGapFill)
   // and one to be a "gap"
   receiver.acceptBuffer(& buffer5);
   assembler.serviceQueue(receiver);
-  BOOST_CHECK(builder.hasGap());
-  BOOST_REQUIRE_EQUAL(builder.valueCount(), 2);
-  BOOST_CHECK_EQUAL(builder.value(0), reinterpret_cast<std::ptrdiff_t> (buffer0.extra()));
-  BOOST_CHECK_EQUAL(builder.value(1), reinterpret_cast<std::ptrdiff_t> (buffer5.extra()));
-  BOOST_CHECK(!builder.hasError());
+  EXPECT_TRUE(builder.hasGap());
+  ASSERT_EQ((builder.valueCount()), (2));
+  EXPECT_EQ((builder.value(0)), (reinterpret_cast<std::ptrdiff_t> (buffer0.extra())));
+  EXPECT_EQ((builder.value(1)), (reinterpret_cast<std::ptrdiff_t> (buffer5.extra())));
+  EXPECT_TRUE(!builder.hasError());
 
   ////////////////////////////
   // Test with fill on; but complete fill off
@@ -458,14 +457,14 @@ BOOST_AUTO_TEST_CASE(TestPacketSequencingAssemblerGapFill)
   // this should trigger gap detection and recovery
   assembler.serviceQueue(receiver);
   // the builder should never see the gap
-  BOOST_CHECK(!builder.hasError());
-  BOOST_CHECK(!builder.hasGap());
-  BOOST_REQUIRE_EQUAL(builder.valueCount(), 5);
-  BOOST_CHECK_EQUAL(builder.value(0), reinterpret_cast<std::ptrdiff_t> (buffer6.extra()));
-  BOOST_CHECK_EQUAL(builder.value(1), reinterpret_cast<std::ptrdiff_t> (buffer7.extra()));
-  BOOST_CHECK_EQUAL(builder.value(2), reinterpret_cast<std::ptrdiff_t> (buffer8.extra()));
-  BOOST_CHECK_EQUAL(builder.value(3), reinterpret_cast<std::ptrdiff_t> (buffer9.extra()));
-  BOOST_CHECK_EQUAL(builder.value(4), reinterpret_cast<std::ptrdiff_t> (buffer10.extra()));
+  EXPECT_TRUE(!builder.hasError());
+  EXPECT_TRUE(!builder.hasGap());
+  ASSERT_EQ((builder.valueCount()), (5));
+  EXPECT_EQ((builder.value(0)), (reinterpret_cast<std::ptrdiff_t> (buffer6.extra())));
+  EXPECT_EQ((builder.value(1)), (reinterpret_cast<std::ptrdiff_t> (buffer7.extra())));
+  EXPECT_EQ((builder.value(2)), (reinterpret_cast<std::ptrdiff_t> (buffer8.extra())));
+  EXPECT_EQ((builder.value(3)), (reinterpret_cast<std::ptrdiff_t> (buffer9.extra())));
+  EXPECT_EQ((builder.value(4)), (reinterpret_cast<std::ptrdiff_t> (buffer10.extra())));
 
   ////////////////////////////
   // Test with fill and complete fill on
@@ -482,12 +481,12 @@ BOOST_AUTO_TEST_CASE(TestPacketSequencingAssemblerGapFill)
   // this should trigger gap detection and recovery
   assembler.serviceQueue(receiver);
   // the builder should never see the gap
-  BOOST_CHECK(!builder.hasError());
-  BOOST_CHECK(!builder.hasGap());
-  BOOST_REQUIRE_EQUAL(builder.valueCount(), 5);
-  BOOST_CHECK_EQUAL(builder.value(0), reinterpret_cast<std::ptrdiff_t> (buffer11.extra()));
-  BOOST_CHECK_EQUAL(builder.value(1), reinterpret_cast<std::ptrdiff_t> (buffer12.extra()));
-  BOOST_CHECK_EQUAL(builder.value(2), reinterpret_cast<std::ptrdiff_t> (buffer13.extra()));
-  BOOST_CHECK_EQUAL(builder.value(3), reinterpret_cast<std::ptrdiff_t> (buffer14.extra()));
-  BOOST_CHECK_EQUAL(builder.value(4), reinterpret_cast<std::ptrdiff_t> (buffer15.extra()));
+  EXPECT_TRUE(!builder.hasError());
+  EXPECT_TRUE(!builder.hasGap());
+  ASSERT_EQ((builder.valueCount()), (5));
+  EXPECT_EQ((builder.value(0)), (reinterpret_cast<std::ptrdiff_t> (buffer11.extra())));
+  EXPECT_EQ((builder.value(1)), (reinterpret_cast<std::ptrdiff_t> (buffer12.extra())));
+  EXPECT_EQ((builder.value(2)), (reinterpret_cast<std::ptrdiff_t> (buffer13.extra())));
+  EXPECT_EQ((builder.value(3)), (reinterpret_cast<std::ptrdiff_t> (buffer14.extra())));
+  EXPECT_EQ((builder.value(4)), (reinterpret_cast<std::ptrdiff_t> (buffer15.extra())));
 }

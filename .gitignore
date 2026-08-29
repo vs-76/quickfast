@@ -22,6 +22,8 @@ lib/
 *.exe
 /bin
 /Output
+/build
+/build-*/
 
 Makefile*
 .depend*

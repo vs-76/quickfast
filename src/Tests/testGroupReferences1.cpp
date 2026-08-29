@@ -3,9 +3,8 @@
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
 
-#define BOOST_TEST_NO_MAIN QuickFASTTest
-#include <boost/test/unit_test.hpp>
-#include <boost/filesystem.hpp>
+#include <gtest/gtest.h>
+#include <filesystem>
 
 #include <Codecs/XMLTemplateParser.h>
 #include <Codecs/TemplateRegistry.h>
@@ -195,26 +194,26 @@ namespace
       std::cout << std::endl << "---END---" << std::endl;
     }
 
-    BOOST_CHECK_EQUAL(message.getApplicationType(), "nxOrderTransactionType");
+    EXPECT_EQ((message.getApplicationType()), ("nxOrderTransactionType"));
 
     //"order71"
     Messages::FieldCPtr order71Field;
-    BOOST_REQUIRE(message.getField("order71", order71Field));
+    ASSERT_TRUE(message.getField("order71", order71Field));
     Messages::FieldSetCPtr order71Group = order71Field->toGroup();
 
     Messages::FieldCPtr nxOrderField;
-    BOOST_REQUIRE(order71Group->getField("nxOrder", nxOrderField));
+    ASSERT_TRUE(order71Group->getField("nxOrder", nxOrderField));
     Messages::FieldSetCPtr nxOrderGroup = nxOrderField->toGroup();
 
     Messages::FieldCPtr productID19Field;
-    BOOST_REQUIRE(nxOrderGroup->getField("productID19", productID19Field));
-//    BOOST_REQUIRE(order71Group->getField("productID19", productID19Field));
+    ASSERT_TRUE(nxOrderGroup->getField("productID19", productID19Field));
+//    ASSERT_TRUE(order71Group->getField("productID19", productID19Field));
     Messages::FieldSetCPtr productID19Group = productID19Field->toGroup();
 
     Messages::FieldCPtr nxCurrencyIDField;
-    BOOST_REQUIRE(productID19Group->getField("nxCurrencyID", nxCurrencyIDField));
+    ASSERT_TRUE(productID19Group->getField("nxCurrencyID", nxCurrencyIDField));
     Messages::FieldSetCPtr nxCurrencyIDGroup = nxCurrencyIDField->toGroup();
-    BOOST_CHECK_EQUAL(nxCurrencyIDGroup->getApplicationType(), "nxCurrencyIDType");
+    EXPECT_EQ((nxCurrencyIDGroup->getApplicationType()), ("nxCurrencyIDType"));
   }
 
   void populateMessage(Messages::Message &msg, bool verbose)
@@ -343,16 +342,16 @@ namespace
     {
       reencoded.hexDisplay(std::cout);
     }
-    BOOST_CHECK(fastMsg == reencoded);
+    EXPECT_TRUE(fastMsg == reencoded);
   }
 } // end of namespace
 
-BOOST_AUTO_TEST_CASE(TestNestedGroupReferences)
+TEST(QuickFAST, TestNestedGroupReferences)
 {
   runTheTest(77, false);
 }
 
-BOOST_AUTO_TEST_CASE(TestNestingGroup)
+TEST(QuickFAST, TestNestingGroup)
 {
   runTheTest(70, false);
 }

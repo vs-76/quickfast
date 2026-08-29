@@ -8,6 +8,52 @@ Because FAST not specific to market data or the financial industry, there are op
 QuickFAST is written to be portable to many platforms. It is routinely tested on Windows and Linux. The project also includes a .NET wrapper 
 which supports using QuickFAST in the .NET environment. Ask if you want support for other platforms.
 
+### Linux build (CMake + C++23)
+
+See **[BUILD.md](BUILD.md)** for g++ / clang++ command recipes (Release/Debug, tests, examples, libc++).
+
+Native library, examples, and tests no longer depend on Boost. Dependencies:
+
+- C++23 compiler (verified with g++ 16 and clang++ 22; GCC 13+ / Clang 16+ expected to work)
+- [Xerces-C++](https://xerces.apache.org/xerces-c/)
+- Standalone [Asio](https://github.com/chriskohlhoff/asio) and [GoogleTest](https://github.com/google/googletest) / GoogleMock (fetched by CMake)
+
+Ubuntu/Debian packages:
+
+```bash
+sudo apt-get install -y cmake build-essential libxerces-c-dev
+```
+
+Configure and build (first-party code is compiled with `-Wall -Werror -pedantic`):
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+ctest --test-dir build --output-on-failure
+```
+
+Dual-compiler check:
+
+```bash
+cmake -S . -B build-gcc16 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++-16
+cmake --build build-gcc16 -j && ctest --test-dir build-gcc16 --output-on-failure
+
+cmake -S . -B build-clang22 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++-22
+cmake --build build-clang22 -j && ctest --test-dir build-clang22 --output-on-failure
+```
+
+Clang with libc++ (optional, default OFF):
+
+```bash
+cmake -S . -B build-clang22-libcxx -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_COMPILER=clang++-22 -DQUICKFAST_USE_LIBCXX=ON
+cmake --build build-clang22-libcxx -j && ctest --test-dir build-clang22-libcxx --output-on-failure
+```
+
+Optional flags: `-DQUICKFAST_BUILD_TESTS=OFF`, `-DQUICKFAST_BUILD_EXAMPLES=OFF`, `-DQUICKFAST_USE_LIBCXX=ON` (Clang only), `-DQUICKFAST_ENABLE_PVS_STUDIO=OFF`.
+
+The legacy MPC/`setup.sh` flow remains available for older toolchains; prefer CMake on modern Linux.
+
 Instructions for [getting started with QuickFAST are here](https://github.com/objectcomputing/quickfast/wiki/GettingStarted)
 
 QuickFAST was developed by Object Computing Inc.(OCI) St. Louis Missouri USA. OCI has made QuickFAST available as open source software 

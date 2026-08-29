@@ -14,9 +14,9 @@ namespace QuickFAST{
   namespace Messages{
     class Message;
     /// @brief Smart pointer to a Message.
-    typedef boost::shared_ptr<Message> MessagePtr;
+    typedef std::shared_ptr<Message> MessagePtr;
     /// @brief Smart pointer to a const Message.
-    typedef boost::shared_ptr<const Message> MessageCPtr;
+    typedef std::shared_ptr<const Message> MessageCPtr;
   }
 }
 #endif // MESSAGE_FWD_H

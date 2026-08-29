@@ -4,10 +4,20 @@
 #include <Common/QuickFASTPch.h>
 #include "Decimal.h"
 #include <Common/Exceptions.h>
+#include <Common/LexicalCast.h>
 #include <Common/WorkingBuffer.h>
-#include <boost/algorithm/string/trim.hpp>
+#include <cctype>
 
 using namespace ::QuickFAST;
+
+namespace {
+  void trimInPlace(std::string & str)
+  {
+    auto notSpace = [](unsigned char c) { return !std::isspace(c); };
+    str.erase(str.begin(), std::find_if(str.begin(), str.end(), notSpace));
+    str.erase(std::find_if(str.rbegin(), str.rend(), notSpace).base(), str.end());
+  }
+}
 
 Decimal::Decimal(
     mantissa_t mantissa,
@@ -34,7 +44,7 @@ void
 Decimal::parse(const std::string & value)
 {
   std::string str = value;
-  boost::algorithm::trim(str);
+  trimInPlace(str);
   size_t dotPos = str.find(".");
   std::string wholeString = str.substr(0,dotPos);
   std::string fracString;
@@ -53,7 +63,7 @@ Decimal::parse(const std::string & value)
   overflow = true;
 #else
   try {
-    mantissa_ = boost::lexical_cast<mantissa_t>(mantissaString);
+    mantissa_ = QuickFAST::lexical_cast<mantissa_t>(mantissaString);
   }
   catch (std::exception &)
   {
@@ -66,7 +76,7 @@ Decimal::parse(const std::string & value)
     size_t pos = mantissaString.find_last_not_of ("0");
     exponent_ += exponent_t(mantissaString.length () - pos - 1);
     mantissaString = mantissaString.substr (0, pos + 1);
-    mantissa_ = boost::lexical_cast<mantissa_t>(mantissaString);
+    mantissa_ = QuickFAST::lexical_cast<mantissa_t>(mantissaString);
   }
 
   if(autoNormalize_)
@@ -115,7 +125,7 @@ void
 Decimal::toString(std::string & value)const
 {
 #if 0
-  value = boost::lexical_cast<std::string>(double(*this));
+  value = QuickFAST::lexical_cast<std::string>(double(*this));
 #elif 1
   std::stringstream str;
   str << double(*this);

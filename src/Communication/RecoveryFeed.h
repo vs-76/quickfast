@@ -6,6 +6,7 @@
 #define RECOVERYFEED_H
 #include "RecoveryFeed_fwd.h"
 #include <Communication/LinkedBuffer.h>
+#include <chrono>
 
 namespace QuickFAST
 {
@@ -33,7 +34,7 @@ namespace QuickFAST
       void acceptBuffer(Communication::LinkedBuffer * buffer)
       {
         {
-          boost::mutex::scoped_lock lock(inputMutex_);
+          std::unique_lock<std::mutex> lock(inputMutex_);
           inputBuffers_.push(buffer);
         }
         inputWait_.notify_all();
@@ -44,21 +45,22 @@ namespace QuickFAST
       /// @param queue to hold incoming packets
       void fetchBuffers(Communication::BufferQueue & queue)
       {
-        boost::mutex::scoped_lock lock(inputMutex_);
+        std::unique_lock<std::mutex> lock(inputMutex_);
         queue.push(inputBuffers_);
       }
 
       /// @brief Wait for a gap fill or a timeout.
       /// No guarantee that the gap will be filled.
       /// @param timeout is how long to wait.
-      void waitGapFill(boost::posix_time::time_duration timeout)
+      void waitGapFill(std::chrono::milliseconds timeout)
       {
-        boost::mutex::scoped_lock lock(inputMutex_);
+        std::unique_lock<std::mutex> lock(inputMutex_);
         if(inputBuffers_.isEmpty())
         {
-          boost::system_time until = boost::get_system_time();
-          until += timeout;
-          inputWait_.timed_wait(lock, until);
+          inputWait_.wait_until(
+            lock,
+            std::chrono::steady_clock::now() + timeout,
+            [this]{ return !inputBuffers_.isEmpty(); });
         }
       }
 
@@ -68,7 +70,7 @@ namespace QuickFAST
       void releaseBuffer(Communication::LinkedBuffer * buffer)
       {
         {
-          boost::mutex::scoped_lock lock(freeMutex_);
+          std::unique_lock<std::mutex> lock(freeMutex_);
           freeBuffers_.push(buffer);
         }
         freeWait_.notify_one();
@@ -78,7 +80,7 @@ namespace QuickFAST
       /// if no buffer is available, return 0
       Communication::LinkedBuffer * getFreeBuffer()
       {
-        boost::mutex::scoped_lock lock(freeMutex_);
+        std::unique_lock<std::mutex> lock(freeMutex_);
         return freeBuffers_.pop();
       }
 
@@ -86,11 +88,11 @@ namespace QuickFAST
       /// if no buffer is available, wait "forever"
       Communication::LinkedBuffer * waitFreeBuffer()
       {
-        boost::mutex::scoped_lock lock(freeMutex_);
+        std::unique_lock<std::mutex> lock(freeMutex_);
         Communication::LinkedBuffer * buffer = freeBuffers_.pop();
         while(buffer == 0)
         {
-          freeWait_.wait(lock);
+          freeWait_.wait(lock, [this]{ return !freeBuffers_.isEmpty(); });
           buffer = freeBuffers_.pop();
         }
         return buffer;
@@ -98,15 +100,15 @@ namespace QuickFAST
 
     protected:
       /// Protects inputBuffers_
-      boost::mutex inputMutex_;
+      std::mutex inputMutex_;
       /// Waits for inputBuffers_
-      boost::condition_variable inputWait_;
+      std::condition_variable inputWait_;
       /// Buffers ready to be delivered to Assembler
       Communication::BufferQueue inputBuffers_;
       /// Protects freeBuffers_
-      boost::mutex freeMutex_;
+      std::mutex freeMutex_;
       /// Waits for freeBuffers_
-      boost::condition_variable freeWait_;
+      std::condition_variable freeWait_;
       /// Empty buffers returned from Assembler
       Communication::BufferQueue freeBuffers_;
     };

@@ -57,6 +57,18 @@ namespace QuickFAST{
       {
       }
 
+      FieldIdentity & operator=(const FieldIdentity & rhs)
+      {
+        if(this != &rhs)
+        {
+          localName_ = rhs.localName_;
+          fieldNamespace_ = rhs.fieldNamespace_;
+          fullName_ = rhs.fullName_;
+          id_ = rhs.id_;
+        }
+        return *this;
+      }
+
       /// @brief Set the fields ID (not terribly useful)
       /// @param id to be stored
       void setId(const field_id_t & id)

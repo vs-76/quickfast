@@ -3,6 +3,7 @@
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
 #include "FieldIdentity.h"
+#include <Common/LexicalCast.h>
 
 #ifdef _MSC_VER
 #pragma warning(disable:4355) // disable warning C4355: 'this' : used in base member initializer list
@@ -13,7 +14,7 @@ using namespace Messages;
 static
 std::string anonName(void * address)
 {
-  return boost::lexical_cast<std::string>(address);
+  return QuickFAST::lexical_cast<std::string>(address);
 }
 
 FieldIdentity::FieldIdentity()

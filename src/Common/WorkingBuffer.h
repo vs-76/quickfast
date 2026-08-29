@@ -130,7 +130,7 @@ namespace QuickFAST{
     size_t capacity_;
     size_t startPos_;
     size_t endPos_;
-    boost::scoped_array<uchar> buffer_;
+    std::unique_ptr<uchar[]> buffer_;
   };
 }
 

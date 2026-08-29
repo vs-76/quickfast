@@ -23,7 +23,8 @@ namespace QuickFAST
     {
     public:
       Receiver()
-        : bufferSize_(1500)
+        : assembler_(0)
+        , bufferSize_(1500)
         , paused_(false)
         , stopping_(false)
         , readsInProgress_(0)
@@ -63,7 +64,7 @@ namespace QuickFAST
           assembler_->receiverStarted(*this);
 
           // Allocate initial set of buffers
-          boost::mutex::scoped_lock lock(bufferMutex_);
+          std::unique_lock<std::mutex> lock(bufferMutex_);
 
           for(size_t nBuffer = 0; nBuffer < bufferCount; ++nBuffer)
           {
@@ -84,7 +85,7 @@ namespace QuickFAST
       void addBuffers(
         size_t bufferCount = 1)
       {
-        boost::mutex::scoped_lock lock(bufferMutex_);
+        std::unique_lock<std::mutex> lock(bufferMutex_);
 
         for(size_t nBuffer = 0; nBuffer < bufferCount; ++nBuffer)
         {
@@ -128,8 +129,8 @@ namespace QuickFAST
       ///
       /// Process data from an external buffer;
       virtual void receiveBuffer(
-        const unsigned char * buffer,
-        size_t used
+        [[maybe_unused]] const unsigned char * buffer,
+        [[maybe_unused]] size_t used
         )
       {
         throw std::logic_error("Unexpected call to Communications::Receiver::receiveBuffer()");
@@ -192,7 +193,7 @@ namespace QuickFAST
         {
           more = wait;
           {
-            boost::mutex::scoped_lock lock(bufferMutex_);
+            std::unique_lock<std::mutex> lock(bufferMutex_);
             // add any idle buffers to pool
             idleBufferPool_.push(idleBuffers_);
             startReceive(lock);
@@ -229,7 +230,7 @@ namespace QuickFAST
           }
           if(available < needed && wait)
           {
-            boost::mutex::scoped_lock lock(bufferMutex_);
+            std::unique_lock<std::mutex> lock(bufferMutex_);
             // add any idle buffers to pool
             idleBufferPool_.push(idleBuffers_);
             startReceive(lock);
@@ -263,7 +264,7 @@ namespace QuickFAST
       /// @brief Enter the startReceive method without a lock
       void startReceiveUnlocked()
       {
-        boost::mutex::scoped_lock lock(bufferMutex_);
+        std::unique_lock<std::mutex> lock(bufferMutex_);
         startReceive(lock);
       }
 
@@ -275,7 +276,7 @@ namespace QuickFAST
 
       /// @brief Receive a new buffer full if possible
       /// scoped_lock parameter means a mutex must be locked
-      void startReceive(boost::mutex::scoped_lock& lock)
+      void startReceive(std::unique_lock<std::mutex>& lock)
       {
         bool more = canStartRead();
         while( more && !stopping_)
@@ -332,7 +333,7 @@ namespace QuickFAST
       /// @returns true if the buffer is, or will be filled.
       virtual bool fillBuffer(
         LinkedBuffer * buffer,
-        boost::mutex::scoped_lock& lock) = 0;
+        std::unique_lock<std::mutex>& lock) = 0;
 
 
       /////////////
@@ -440,7 +441,7 @@ namespace QuickFAST
           {
             stop();
           }
-          boost::mutex::scoped_lock lock(bufferMutex_);
+          std::unique_lock<std::mutex> lock(bufferMutex_);
           // add idle buffers to pool before trying to start a read.
           //if(!idleBufferPool_.isEmpty())
           //{
@@ -462,12 +463,12 @@ namespace QuickFAST
 
     protected:
       /// The assembler to receive full buffers
-      Assembler * assembler_;
+      Assembler * assembler_ = nullptr;
       /// Manage the buffers' lifetimes
       BufferLifetimeManager bufferLifetimes_;
 
       /// Protect access to the SingleServerBufferQueue
-      boost::mutex bufferMutex_;
+      std::mutex bufferMutex_;
 
       /// @brief Accept buffers from multiple threads and deliver them to a single thread.
       ///

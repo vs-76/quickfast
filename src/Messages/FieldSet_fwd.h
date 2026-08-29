@@ -14,9 +14,9 @@ namespace QuickFAST{
   namespace Messages{
     class FieldSet;
     /// @brief Smart pointer to a FieldSet.
-    typedef boost::shared_ptr<FieldSet> FieldSetPtr;
+    typedef std::shared_ptr<FieldSet> FieldSetPtr;
     /// @brief Smart pointer to a const FieldSet.
-    typedef boost::shared_ptr<const FieldSet> FieldSetCPtr;
+    typedef std::shared_ptr<const FieldSet> FieldSetCPtr;
   }
 }
 #endif // FIELDSET_FWD_H

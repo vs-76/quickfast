@@ -58,6 +58,7 @@ FieldInstructionGroup::decodeNop(
     if(!segmentBody_)
     {
       decoder.reportFatal("[ERR U08}", "Segment not defined for Group instruction.");
+      return;
     }
     if(messageBuilder.getApplicationType() != segmentBody_->getApplicationType())
     {

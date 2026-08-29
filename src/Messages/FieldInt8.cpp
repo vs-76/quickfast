@@ -36,13 +36,13 @@ FieldInt8::toInt8() const
 FieldCPtr
 FieldInt8::create(int8 value)
 {
-  return new FieldInt8(value);
+  return FieldCPtr(new FieldInt8(value));
 }
 
 FieldCPtr
 FieldInt8::createNull()
 {
-  return new FieldInt8;
+  return FieldCPtr(new FieldInt8);
 }
 
 void

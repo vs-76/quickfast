@@ -16,7 +16,7 @@ namespace QuickFAST{
 #if defined(_WIN32)
     class AsynchFileReceiver;
     /// @brief smart pointer to a AsynchFileReceiver
-    typedef boost::shared_ptr<AsynchFileReceiver> AsynchFileReceiverPtr;
+    typedef std::shared_ptr<AsynchFileReceiver> AsynchFileReceiverPtr;
 #endif // _WIN32
   }
 }

@@ -21,7 +21,7 @@ BasePacketAssembler::BasePacketAssembler(
   , messageHeaderAnalyzer_(messageHeaderAnalyzer)
   , builder_(builder)
   , messageCount_(0)
-  , byteCount_(0)
+  , receivedByteCount_(0)
   , messageLimit_(0)
 {
 }
@@ -35,7 +35,7 @@ BasePacketAssembler::decodeBuffer(const unsigned char * buffer, size_t size)
 {
   bool result = true;
   ++messageCount_;
-  ++byteCount_ += size;
+  ++receivedByteCount_ += size;
   if(builder_.wantLog(Common::Logger::QF_LOG_VERBOSE))
   {
     std::stringstream message;

@@ -6,4 +6,4 @@
 using namespace QuickFAST;
 using namespace Examples;
 
-boost::mutex ConsoleLock::consoleMutex;
+std::mutex ConsoleLock::consoleMutex;

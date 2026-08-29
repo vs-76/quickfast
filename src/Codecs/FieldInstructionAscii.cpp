@@ -237,12 +237,12 @@ FieldInstructionAscii::decodeDelta(
     }
   }
 
-  size_t previousLength = previousValue.length();
   if( deltaLength < 0)
   {
     // operate on front of string
     // compensete for the excess -1 encoding that allows -0 != +0
     deltaLength = -(deltaLength + 1);
+    const size_t previousLength = previousValue.length();
     // don't chop more than is there
     if(static_cast<unsigned long>(deltaLength) > previousLength)
     {
@@ -259,6 +259,7 @@ FieldInstructionAscii::decodeDelta(
   }
   else
   { // operate on end of string
+    const size_t previousLength = previousValue.length();
     // don't chop more than is there
     if(static_cast<unsigned long>(deltaLength) > previousLength)
     {

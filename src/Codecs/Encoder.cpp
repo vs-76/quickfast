@@ -99,14 +99,13 @@ Encoder::encodeGroup(
   // The presence map for the group will go into the current buffer
   // that will be the last thing to appear in that buffer
   DataDestination::BufferHandle pmapBuffer = destination.getBuffer();
-  DataDestination::BufferHandle bodyBuffer = pmapBuffer;
   if(presenceMapBits > 0)
   {
-    bodyBuffer = destination.startBuffer();
+    (void)destination.startBuffer();
   }
   encodeSegmentBody(destination, pmap, group, accessor);
   // remember the buffer we're presently working on
-  bodyBuffer = destination.getBuffer();
+  DataDestination::BufferHandle bodyBuffer = destination.getBuffer();
   if(presenceMapBits > 0)
   {
     destination.selectBuffer(pmapBuffer);

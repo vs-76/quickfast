@@ -16,9 +16,9 @@ namespace QuickFAST{
     class QuickFAST_Export FieldSequence : public Field{
       /// @brief Construct a field given a sequence for it to contain
       FieldSequence(Messages::SequenceCPtr sequence);
+    public:
       /// @brief a typical virtual destructor.
       virtual ~FieldSequence();
-    public:
       /// @brief Construct a field given a sequence for it to contain
       /// @param sequence the entries for this FieldSequence
       /// @returns a constant pointer to the immutable field

@@ -3,9 +3,7 @@
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
 
-#define BOOST_TEST_NO_MAIN QuickFASTTest
-#include <boost/test/unit_test.hpp>
-
+#include <gtest/gtest.h>
 #include <Messages/FieldAscii.h>
 #include <Messages/FieldUtf8.h>
 #include <Messages/FieldByteVector.h>
@@ -13,113 +11,113 @@
 
 using namespace ::QuickFAST;
 
-BOOST_AUTO_TEST_CASE(testFieldAscii)
+TEST(QuickFAST, testFieldAscii)
 {
   Messages::FieldCPtr field = Messages::FieldAscii::createNull();
-  BOOST_CHECK(!field->isDefined());
-  BOOST_CHECK( field->isType(ValueType::ASCII));
-  BOOST_CHECK(!field->isType(ValueType::BYTEVECTOR));
-  BOOST_CHECK(!field->isType(ValueType::DECIMAL));
-  BOOST_CHECK(!field->isType(ValueType::INT32));
-  BOOST_CHECK(!field->isType(ValueType::INT64));
-  BOOST_CHECK(!field->isType(ValueType::UINT32));
-  BOOST_CHECK(!field->isType(ValueType::UINT64));
-  BOOST_CHECK(!field->isType(ValueType::UTF8));
-  BOOST_CHECK(!field->isType(ValueType::SEQUENCE));
+  EXPECT_TRUE(!field->isDefined());
+  EXPECT_TRUE(field->isType(ValueType::ASCII));
+  EXPECT_TRUE(!field->isType(ValueType::BYTEVECTOR));
+  EXPECT_TRUE(!field->isType(ValueType::DECIMAL));
+  EXPECT_TRUE(!field->isType(ValueType::INT32));
+  EXPECT_TRUE(!field->isType(ValueType::INT64));
+  EXPECT_TRUE(!field->isType(ValueType::UINT32));
+  EXPECT_TRUE(!field->isType(ValueType::UINT64));
+  EXPECT_TRUE(!field->isType(ValueType::UTF8));
+  EXPECT_TRUE(!field->isType(ValueType::SEQUENCE));
 
   field = Messages::FieldAscii::create("Hello, World!");
-  BOOST_CHECK( field->isDefined());
-  BOOST_CHECK( field->isType(ValueType::ASCII));
-  BOOST_CHECK(!field->isType(ValueType::BYTEVECTOR));
-  BOOST_CHECK(!field->isType(ValueType::DECIMAL));
-  BOOST_CHECK(!field->isType(ValueType::INT32));
-  BOOST_CHECK(!field->isType(ValueType::INT64));
-  BOOST_CHECK(!field->isType(ValueType::UINT32));
-  BOOST_CHECK(!field->isType(ValueType::UINT64));
-  BOOST_CHECK(!field->isType(ValueType::UTF8));
-  BOOST_CHECK(!field->isType(ValueType::SEQUENCE));
+  EXPECT_TRUE(field->isDefined());
+  EXPECT_TRUE(field->isType(ValueType::ASCII));
+  EXPECT_TRUE(!field->isType(ValueType::BYTEVECTOR));
+  EXPECT_TRUE(!field->isType(ValueType::DECIMAL));
+  EXPECT_TRUE(!field->isType(ValueType::INT32));
+  EXPECT_TRUE(!field->isType(ValueType::INT64));
+  EXPECT_TRUE(!field->isType(ValueType::UINT32));
+  EXPECT_TRUE(!field->isType(ValueType::UINT64));
+  EXPECT_TRUE(!field->isType(ValueType::UTF8));
+  EXPECT_TRUE(!field->isType(ValueType::SEQUENCE));
 
-  BOOST_CHECK_EQUAL(field->toAscii(), "Hello, World!");
+  EXPECT_EQ((field->toAscii()), ("Hello, World!"));
 
-  BOOST_CHECK_THROW(field->toInt32(),UnsupportedConversion);
-  BOOST_CHECK_THROW(field->toUInt32(),UnsupportedConversion);
-  BOOST_CHECK_THROW(field->toInt64(),UnsupportedConversion);
-  BOOST_CHECK_THROW(field->toUInt64(),UnsupportedConversion);
-  BOOST_CHECK_THROW(field->toDecimal(),UnsupportedConversion);
-  BOOST_CHECK_THROW(field->toUtf8(),UnsupportedConversion);
+  EXPECT_THROW(field->toInt32(), UnsupportedConversion);
+  EXPECT_THROW(field->toUInt32(), UnsupportedConversion);
+  EXPECT_THROW(field->toInt64(), UnsupportedConversion);
+  EXPECT_THROW(field->toUInt64(), UnsupportedConversion);
+  EXPECT_THROW(field->toDecimal(), UnsupportedConversion);
+  EXPECT_THROW(field->toUtf8(), UnsupportedConversion);
 }
 
 
-BOOST_AUTO_TEST_CASE(testFieldUtf8)
+TEST(QuickFAST, testFieldUtf8)
 {
   Messages::FieldCPtr field = Messages::FieldUtf8::createNull();
-  BOOST_CHECK(!field->isDefined());
-  BOOST_CHECK(!field->isType(ValueType::ASCII));
-  BOOST_CHECK(!field->isType(ValueType::BYTEVECTOR));
-  BOOST_CHECK(!field->isType(ValueType::DECIMAL));
-  BOOST_CHECK(!field->isType(ValueType::INT32));
-  BOOST_CHECK(!field->isType(ValueType::INT64));
-  BOOST_CHECK(!field->isType(ValueType::UINT32));
-  BOOST_CHECK(!field->isType(ValueType::UINT64));
-  BOOST_CHECK( field->isType(ValueType::UTF8));
-  BOOST_CHECK(!field->isType(ValueType::SEQUENCE));
+  EXPECT_TRUE(!field->isDefined());
+  EXPECT_TRUE(!field->isType(ValueType::ASCII));
+  EXPECT_TRUE(!field->isType(ValueType::BYTEVECTOR));
+  EXPECT_TRUE(!field->isType(ValueType::DECIMAL));
+  EXPECT_TRUE(!field->isType(ValueType::INT32));
+  EXPECT_TRUE(!field->isType(ValueType::INT64));
+  EXPECT_TRUE(!field->isType(ValueType::UINT32));
+  EXPECT_TRUE(!field->isType(ValueType::UINT64));
+  EXPECT_TRUE(field->isType(ValueType::UTF8));
+  EXPECT_TRUE(!field->isType(ValueType::SEQUENCE));
 
   field = Messages::FieldUtf8::create("Hello, World!");
-  BOOST_CHECK( field->isDefined());
-  BOOST_CHECK(!field->isType(ValueType::ASCII));
-  BOOST_CHECK(!field->isType(ValueType::BYTEVECTOR));
-  BOOST_CHECK(!field->isType(ValueType::DECIMAL));
-  BOOST_CHECK(!field->isType(ValueType::INT32));
-  BOOST_CHECK(!field->isType(ValueType::INT64));
-  BOOST_CHECK(!field->isType(ValueType::UINT32));
-  BOOST_CHECK(!field->isType(ValueType::UINT64));
-  BOOST_CHECK( field->isType(ValueType::UTF8));
-  BOOST_CHECK(!field->isType(ValueType::SEQUENCE));
+  EXPECT_TRUE(field->isDefined());
+  EXPECT_TRUE(!field->isType(ValueType::ASCII));
+  EXPECT_TRUE(!field->isType(ValueType::BYTEVECTOR));
+  EXPECT_TRUE(!field->isType(ValueType::DECIMAL));
+  EXPECT_TRUE(!field->isType(ValueType::INT32));
+  EXPECT_TRUE(!field->isType(ValueType::INT64));
+  EXPECT_TRUE(!field->isType(ValueType::UINT32));
+  EXPECT_TRUE(!field->isType(ValueType::UINT64));
+  EXPECT_TRUE(field->isType(ValueType::UTF8));
+  EXPECT_TRUE(!field->isType(ValueType::SEQUENCE));
 
-  BOOST_CHECK_EQUAL(field->toUtf8(), "Hello, World!");
+  EXPECT_EQ((field->toUtf8()), ("Hello, World!"));
 
-  BOOST_CHECK_THROW(field->toAscii(),UnsupportedConversion);
-  BOOST_CHECK_THROW(field->toInt32(),UnsupportedConversion);
-  BOOST_CHECK_THROW(field->toUInt32(),UnsupportedConversion);
-  BOOST_CHECK_THROW(field->toInt64(),UnsupportedConversion);
-  BOOST_CHECK_THROW(field->toUInt64(),UnsupportedConversion);
-  BOOST_CHECK_THROW(field->toDecimal(),UnsupportedConversion);
+  EXPECT_THROW(field->toAscii(), UnsupportedConversion);
+  EXPECT_THROW(field->toInt32(), UnsupportedConversion);
+  EXPECT_THROW(field->toUInt32(), UnsupportedConversion);
+  EXPECT_THROW(field->toInt64(), UnsupportedConversion);
+  EXPECT_THROW(field->toUInt64(), UnsupportedConversion);
+  EXPECT_THROW(field->toDecimal(), UnsupportedConversion);
 }
 
-BOOST_AUTO_TEST_CASE(testFieldByteVector)
+TEST(QuickFAST, testFieldByteVector)
 {
   Messages::FieldCPtr field = Messages::FieldByteVector::createNull();
-  BOOST_CHECK(!field->isDefined());
-  BOOST_CHECK(!field->isType(ValueType::ASCII));
-  BOOST_CHECK( field->isType(ValueType::BYTEVECTOR));
-  BOOST_CHECK(!field->isType(ValueType::DECIMAL));
-  BOOST_CHECK(!field->isType(ValueType::INT32));
-  BOOST_CHECK(!field->isType(ValueType::INT64));
-  BOOST_CHECK(!field->isType(ValueType::UINT32));
-  BOOST_CHECK(!field->isType(ValueType::UINT64));
-  BOOST_CHECK(!field->isType(ValueType::UTF8));
-  BOOST_CHECK(!field->isType(ValueType::SEQUENCE));
+  EXPECT_TRUE(!field->isDefined());
+  EXPECT_TRUE(!field->isType(ValueType::ASCII));
+  EXPECT_TRUE(field->isType(ValueType::BYTEVECTOR));
+  EXPECT_TRUE(!field->isType(ValueType::DECIMAL));
+  EXPECT_TRUE(!field->isType(ValueType::INT32));
+  EXPECT_TRUE(!field->isType(ValueType::INT64));
+  EXPECT_TRUE(!field->isType(ValueType::UINT32));
+  EXPECT_TRUE(!field->isType(ValueType::UINT64));
+  EXPECT_TRUE(!field->isType(ValueType::UTF8));
+  EXPECT_TRUE(!field->isType(ValueType::SEQUENCE));
 
   field = Messages::FieldByteVector::create("Hello, World!");
-  BOOST_CHECK( field->isDefined());
-  BOOST_CHECK(!field->isType(ValueType::ASCII));
-  BOOST_CHECK( field->isType(ValueType::BYTEVECTOR));
-  BOOST_CHECK(!field->isType(ValueType::DECIMAL));
-  BOOST_CHECK(!field->isType(ValueType::INT32));
-  BOOST_CHECK(!field->isType(ValueType::INT64));
-  BOOST_CHECK(!field->isType(ValueType::UINT32));
-  BOOST_CHECK(!field->isType(ValueType::UINT64));
-  BOOST_CHECK(!field->isType(ValueType::UTF8));
-  BOOST_CHECK(!field->isType(ValueType::SEQUENCE));
+  EXPECT_TRUE(field->isDefined());
+  EXPECT_TRUE(!field->isType(ValueType::ASCII));
+  EXPECT_TRUE(field->isType(ValueType::BYTEVECTOR));
+  EXPECT_TRUE(!field->isType(ValueType::DECIMAL));
+  EXPECT_TRUE(!field->isType(ValueType::INT32));
+  EXPECT_TRUE(!field->isType(ValueType::INT64));
+  EXPECT_TRUE(!field->isType(ValueType::UINT32));
+  EXPECT_TRUE(!field->isType(ValueType::UINT64));
+  EXPECT_TRUE(!field->isType(ValueType::UTF8));
+  EXPECT_TRUE(!field->isType(ValueType::SEQUENCE));
 
-  BOOST_CHECK_EQUAL(field->toByteVector(), "Hello, World!");
+  EXPECT_EQ((field->toByteVector()), ("Hello, World!"));
 
-  BOOST_CHECK_THROW(field->toAscii(),UnsupportedConversion);
-  BOOST_CHECK_THROW(field->toInt32(),UnsupportedConversion);
-  BOOST_CHECK_THROW(field->toUInt32(),UnsupportedConversion);
-  BOOST_CHECK_THROW(field->toInt64(),UnsupportedConversion);
-  BOOST_CHECK_THROW(field->toUInt64(),UnsupportedConversion);
-  BOOST_CHECK_THROW(field->toDecimal(),UnsupportedConversion);
+  EXPECT_THROW(field->toAscii(), UnsupportedConversion);
+  EXPECT_THROW(field->toInt32(), UnsupportedConversion);
+  EXPECT_THROW(field->toUInt32(), UnsupportedConversion);
+  EXPECT_THROW(field->toInt64(), UnsupportedConversion);
+  EXPECT_THROW(field->toUInt64(), UnsupportedConversion);
+  EXPECT_THROW(field->toDecimal(), UnsupportedConversion);
 }
 
 

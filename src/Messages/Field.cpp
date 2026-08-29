@@ -11,7 +11,6 @@ using namespace ::QuickFAST::Messages;
 Field::Field(ValueType::Type type, bool valid)
 : type_(type)
 , valid_(valid)
-, refcount_(0)
 {
 }
 
@@ -182,12 +181,6 @@ Field::toSequence() const
 {
   UnsupportedConversion ex(ValueType::typeName(getType()), "Sequence");
   throw ex;
-}
-
-void
-Field::freeField()const
-{
-  delete this;
 }
 
 void

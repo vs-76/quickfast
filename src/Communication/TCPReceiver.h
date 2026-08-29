@@ -39,7 +39,7 @@ namespace QuickFAST
       /// @param hostName is the name or dotted IP to connect to
       /// @param port port service name or number
       TCPReceiver(
-        boost::asio::io_service & ioService,
+        asio::io_context & ioService,
         const std::string & hostName,
         const std::string & port
         )
@@ -59,19 +59,18 @@ namespace QuickFAST
       {
         bool ok = true;
         // generate a collection of possible endpoints for this host:port
-        boost::asio::ip::tcp::resolver resolver(ioService_);
-        boost::asio::ip::tcp::resolver::query query( hostName_, port_);
-        boost::asio::ip::tcp::resolver::iterator iterator = resolver.resolve(query);
+        asio::ip::tcp::resolver resolver(ioService_);
+        asio::ip::tcp::resolver::results_type endpoints = resolver.resolve(hostName_, port_);
 
         // then iterate thru the collection until we find one that works.
-        boost::system::error_code error;
-        boost::asio::ip::tcp::resolver::iterator endIterator;
+        asio::error_code error;
         bool connected = false;
-        while(!connected && iterator != endIterator)
+        for(asio::ip::tcp::resolver::results_type::iterator iterator = endpoints.begin();
+            !connected && iterator != endpoints.end();
+            ++iterator)
         {
           socket_.connect(*iterator, error);
           connected = !error;
-          ++iterator;
         }
         if(!connected)
         {
@@ -96,15 +95,12 @@ namespace QuickFAST
       virtual void stop()
       {
         Receiver::stop();
-        try
-        {
-          socket_.close();
-        }
-        catch(...){}
+        asio::error_code ec;
+        socket_.close(ec);
       }
 
       /// Provide direct access to the internal asio socket.
-      boost::asio::ip::tcp::socket & socket()
+      asio::ip::tcp::socket & socket()
       {
         return socket_;
       }
@@ -129,7 +125,7 @@ namespace QuickFAST
       template<typename ConstBufferSequence>
       std::size_t send(
         const ConstBufferSequence & buffers,
-        boost::asio::ip::tcp::socket::message_flags flags)
+        asio::ip::tcp::socket::message_flags flags)
       {
         return socket_.send(buffers, flags);
       }
@@ -144,8 +140,8 @@ namespace QuickFAST
       template<typename ConstBufferSequence>
       std::size_t send(
         const ConstBufferSequence & buffers,
-        boost::asio::ip::tcp::socket::message_flags flags,
-        boost::system::error_code & ec)
+        asio::ip::tcp::socket::message_flags flags,
+        asio::error_code & ec)
       {
         return socket_.send(buffers, flags, ec);
       }
@@ -174,7 +170,7 @@ namespace QuickFAST
       template<typename ConstBufferSequence, typename WriteHandler>
       void asyncSend(
         const ConstBufferSequence & buffers,
-        boost::asio::ip::tcp::socket::message_flags flags,
+        asio::ip::tcp::socket::message_flags flags,
         WriteHandler handler)
       {
         socket_.async_send(buffers, flags, handler);
@@ -182,23 +178,21 @@ namespace QuickFAST
 
     private:
 
-      bool fillBuffer(LinkedBuffer * buffer, boost::mutex::scoped_lock& lock)
+      bool fillBuffer(LinkedBuffer * buffer, [[maybe_unused]] std::unique_lock<std::mutex>& lock)
       {
         socket_.async_receive(
-          boost::asio::buffer(buffer->get(), buffer->capacity()),
-          boost::bind(&TCPReceiver::handleReceive,
-            this,
-            boost::asio::placeholders::error,
-            buffer,
-            boost::asio::placeholders::bytes_transferred)
-          );
+          asio::buffer(buffer->get(), buffer->capacity()),
+          [this, buffer](const asio::error_code& error, std::size_t bytes_transferred)
+          {
+            this->handleReceive(error, buffer, bytes_transferred);
+          });
         return true;
       }
 
     private:
       std::string hostName_;
       std::string port_;
-      boost::asio::ip::tcp::socket socket_;
+      asio::ip::tcp::socket socket_;
     };
   }
 }

@@ -58,19 +58,19 @@ namespace QuickFAST
       }
 
       // Implement Receiver method
-      bool fillBuffer(LinkedBuffer * buffer, boost::mutex::scoped_lock& lock)
+      bool fillBuffer(LinkedBuffer * buffer, std::unique_lock<std::mutex>& lock)
       {
         const unsigned char * pcapBuffer;
         size_t pcapSize;
         bool result = reader_.read(pcapBuffer, pcapSize);
         if(result)
         {
-          if(pcapSize <= buffer->capacity())
+          if(pcapSize > buffer->capacity())
           {
-            memcpy(buffer->get(), pcapBuffer, pcapSize);
-            acceptFullBuffer(buffer, pcapSize, lock);
-            result = true;
+            return false;
           }
+          memcpy(buffer->get(), pcapBuffer, pcapSize);
+          acceptFullBuffer(buffer, pcapSize, lock);
         }
         return result;
       }

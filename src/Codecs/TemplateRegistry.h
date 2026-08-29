@@ -59,6 +59,10 @@ namespace QuickFAST{
       /// @param value smart pointer to the template to be added
       virtual void addTemplate(TemplatePtr value);
 
+      /// Bring SchemaElement::finalize(TemplateRegistry&) into scope so finalize()
+      /// does not hide the base overload (-Woverloaded-virtual).
+      using SchemaElement::finalize;
+
       /// @brief do any final processing after parsing is complete.
       virtual void finalize();
 

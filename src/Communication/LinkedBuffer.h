@@ -52,6 +52,7 @@ namespace QuickFAST
         , capacity_(0)
         , used_(0)
         , extra_(0)
+        , flags_(0)
       {
       }
 
@@ -65,6 +66,7 @@ namespace QuickFAST
         , capacity_(0)
         , used_(used)
         , extra_(extra)
+        , flags_(0)
       {
       }
 
@@ -103,7 +105,7 @@ namespace QuickFAST
       /// @brief Support indexing constant
       const unsigned char & operator[](size_t index) const
       {
-        if(index >= used_)
+        if((capacity_ == 0 && index >= used_) || index >= capacity_)
         {
           throw std::range_error("LinkedBuffer (const): Index out of bounds.");
         }
@@ -215,7 +217,7 @@ namespace QuickFAST
       size_t capacity_;
       size_t used_;
       void * extra_;
-      uint32 flags_;
+      uint32 flags_ = 0;
     };
 
   }

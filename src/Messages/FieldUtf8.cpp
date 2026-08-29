@@ -47,17 +47,17 @@ FieldUtf8::toUtf8() const
 FieldCPtr
 FieldUtf8::create(const std::string & value)
 {
-  return new FieldUtf8(value);
+  return FieldCPtr(new FieldUtf8(value));
 }
 
 FieldCPtr
 FieldUtf8::create(const uchar * buffer, size_t length)
 {
-  return new FieldUtf8(buffer, length);
+  return FieldCPtr(new FieldUtf8(buffer, length));
 }
 
 FieldCPtr
 FieldUtf8::createNull()
 {
-  return new FieldUtf8;
+  return FieldCPtr(new FieldUtf8);
 }

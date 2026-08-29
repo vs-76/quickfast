@@ -16,7 +16,7 @@ namespace QuickFAST{
   namespace Communication{
     class PCapFileReceiver;
     /// @brief smart pointer to a FileReceiver
-    typedef boost::shared_ptr<PCapFileReceiver> PCapFileReceiverPtr;
+    typedef std::shared_ptr<PCapFileReceiver> PCapFileReceiverPtr;
   }
 }
 #endif // PCAPFILERECEIVER_FWD_H

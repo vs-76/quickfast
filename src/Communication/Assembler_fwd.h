@@ -15,7 +15,7 @@ namespace QuickFAST{
   {
     class Assembler;
     /// @brief smart pointer to a BufferConsumer
-    typedef boost::shared_ptr<Assembler> AssemblerPtr;
+    typedef std::shared_ptr<Assembler> AssemblerPtr;
 
   }
 }

@@ -325,39 +325,17 @@ namespace QuickFAST{
       // extra memory allocations.
 
       ///@brief Data for any of the unsigned integral types.
-      unsigned long long unsignedInteger_;
+      unsigned long long unsignedInteger_ = 0;
       ///@brief Data for any of the signed integral types. Also Decimal mantissa.
-      signed long long signedInteger_;
+      signed long long signedInteger_ = 0;
       ///@brief Exponent for Decimal types (mantissa is in signedInteger_)
-      QuickFAST::exponent_t exponent_;
+      QuickFAST::exponent_t exponent_ = 0;
       ///@brief Length of locally allocated string_ buffer
-      size_t stringLength_;
+      size_t stringLength_ = 0;
       ///@brief Buffer containing string value. Owned by this object
       mutable StringBuffer string_;
 
-    private:
-      friend void QuickFAST_Export intrusive_ptr_add_ref(const Field * ptr);
-      friend void QuickFAST_Export intrusive_ptr_release(const Field * ptr);
-      virtual void freeField()const;
-      mutable unsigned long refcount_;
     };
-
-    inline
-    void
-    intrusive_ptr_add_ref(const Field * ptr)
-    {
-      ++ptr->refcount_;
-    }
-
-    inline
-    void
-    intrusive_ptr_release(const Field * ptr)
-    {
-      if(--ptr->refcount_ == 0)
-      {
-        ptr->freeField();
-      }
-    }
   }
 }
 #endif // FIELD_H

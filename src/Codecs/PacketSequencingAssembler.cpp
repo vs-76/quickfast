@@ -205,7 +205,13 @@ PacketSequencingAssembler::addToDeferred(Communication::LinkedBuffer * buffer, s
   }
 
   /// because it's likely that this goes at the end of the queue, check that before walking the queue.
-  sequence_t deferredSequenceNumber = packetHeaderAnalyzer_.getSequenceNumber(deferredQueue_.peek_tail()->get());
+  Communication::LinkedBuffer * tail = deferredQueue_.peek_tail();
+  if(tail == 0)
+  {
+    deferredQueue_.push_front(buffer);
+    return;
+  }
+  sequence_t deferredSequenceNumber = packetHeaderAnalyzer_.getSequenceNumber(tail->get());
   if(sequenceNumber == deferredSequenceNumber)
   {
     releasePacket(buffer);
@@ -288,11 +294,10 @@ PacketSequencingAssembler::promoteDeferred()
 void
 PacketSequencingAssembler::handleGap()
 {
-  sequence_t newGapEnd = findGapEnd();
   // If this is a new gap
   if(nextSequenceNumber_ >= gapEnd_)
   {
-    gapEnd_ = newGapEnd;
+    gapEnd_ = findGapEnd();
     gapWait_ = false;
     if(recoveryFeed_)
     {
@@ -302,6 +307,7 @@ PacketSequencingAssembler::handleGap()
   }
   else
   {
+    sequence_t newGapEnd = findGapEnd();
     if(newGapEnd < gapEnd_)
     {
       gapEnd_ = newGapEnd;
@@ -329,7 +335,7 @@ PacketSequencingAssembler::handleGap()
     // delay until the recovery feed has data (or times out)
     // The timeout is there in the unlikely event that the missing packet(s)
     // magically arrive(s) on one of the primary (A/B) feeds.
-    recoveryFeed_->waitGapFill(boost::posix_time::millisec(10));
+    recoveryFeed_->waitGapFill(std::chrono::milliseconds(10));
   }
 }
 

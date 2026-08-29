@@ -114,8 +114,8 @@ namespace QuickFAST{
       Messages::MessageBuilder * parent_;
       Messages::FieldSetPtr fieldSet_;
       Messages::SequencePtr sequence_;
-      boost::scoped_ptr<GenericSequenceBuilder> sequenceBuilder_;
-      boost::scoped_ptr<GenericGroupBuilder> groupBuilder_;
+      std::unique_ptr<GenericSequenceBuilder> sequenceBuilder_;
+      std::unique_ptr<GenericGroupBuilder> groupBuilder_;
     };
 
     /// @brief Build a Group during decoding
@@ -208,8 +208,8 @@ namespace QuickFAST{
       Messages::FieldSetPtr fieldSetx_;
       Messages::GroupPtr group_;
 
-      boost::scoped_ptr<GenericSequenceBuilder> sequenceBuilder_;
-      boost::scoped_ptr<GenericGroupBuilder> groupBuilder_;
+      std::unique_ptr<GenericSequenceBuilder> sequenceBuilder_;
+      std::unique_ptr<GenericGroupBuilder> groupBuilder_;
     };
 
     /// @brief Build a generic message during decoding

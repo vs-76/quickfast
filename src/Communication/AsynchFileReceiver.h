@@ -44,7 +44,7 @@ namespace QuickFAST
       /// @param fileName the file to read
       /// @param additionalAttributes for use in the Windows CreateFile function
       AsynchFileReceiver(
-        boost::asio::io_service & ioService,
+        asio::io_context & ioService,
         const std::string & fileName,
         uint32 additionalAttributes = 0
         )
@@ -113,12 +113,12 @@ namespace QuickFAST
     private:
 
       void handleReceiveFromFile(
-        const boost::system::error_code& error,
+        const asio::error_code& error,
         LinkedBuffer * buffer,
         size_t bytesReceived)
       {
 //        std::cout << "Read " << bytesReceived << " bytes into buffer " << (void *)(buffer->get()) << '[' << buffer->capacity() << ']' << std::endl;
-        if(error == boost::asio::error::eof)
+        if(error == asio::error::eof)
         {
           //std::ostringstream msg;
           //msg << fileName_ << " EOF: calling close" << std::endl;
@@ -138,7 +138,7 @@ namespace QuickFAST
         }
       }
 
-      bool fillBuffer(LinkedBuffer * buffer, boost::mutex::scoped_lock& lock)
+      bool fillBuffer(LinkedBuffer * buffer, std::unique_lock<std::mutex>& lock)
       {
         //std::ostringstream msg;
         //msg << fileName_ << " read. @" << (void *) buffer << '[' << buffer->capacity() << ']' << std::endl;
@@ -146,21 +146,19 @@ namespace QuickFAST
 
         handle_.async_read_some_at(
           offset_,
-          boost::asio::buffer(buffer->get(), buffer->capacity()),
-          boost::bind(&AsynchFileReceiver::handleReceiveFromFile,
-            this,
-            boost::asio::placeholders::error,
-            buffer,
-            boost::asio::placeholders::bytes_transferred)
-          );
+          asio::buffer(buffer->get(), buffer->capacity()),
+          [this, buffer](const asio::error_code& error, std::size_t bytes_transferred)
+          {
+            this->handleReceiveFromFile(error, buffer, bytes_transferred);
+          });
         return true;
       }
 
     private:
       std::string fileName_;
       uint32 additionalAttributes_; // consider: FILE_FLAG_NO_BUFFERING
-      boost::asio::windows::random_access_handle handle_;
-      boost::uint64_t offset_;
+      asio::windows::random_access_handle handle_;
+      std::uint64_t offset_;
     };
 
 #else // not _WIN32
@@ -173,8 +171,8 @@ namespace QuickFAST
       /// @param fileName the file to read
       /// @param additionalAttributes for use in the Windows CreateFile function
       AsynchFileReceiver(
-        const std::string & fileName,
-        uint32 additionalAttributes = 0
+        [[maybe_unused]] const std::string & fileName,
+        [[maybe_unused]] uint32 additionalAttributes = 0
         )
         : AsynchReceiver()
       {
@@ -186,9 +184,9 @@ namespace QuickFAST
       /// @param fileName the file to read
       /// @param additionalAttributes for use in the Windows CreateFile function
       AsynchFileReceiver(
-        boost::asio::io_service & ioService,
-        const std::string & fileName,
-        uint32 additionalAttributes = 0
+        [[maybe_unused]] asio::io_context & ioService,
+        [[maybe_unused]] const std::string & fileName,
+        [[maybe_unused]] uint32 additionalAttributes = 0
         )
         : AsynchReceiver()
       {
@@ -208,7 +206,7 @@ namespace QuickFAST
 
     private:
 
-      bool fillBuffer(LinkedBuffer * buffer, boost::mutex::scoped_lock& lock)
+      bool fillBuffer([[maybe_unused]] LinkedBuffer * buffer, [[maybe_unused]] std::unique_lock<std::mutex>& lock)
       {
         return false;
       }

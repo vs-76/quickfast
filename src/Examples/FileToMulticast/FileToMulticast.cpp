@@ -6,6 +6,7 @@
 #include "FileToMulticast.h"
 #include <Communication/MulticastSender.h>
 #include <Examples/StopWatch.h>
+#include <Common/LexicalCast.h>
 using namespace QuickFAST;
 using namespace Examples;
 
@@ -26,9 +27,9 @@ FileToMulticast::FileToMulticast()
 , pauseEveryPass_(false)
 , pauseEveryMessage_(false)
 , verbose_(false)
-, dataFile_(0)
 , strand_(ioService_)
 , timer_(ioService_)
+, dataFile_(0)
 , bufferSize_(0)
 , nPass_(0)
 , nMsg_(0)
@@ -62,12 +63,12 @@ FileToMulticast::parseSingleArg(int argc, char * argv[])
     }
     else if(opt == "-p" && argc > 1)
     {
-      portNumber_ = boost::lexical_cast<unsigned short>(argv[1]);
+      portNumber_ = QuickFAST::lexical_cast<unsigned short>(argv[1]);
       consumed = 2;
     }
     else if(opt == "-r" && argc > 1)
     {
-      size_t mps = boost::lexical_cast<size_t>(argv[1]);
+      size_t mps = QuickFAST::lexical_cast<size_t>(argv[1]);
       if(mps > 0)
       {
         sendMicroseconds_ = 1000000/mps;
@@ -81,12 +82,12 @@ FileToMulticast::parseSingleArg(int argc, char * argv[])
     }
     else if(opt == "-b" && argc > 1)
     {
-      burst_ = boost::lexical_cast<size_t>(argv[1]);
+      burst_ = QuickFAST::lexical_cast<size_t>(argv[1]);
       consumed = 2;
     }
     else if(opt == "-c" && argc > 1)
     {
-      sendCount_ = boost::lexical_cast<size_t>(argv[1]);
+      sendCount_ = QuickFAST::lexical_cast<size_t>(argv[1]);
       consumed = 2;
     }
     else if(opt == "-n" && argc > 1)
@@ -263,8 +264,8 @@ FileToMulticast::run()
         << "Largest is " << bufferSize_ << " bytes." << std::endl;
     }
 
-    strand_.dispatch(
-        strand_.wrap(boost::bind(&FileToMulticast::sendBurst, this)));
+    asio::dispatch(strand_,
+        [this]{ this->sendBurst(); });
     StopWatch lapse;
     this->ioService_.run();
     unsigned long sendLapse = lapse.freeze();
@@ -302,9 +303,10 @@ FileToMulticast::sendBurst()
     // set the next timeout
     if(sendMicroseconds_ != 0)
     {
-      timer_.expires_from_now(boost::posix_time::microseconds(sendMicroseconds_));
+      timer_.expires_after(std::chrono::microseconds(sendMicroseconds_));
       timer_.async_wait(
-        strand_.wrap(boost::bind(&FileToMulticast::sendBurst, this))
+        asio::bind_executor(strand_,
+          [this](const asio::error_code&){ this->sendBurst(); })
         );
     }
 
@@ -350,7 +352,7 @@ FileToMulticast::sendBurst()
       size_t bytesRead = fread(buffer_.get(), 1, messageLength, dataFile_);
       if(bytesRead == 0){} // avoid "Unused local" warning
       assert (bytesRead == messageLength);
-      sender_->send(boost::asio::buffer(buffer_.get(), messageLength));
+      sender_->send(asio::buffer(buffer_.get(), messageLength));
     }
   }
   catch (std::exception& e)
@@ -369,5 +371,5 @@ FileToMulticast::fini()
 void
 FileToMulticast::recycle(Communication::LinkedBuffer * emptyBuffer)
 {
-  int todo;
+  (void)emptyBuffer;
 }

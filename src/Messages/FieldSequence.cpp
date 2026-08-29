@@ -33,7 +33,7 @@ FieldSequence::toSequence() const
 FieldCPtr
 FieldSequence::create(Messages::SequenceCPtr sequence)
 {
-  return new FieldSequence(sequence);
+  return FieldCPtr(new FieldSequence(sequence));
 }
 
 bool

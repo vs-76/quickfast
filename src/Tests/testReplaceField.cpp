@@ -3,9 +3,9 @@
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
 
-#define BOOST_TEST_NO_MAIN QuickFASTTest
-#include <boost/test/unit_test.hpp>
-#include <boost/filesystem.hpp>
+#include <gtest/gtest.h>
+#include <Tests/TestPaths.h>
+#include <filesystem>
 
 #include <Codecs/XMLTemplateParser.h>
 #include <Codecs/TemplateRegistry.h>
@@ -34,10 +34,9 @@
 
 using namespace QuickFAST;
 
-BOOST_AUTO_TEST_CASE(TestReplaceField)
+TEST(QuickFAST, TestReplaceField)
 {
-  std::string xml (std::getenv ("QUICKFAST_ROOT"));
-  xml += "/src/Tests/resources/unittest_optional.xml";
+  std::string xml = QuickFAST::TestPaths::resource("/src/Tests/resources/unittest_optional.xml");
 
   std::ifstream templateStream(xml.c_str(), std::ifstream::binary);
 
@@ -54,21 +53,21 @@ BOOST_AUTO_TEST_CASE(TestReplaceField)
   
   int64 value;
   fields.getSignedInteger(identity_int32_nop, ValueType::INT32, value);
-  BOOST_CHECK_EQUAL(17, value);
+  EXPECT_EQ((17), (value));
 
   // Replace the field
   bool result;
   result = fields.replaceField(identity_int32_nop, 
                                Messages::FieldInt32::create(429));
   fields.getSignedInteger(identity_int32_nop, ValueType::INT32, value);
-  BOOST_CHECK(result);
-  BOOST_CHECK_EQUAL(429, value);
+  EXPECT_TRUE(result);
+  EXPECT_EQ((429), (value));
 
   // Replace field not present
   Messages::FieldIdentity identity_uint64_nop("uint64_nop");
   result = fields.replaceField(identity_uint64_nop, 
                                Messages::FieldInt32::create(333));
-  BOOST_CHECK(!result);
-  BOOST_CHECK(!fields.isPresent(identity_uint64_nop));
+  EXPECT_TRUE(!result);
+  EXPECT_TRUE(!fields.isPresent(identity_uint64_nop));
 }
 

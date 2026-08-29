@@ -16,7 +16,6 @@ FieldSet::FieldSet(size_t res)
 , capacity_(res)
 , used_(0)
 {
-  memset(fields_, 0, sizeof(MessageField) * capacity_);
 }
 
 FieldSet::~FieldSet()
@@ -31,7 +30,6 @@ FieldSet::reserve(size_t capacity)
   if(capacity > capacity_)
   {
     MessageField * buffer = reinterpret_cast<MessageField *>(new unsigned char[sizeof(MessageField) * capacity]);
-    memset(buffer, 0, sizeof(MessageField) * capacity);
     for(size_t nField = 0; nField < used_; ++nField)
     {
       new(&buffer[nField]) MessageField(fields_[nField]);
@@ -63,7 +61,6 @@ FieldSet::clear(size_t capacity)
   {
     reserve(capacity);
   }
-  memset(fields_, 0, sizeof(MessageField) * capacity_);
 }
 
 const MessageField &
@@ -173,7 +170,7 @@ FieldSet::equals (const FieldSet & rhs, std::ostream & reason) const
       return false;
     }
     Messages::FieldCPtr f1 = fields_[nField].getField();
-    Messages::FieldCPtr f2 = fields_[nField].getField();
+    Messages::FieldCPtr f2 = rhs.fields_[nField].getField();
     if(*f1 != *f2)
     {
       reason << "Field[" << nField << "] "<< fields_[nField].name() << "values: " << f1->displayString() << " != " << f2->displayString();

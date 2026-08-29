@@ -26,7 +26,7 @@ FieldGroup::toGroup() const
 FieldCPtr
 FieldGroup::create(Messages::GroupCPtr group)
 {
-  return new FieldGroup(group);
+  return FieldCPtr(new FieldGroup(group));
 }
 
 bool

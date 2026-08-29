@@ -171,11 +171,11 @@ namespace QuickFAST{
       bool ownVerboseFile_;
 
       Codecs::TemplateRegistryPtr registry_;
-      boost::scoped_ptr<boost::asio::io_service> ioService_;
-      boost::scoped_ptr<Codecs::HeaderAnalyzer> packetHeaderAnalyzer_;
-      boost::scoped_ptr<Codecs::HeaderAnalyzer> messageHeaderAnalyzer_;
-      boost::scoped_ptr<Communication::Assembler> assembler_;
-      boost::scoped_ptr<Communication::Receiver> receiver_;
+      std::unique_ptr<asio::io_context> ioService_;
+      std::unique_ptr<Codecs::HeaderAnalyzer> packetHeaderAnalyzer_;
+      std::unique_ptr<Codecs::HeaderAnalyzer> messageHeaderAnalyzer_;
+      std::unique_ptr<Communication::Assembler> assembler_;
+      std::unique_ptr<Communication::Receiver> receiver_;
 
     };
   }

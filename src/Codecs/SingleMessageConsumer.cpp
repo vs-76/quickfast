@@ -44,8 +44,7 @@ SingleMessageConsumer::reportDecodingError(const std::string & errorMessage)
 bool
 SingleMessageConsumer::reportCommunicationError(const std::string & errorMessage)
 {
-  std::cout << errorMessage << std::endl;
-  return true;
+  return reportDecodingError(errorMessage);
 }
 
 void

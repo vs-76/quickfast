@@ -13,7 +13,7 @@ namespace QuickFAST{
     {
     public:
       /// @brief the mutex to be locked before doing console writes.
-      static boost::mutex consoleMutex;
+      static std::mutex consoleMutex;
     };
   }
 }

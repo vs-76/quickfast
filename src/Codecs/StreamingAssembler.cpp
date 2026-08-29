@@ -28,8 +28,6 @@ StreamingAssembler::StreamingAssembler(
   , skipBlock_(false)
   , blockSize_(0)
   , inDecoder_(false)
-  , messageCount_(0)
-  , byteCount_(0)
   , messageLimit_(0)
 {
 }
@@ -51,7 +49,7 @@ StreamingAssembler::serviceQueue(
     {
       headerIsComplete_ = headerAnalyzer_.analyzeHeader(*this, blockSize_, skipBlock_);
     }
-    more = headerIsComplete_ && !stopping_;
+    more = headerIsComplete_;
 
     if(more)
     {

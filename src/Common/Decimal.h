@@ -18,8 +18,6 @@ namespace QuickFAST{
   /// determines whether normalization happens automatically after every operation.
   /// In a normalized value, the mantissa has no trailing zeros (base 10)
   class QuickFAST_Export Decimal
-    : public boost::arithmetic<Decimal>
-    , public boost::totally_ordered<Decimal>
   {
   public:
     /// @brief Construct a Decimal, defaulting to 0.0 autonormalized
@@ -92,5 +90,42 @@ namespace QuickFAST{
     exponent_t exponent_;
     bool autoNormalize_;
   };
+
+  inline bool operator!=(const Decimal & lhs, const Decimal & rhs)
+  {
+    return !(lhs == rhs);
+  }
+  inline bool operator>(const Decimal & lhs, const Decimal & rhs)
+  {
+    return rhs < lhs;
+  }
+  inline bool operator<=(const Decimal & lhs, const Decimal & rhs)
+  {
+    return !(rhs < lhs);
+  }
+  inline bool operator>=(const Decimal & lhs, const Decimal & rhs)
+  {
+    return !(lhs < rhs);
+  }
+  inline Decimal operator+(Decimal lhs, const Decimal & rhs)
+  {
+    lhs += rhs;
+    return lhs;
+  }
+  inline Decimal operator-(Decimal lhs, const Decimal & rhs)
+  {
+    lhs -= rhs;
+    return lhs;
+  }
+  inline Decimal operator*(Decimal lhs, const Decimal & rhs)
+  {
+    lhs *= rhs;
+    return lhs;
+  }
+  inline Decimal operator/(Decimal lhs, const Decimal & rhs)
+  {
+    lhs /= rhs;
+    return lhs;
+  }
 }
 #endif // DECIMAL_H

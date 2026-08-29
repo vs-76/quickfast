@@ -41,9 +41,9 @@ namespace QuickFAST{
 
     private:
       Application::CommandArgParser commandArgParser_;
-      typedef boost::shared_ptr<Application::DecoderConfiguration> ConfigurationPtr;
+      typedef std::shared_ptr<Application::DecoderConfiguration> ConfigurationPtr;
       typedef std::vector<ConfigurationPtr> Configurations;
-      typedef boost::shared_ptr<Application::DecoderConnection> ConnectionPtr;
+      typedef std::shared_ptr<Application::DecoderConnection> ConnectionPtr;
       typedef std::vector<ConnectionPtr> Connections;
       typedef std::vector<Messages::ValueMessageBuilderPtr> Builders;
 

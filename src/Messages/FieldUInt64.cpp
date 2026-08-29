@@ -36,13 +36,13 @@ FieldUInt64::toUInt64() const
 FieldCPtr
 FieldUInt64::create(uint64 value)
 {
-  return new FieldUInt64(value);
+  return FieldCPtr(new FieldUInt64(value));
 }
 
 FieldCPtr
 FieldUInt64::createNull()
 {
-  return new FieldUInt64;
+  return FieldCPtr(new FieldUInt64);
 }
 
 void

@@ -42,7 +42,7 @@ WorkingBuffer::operator =(const WorkingBuffer & rhs)
 namespace
 {
   template<typename TYPE>
-  void swap_i(TYPE lhs, TYPE rhs)
+  void swap_i(TYPE & lhs, TYPE & rhs)
   {
     TYPE temp = lhs;
     lhs = rhs;
@@ -67,7 +67,7 @@ WorkingBuffer::clear(bool reverse, size_t capacity)
   reverse_ = reverse;
   if(capacity > capacity_)
   {
-    boost::scoped_array<uchar> newBuffer(new uchar[capacity]);
+    std::unique_ptr<uchar[]> newBuffer(new uchar[capacity]);
     buffer_.swap(newBuffer);
     capacity_ = capacity;
   }
@@ -127,12 +127,12 @@ WorkingBuffer::grow()
 void
 WorkingBuffer::grow(size_t newCapacity)
 {
-  size_t oldCapacity = capacity_;
   if(newCapacity == 0)
   {
     newCapacity = initialCapacity;
   }
-  boost::scoped_array<uchar> newBuffer(new uchar[newCapacity]);
+  size_t oldCapacity = capacity_;
+  std::unique_ptr<uchar[]> newBuffer(new uchar[newCapacity]);
   size_t delta = 0;
   if(reverse_)
   {

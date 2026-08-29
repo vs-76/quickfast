@@ -40,7 +40,8 @@ namespace QuickFAST
     static const size_t npos = size_t(-1);
     /// @brief Construct an empty StringBufferT
     StringBufferT()
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(INTERNAL_CAPACITY)
       , growCount_(0)
@@ -52,7 +53,8 @@ namespace QuickFAST
     /// @brief Copy constructor
     /// @param rhs is the data to initialize the string buffer.
     StringBufferT(const StringBufferT& rhs)
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(INTERNAL_CAPACITY)
       , growCount_(0)
@@ -64,7 +66,8 @@ namespace QuickFAST
     /// @brief copy construct from a standard string
     /// @param rhs is the data to initialize the string buffer.
     StringBufferT(const std::string & rhs)
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(INTERNAL_CAPACITY)
       , growCount_(0)
@@ -83,7 +86,8 @@ namespace QuickFAST
       size_t pos,
       size_t length = npos
       )
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(INTERNAL_CAPACITY)
       , growCount_(0)
@@ -103,7 +107,8 @@ namespace QuickFAST
 
     /// @brief Construct from an unsigned C style null terminated string
     StringBufferT(const unsigned char* rhs)
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(INTERNAL_CAPACITY)
       , growCount_(0)
@@ -114,7 +119,8 @@ namespace QuickFAST
 
     /// @brief Construct from a C style null terminated string
     StringBufferT(const char* rhs)
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(INTERNAL_CAPACITY)
       , growCount_(0)
@@ -129,7 +135,8 @@ namespace QuickFAST
     ///
     /// This method is safe to use with non-null-terminated strings
     StringBufferT(const unsigned char* rhs, size_t length)
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(INTERNAL_CAPACITY)
       , growCount_(0)
@@ -140,7 +147,8 @@ namespace QuickFAST
 
     /// @brief construct a StringBufferT with a given length, filled with the specified character.
     StringBufferT(size_t length, unsigned char c)
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(INTERNAL_CAPACITY)
       , growCount_(0)
@@ -159,7 +167,8 @@ namespace QuickFAST
     /// @param delegateString points to the real string to be wrapped.
     ///        It must exist longer than the StringBufferT.
     StringBufferT(const std::string * delegateString)
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(0)
       , growCount_(0)
@@ -261,7 +270,7 @@ namespace QuickFAST
     }
 
     /// @brief access an element of the StringBufferT for possible update
-    unsigned char& operator[](size_t pos)
+    unsigned char& operator[](size_t pos) //-V659
     {
       // If pos == size(), the non-const behavior is undefined.
       if(pos < size())
@@ -515,10 +524,6 @@ namespace QuickFAST
           throw std::logic_error("StringBufferT growth calculation incorrect");
         }
         unsigned char * newBuffer(new unsigned char[needed + 1]);
-        if(newBuffer == 0)
-        {
-          throw std::bad_alloc();
-        }
         const unsigned char * oldBuffer = getBuffer();
         std::memcpy(newBuffer, oldBuffer, size_);
         newBuffer[size_] = 0;
@@ -573,7 +578,7 @@ namespace QuickFAST
 
 
     /// @brief find the buffer that's presently in use; mutable version
-    unsigned char * getBuffer()
+    unsigned char * getBuffer() //-V659
     {
       if (heapBuffer_ != 0)
       {
@@ -587,7 +592,7 @@ namespace QuickFAST
     }
 
   private:
-    unsigned char internalBuffer_[INTERNAL_CAPACITY + 1];
+    unsigned char internalBuffer_[INTERNAL_CAPACITY + 1] = {};
     unsigned char * heapBuffer_;
     size_t size_;
     size_t capacity_;

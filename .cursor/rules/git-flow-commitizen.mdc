@@ -1,0 +1,74 @@
+---
+description: Always use Git Flow branching and Commitizen (Conventional Commits)
+alwaysApply: true
+---
+
+# Git Flow + Commitizen
+
+Always follow **Git Flow** for branches and **Commitizen / Conventional Commits** for messages.
+
+**Never commit directly to `master`/`main` or `develop`.** All changes reach these branches **only via PR** (Github PR for the fork `vs-76/quickfast`). Never push the feature/fix branch directly into `develop`/`master`; open a PR and let it be merged.
+
+- All work happens on side branches (`feature/`, `bugfix/`, `hotfix/`, `release/`); commits go on those branches and nowhere else.
+- No `git checkout develop && git commit` / `git commit` while on `develop`/`master`/`main`. If asked to commit on a protected branch, stop, warn, and switch to a feature branch.
+- "Merge into" targets below describe the PR that merges that branch, not direct commits.
+
+## Branching (Git Flow)
+
+| Purpose | Branch from | Branch name | Merge into |
+| --- | --- | --- | --- |
+| New feature | `develop` | `feature/<short-name>` | `develop` |
+| Non-urgent bugfix | `develop` | `bugfix/<short-name>` | `develop` |
+| Production hotfix | `master` | `hotfix/<short-name>` | `master` **and** `develop` |
+| Release prep | `develop` | `release/<x.y.z>` | `master` **and** `develop` |
+
+- Default working base is `develop`.
+- Tag releases on `master` after a release/hotfix merge (`vX.Y.Z`).
+- Do not invent ad-hoc branch names (`fix`, `wip`, bare ticket IDs alone).
+
+```bash
+# ✅ feature work
+git checkout develop && git pull
+git checkout -b feature/decoder-timeout
+# ... commit on feature/decoder-timeout ...
+git push -u origin feature/decoder-timeout   # then open PR to develop (or master for hotfix)
+
+# ❌ wrong
+git checkout -b my-fix
+git commit            # on develop/master directly
+git push origin develop
+```
+
+## Commits (Commitizen)
+
+Use Conventional Commits. Prefer `git cz` / `cz commit` when available; otherwise write the same format by hand.
+
+```
+<type>(<optional-scope>): <imperative summary>
+
+[optional body]
+
+[optional footer]
+```
+
+**Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
+
+**Rules:**
+- Summary ≤ ~72 chars, imperative (“add”, not “added”), no trailing period
+- Scope optional but preferred when clear (`codec`, `decoder`, `docs`)
+- Breaking change: `!` after type/scope **or** `BREAKING CHANGE:` footer
+- One logical change per commit; do not mix unrelated edits
+
+```
+# ✅
+feat(decoder): add template version guard
+fix(codec): handle empty presence map
+docs: clarify Git Flow merge targets
+
+# ❌
+Updated stuff
+WIP
+fixed bug
+```
+
+When the user asks to commit, draft a Commitizen-style message and follow the repo’s existing commit-message user rules (HEREDOC, no amend unless allowed, etc.).

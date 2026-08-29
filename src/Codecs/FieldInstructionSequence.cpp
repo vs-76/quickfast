@@ -62,6 +62,7 @@ FieldInstructionSequence::decodeNop(
   if(!segment_)
   {
     decoder.reportFatal("[ERR U07]", "SegmentBody not defined for Sequence instruction.");
+    return;
   }
   size_t length = 0;
   Codecs::FieldInstructionCPtr lengthInstruction;
@@ -120,6 +121,7 @@ FieldInstructionSequence::encodeNop(
   if(!segment_)
   {
     encoder.reportFatal("[ERR U07]", "SegmentBody not defined for Sequence instruction.");
+    return;
   }
 
   size_t length = 0;

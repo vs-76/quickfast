@@ -5,7 +5,7 @@
 #ifndef FILETOTCP_H
 #define FILETOTCP_H
 #include <Application/CommandArgParser.h>
-#include <boost/asio.hpp>
+#include <asio.hpp>
 #include <stdio.h>
 
 namespace QuickFAST{
@@ -52,7 +52,7 @@ namespace QuickFAST{
       bool verbose_;
       bool hack_;
 
-      boost::asio::io_service io_service_;
+      asio::io_context io_service_;
       Application::CommandArgParser commandArgParser_;
     };
   }

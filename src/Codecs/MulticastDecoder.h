@@ -54,7 +54,7 @@ namespace QuickFAST{
       /// @param portNumber port number
       MulticastDecoder(
         TemplateRegistryPtr templateRegistry,
-        boost::asio::io_service & ioService,
+        asio::io_context & ioService,
         const std::string & multicastGroupIP,
         const std::string & listenAddressIP,
         const std::string & bindIP,
@@ -183,10 +183,8 @@ namespace QuickFAST{
       NoHeaderAnalyzer messageHeaderAnalyzer_;
       TemplateRegistryPtr templateRegistry_;
       Codecs::MessagePerPacketAssemblerPtr assembler_;
-      Messages::ValueMessageBuilder * builder_;
+      Messages::ValueMessageBuilder * builder_ = nullptr;
       size_t messageLimit_;
-      size_t byteCount_;
-      size_t messageCount_;
       bool strict_;
       std::ostream * verboseOut_;
     };

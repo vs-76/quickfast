@@ -25,7 +25,7 @@ namespace QuickFAST
     /// Warning, not synchronized so you know this counter had the returned
     /// value at some point, but not necessarily when.
     inline
-    operator const long()const
+    operator long()const
     {
       return counter_;
     }

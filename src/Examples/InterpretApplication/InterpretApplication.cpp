@@ -11,6 +11,7 @@
 
 #include <Examples/MessageInterpreter.h>
 #include <Examples/ValueToFix.h>
+#include <Common/LexicalCast.h>
 
 namespace {
   template< typename T>
@@ -58,7 +59,7 @@ InterpretApplication::parseSingleArg(int argc, char * argv[])
     }
     else if(opt == "-threads" && argc > 1)
     {
-      threads_ = boost::lexical_cast<size_t>(argv[1]);
+      threads_ = QuickFAST::lexical_cast<size_t>(argv[1]);
       consumed = 2;
     }
     else if(opt == "-ofix")
@@ -252,7 +253,7 @@ InterpretApplication::run()
         "r"
 #endif
         );
-      if(bufferFile <= 0)
+      if(bufferFile == 0)
       {
         std::cerr << "Can't open file " << bufferFilename_ << std::endl;
         return -1;
@@ -260,7 +261,7 @@ InterpretApplication::run()
       std::fseek(bufferFile, 0, SEEK_END);
       size_t fileSize = std::ftell(bufferFile);
       std::fseek(bufferFile, 0, SEEK_SET);
-      boost::scoped_array<unsigned char> buffer(new unsigned char[fileSize]);
+      std::unique_ptr<unsigned char[]> buffer(new unsigned char[fileSize]);
       ignore_returnvalue( std::fread(buffer.get(), 1, fileSize, bufferFile));
       pConnection->receiver().receiveBuffer(buffer.get(), fileSize);
     }

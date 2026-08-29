@@ -28,7 +28,7 @@ namespace QuickFAST
 
       /// @brief construct given shared io_service
       /// @param ioService an ioService to be shared with other objects
-      AsynchReceiver(boost::asio::io_service & ioService)
+      AsynchReceiver(asio::io_context & ioService)
         : ioService_(ioService)
       {
       }
@@ -97,7 +97,7 @@ namespace QuickFAST
 
           bool empty = false;
           {
-            boost::mutex::scoped_lock lock(bufferMutex_);
+            std::unique_lock<std::mutex> lock(bufferMutex_);
             //if(!idleBuffers_.isEmpty())
             //{
             //  std::ostringstream msg;
@@ -149,14 +149,14 @@ namespace QuickFAST
       /// @param buffer into which the receive happened
       /// @param bytesReceived How much data is in the buffer
       void handleReceive(
-        const boost::system::error_code& error,
+        const asio::error_code& error,
         LinkedBuffer * buffer,
         size_t bytesReceived)
       {
         // should this thread service the queue?
         bool service = false;
         { // Scope for lock
-          boost::mutex::scoped_lock lock(bufferMutex_);
+          std::unique_lock<std::mutex> lock(bufferMutex_);
           --readsInProgress_;
           ++packetsReceived_;
           if (!error)

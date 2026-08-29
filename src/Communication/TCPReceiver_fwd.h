@@ -15,7 +15,7 @@ namespace QuickFAST{
   namespace Communication{
     class TCPReceiver;
     /// @brief smart pointer to a TCPReceiver
-    typedef boost::shared_ptr<TCPReceiver> TCPReceiverPtr;
+    typedef std::shared_ptr<TCPReceiver> TCPReceiverPtr;
   }
 }
 #endif // TCPRECEIVER_FWD_H

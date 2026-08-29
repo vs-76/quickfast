@@ -37,7 +37,7 @@ MessageInterpreter::logMessage(unsigned short level, const std::string & logMess
 {
   if(level <= logLevel_)
   {
-    boost::mutex::scoped_lock lock(ConsoleLock::consoleMutex);
+    std::unique_lock<std::mutex> lock(ConsoleLock::consoleMutex);
     std::cerr << logMessage << std::endl;
   }
   return true;
@@ -47,7 +47,7 @@ MessageInterpreter::logMessage(unsigned short level, const std::string & logMess
 bool
 MessageInterpreter::reportDecodingError(const std::string & errorMessage)
 {
-  boost::mutex::scoped_lock lock(ConsoleLock::consoleMutex);
+  std::unique_lock<std::mutex> lock(ConsoleLock::consoleMutex);
   std::cerr << "Decoding error: " << errorMessage << std::endl;
   return false;
 }
@@ -55,7 +55,7 @@ MessageInterpreter::reportDecodingError(const std::string & errorMessage)
 bool
 MessageInterpreter::reportCommunicationError(const std::string & errorMessage)
 {
-  boost::mutex::scoped_lock lock(ConsoleLock::consoleMutex);
+  std::unique_lock<std::mutex> lock(ConsoleLock::consoleMutex);
   std::cerr << "Communication error: " << errorMessage << std::endl;
   return false;
 }
@@ -69,7 +69,7 @@ MessageInterpreter::decodingStarted()
 void
 MessageInterpreter::decodingStopped()
 {
-  boost::mutex::scoped_lock lock(ConsoleLock::consoleMutex);
+  std::unique_lock<std::mutex> lock(ConsoleLock::consoleMutex);
   out_ << "End of data" << std::endl;
 }
 
@@ -80,7 +80,7 @@ MessageInterpreter::consumeMessage(Messages::Message & message)
   recordCount_ += 1;
   if(!silent_)
   {
-    boost::mutex::scoped_lock lock(ConsoleLock::consoleMutex);
+    std::unique_lock<std::mutex> lock(ConsoleLock::consoleMutex);
     out_ << "Record #" << recordCount_ << ' ' << std::flush;
     formatter_.formatMessage(message);
     out_ << std::endl;

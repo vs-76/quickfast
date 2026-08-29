@@ -7,6 +7,8 @@
 #ifndef STOPWATCH_H
 #define STOPWATCH_H
 
+#include <chrono>
+
 namespace QuickFAST{
   namespace Examples{
     /// @brief Measure the wall-clock lapse between creation and freeze()
@@ -15,7 +17,7 @@ namespace QuickFAST{
     public:
       /// @brief Create the stopwatch and start it running.
       StopWatch()
-        : start_(boost::posix_time::microsec_clock::universal_time())
+        : start_(std::chrono::steady_clock::now())
         , running_(true)
       {
       }
@@ -36,16 +38,17 @@ namespace QuickFAST{
       {
         if(running_)
         {
-          stop_ = boost::posix_time::microsec_clock::universal_time();
+          stop_ = std::chrono::steady_clock::now();
           running_ = false;
         }
 
-        return static_cast<unsigned long>((stop_ - start_).total_milliseconds());
+        return static_cast<unsigned long>(
+          std::chrono::duration_cast<std::chrono::milliseconds>(stop_ - start_).count());
       }
 
     private:
-      boost::posix_time::ptime start_;
-      boost::posix_time::ptime  stop_;
+      std::chrono::steady_clock::time_point start_;
+      std::chrono::steady_clock::time_point stop_;
       bool running_;
     };
   }

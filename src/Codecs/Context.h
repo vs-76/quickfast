@@ -353,7 +353,7 @@ namespace QuickFAST
       bool strict_;
     private:
       size_t indexedDictionarySize_;
-      typedef boost::scoped_array<Value> IndexedDictionary;
+      typedef std::unique_ptr<Value[]> IndexedDictionary;
       IndexedDictionary indexedDictionary_;
       WorkingBuffer workingBuffer_;
     };

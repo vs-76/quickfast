@@ -22,33 +22,35 @@
 # include <windows.h>
 #endif // _WIN32
 
+#include <cstdint>
+#include <memory>
+#include <functional>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <chrono>
+#include <cassert>
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <vector>
 #include <map>
+#include <stack>
 #include <stdexcept>
-#include <math.h>
+#include <cmath>
+#include <iomanip>
+#include <cstdlib>
+#include <algorithm>
+#include <utility>
+#include <limits>
+#include <cstdio>
+#include <cstring>
 #include <stdio.h>
 #include <string.h>
 
-#include <boost/shared_ptr.hpp>
-#include <boost/scoped_ptr.hpp>
-#include <boost/weak_ptr.hpp>
-#include <boost/enable_shared_from_this.hpp>
-#include <boost/shared_array.hpp>
-#include <boost/scoped_array.hpp>
-#include <boost/lexical_cast.hpp>
-#include <boost/operators.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/bind.hpp>
-#include <boost/thread.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/cstdint.hpp>
-
 // asio causes problems when precompiled on linux/gcc
-//#include <boost/asio.hpp>
+//#include <asio.hpp>
 
 
 namespace QuickFAST{

@@ -8,7 +8,7 @@
 #define PCAP_SUPPORT_IS_HEREx
 #include <Application/CommandArgParser.h>
 #include <Communication/PCapReader.h>
-#include <boost/asio.hpp>
+#include <asio.hpp>
 #include <stdio.h>
 
 namespace QuickFAST{
@@ -57,17 +57,14 @@ namespace QuickFAST{
       size_t burst_;
       bool pauseEveryPass_;
       bool pauseEveryMessage_;
-      bool force32_;
-      bool force64_;
-      size_t packetChecksumSize_;
       bool verbose_;
 
-      boost::asio::io_service ioService_;
-      boost::asio::ip::address multicastAddress_;
-      boost::asio::ip::udp::endpoint endpoint_;
-      boost::asio::ip::udp::socket socket_;
-      boost::asio::strand strand_;
-      boost::asio::deadline_timer timer_;
+      asio::io_context ioService_;
+      asio::ip::address multicastAddress_;
+      asio::ip::udp::endpoint endpoint_;
+      asio::ip::udp::socket socket_;
+      asio::io_context::strand strand_;
+      asio::steady_timer timer_;
 
       Application::CommandArgParser commandArgParser_;
 //      FILE * dataFile_;

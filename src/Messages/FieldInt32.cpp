@@ -36,13 +36,13 @@ FieldInt32::toInt32() const
 FieldCPtr
 FieldInt32::create(int32 value)
 {
-  return new FieldInt32(value);
+  return FieldCPtr(new FieldInt32(value));
 }
 
 FieldCPtr
 FieldInt32::createNull()
 {
-  return new FieldInt32;
+  return FieldCPtr(new FieldInt32);
 }
 
 void

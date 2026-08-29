@@ -14,9 +14,9 @@ namespace QuickFAST{
   namespace Messages{
     class Sequence;
     /// @brief Smart pointer to a Sequence.
-    typedef boost::shared_ptr<Sequence> SequencePtr;
+    typedef std::shared_ptr<Sequence> SequencePtr;
     /// @brief Smart pointer to a const Sequence.
-    typedef boost::shared_ptr<const Sequence> SequenceCPtr;
+    typedef std::shared_ptr<const Sequence> SequenceCPtr;
   }
 }
 

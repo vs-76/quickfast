@@ -15,7 +15,7 @@ namespace QuickFAST{
   namespace Communication{
     class MulticastSender;
     /// @brief smart pointer to a MulticastSender
-    typedef boost::shared_ptr<MulticastSender> MulticastSenderPtr;
+    typedef std::shared_ptr<MulticastSender> MulticastSenderPtr;
   }
 }
 #endif // MULTICASTSENDER_FWD_H
