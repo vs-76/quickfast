@@ -34,6 +34,14 @@ namespace QuickFAST
         }
       }
 
+      /// @brief End of file stops reading, not servicing.
+      ///
+      /// The queued packets are still there and still wanted. tryServiceQueue
+      /// calls stop() once it has drained them.
+      virtual void endOfInput()
+      {
+      }
+
       /// @brief Accept a buffer from a synchronous receiver
       ///
       /// The SynchReceiver implementation should call this method
@@ -83,6 +91,14 @@ namespace QuickFAST
         {
           service = serviceQueue();
           ++count;
+        }
+        if(inputComplete())
+        {
+          // The queue is drained, so end of input can finally become a stop.
+          // Doing it here rather than where the read failed is the whole of
+          // the fix: a file with fewer packets than buffers is read to EOF
+          // inside start(), before the caller's event loop has run once.
+          stop();
         }
         return count;
       }

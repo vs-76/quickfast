@@ -216,6 +216,25 @@ namespace QuickFAST
         return stopping_;
       }
 
+      /// @brief Report that the source has no more data to offer.
+      ///
+      /// Called when a read fails, which for a synchronous source means end
+      /// of file. The default stops the receiver outright, which is right for
+      /// an asynchronous source: a failed read there is a broken connection,
+      /// not an orderly end, and nothing is waiting in the queue. A
+      /// synchronous receiver overrides this so the queue can drain first.
+      virtual void endOfInput()
+      {
+        stop();
+      }
+
+      /// @brief Has the source run out of data?
+      /// @returns true once a read has failed.
+      bool inputComplete() const
+      {
+        return inputComplete_;
+      }
+
       /// @brief Ignore incoming packets until resume()
       virtual void pause()
       {
@@ -300,7 +319,7 @@ namespace QuickFAST
             // add any idle buffers to pool
             idleBufferPool_.push(idleBuffers_);
             startReceive(lock);
-            queue_.refresh(lock, wait && !stopping_);
+            queue_.refresh(lock, wait && !stopping_ && !inputComplete_);
           }
           next = queue_.serviceNext();
         }
@@ -337,7 +356,7 @@ namespace QuickFAST
             // add any idle buffers to pool
             idleBufferPool_.push(idleBuffers_);
             startReceive(lock);
-            queue_.refresh(lock, wait);
+            queue_.refresh(lock, wait && !inputComplete_);
             available = 0;
           }
           else
@@ -397,7 +416,8 @@ namespace QuickFAST
             {
               idleBufferPool_.push(buffer);
               --readsInProgress_;
-              stop();
+              inputComplete_ = true;
+              endOfInput();
             }
           }
           else
@@ -603,6 +623,9 @@ namespace QuickFAST
 
       /// @brief True when we're trying to shut down
       std::atomic<bool> stopping_;
+      /// Set when a read fails; distinct from stopping_ because a drained
+      /// queue and an abandoned one are not the same thing.
+      std::atomic<bool> inputComplete_{false};
 
       /// @brief Number of reads in progress (usually zero or one)
       unsigned int readsInProgress_;

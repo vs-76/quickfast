@@ -254,3 +254,22 @@ TEST(QuickFAST, testPCapFileReceiverDeliversTheCargo)
     EXPECT_EQ((assembler.packets[n]), (std::string(payload)));
   }
 }
+
+TEST(QuickFAST, testPCapFileReceiverDeliversAOnePacketCapture)
+{
+  // Fewer packets than buffers means the file is read to EOF inside start(),
+  // and end of file used to be indistinguishable from a stop request: the one
+  // packet sat in the queue and the run loop never looked at it. Both capture
+  // formats, because the defect is in the Receiver and neither reader knows
+  // anything about it.
+  for(const char * name : {"classic-le.pcap", "modern.pcapng"})
+  {
+    Communication::PCapFileReceiver receiver(capture(name));
+    CapturingAssembler assembler;
+    ASSERT_TRUE(receiver.start(assembler, 1500, 2)) << name;
+    receiver.poll();
+
+    ASSERT_EQ(1u, assembler.packets.size()) << name;
+    EXPECT_EQ(std::string(payload), assembler.packets.front()) << name;
+  }
+}
