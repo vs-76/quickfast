@@ -201,10 +201,12 @@ set(QUICKFAST_LIB_SOURCES
   src/Messages/FieldUInt64.cpp
   src/Messages/FieldUInt8.cpp
   src/Messages/FieldUtf8.cpp
+  src/Messages/JsonWriter.cpp
   src/Messages/Message.cpp
   src/Messages/MessageAccessor.cpp
   src/Messages/MessageBuilder.cpp
   src/Messages/MessageFormatter.cpp
+  src/Messages/MessageToJson.cpp
 )
 
 if(WIN32)
@@ -334,6 +336,7 @@ if(QUICKFAST_BUILD_EXAMPLES)
   set(QUICKFAST_EXAMPLE_COMMON
     src/Examples/Examples/ConsoleLock.cpp
     src/Examples/Examples/ExamplesPch.cpp
+    src/Examples/Examples/JsonMessageConsumer.cpp
     src/Examples/Examples/MessageInterpreter.cpp
     src/Examples/Examples/MessagePerformance.cpp
     src/Examples/Examples/ValueToFix.cpp

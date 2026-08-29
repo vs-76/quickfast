@@ -10,6 +10,7 @@
 #include <Communication/Receiver.h>
 
 #include <Examples/MessageInterpreter.h>
+#include <Examples/JsonMessageConsumer.h>
 #include <Examples/ValueToFix.h>
 #include <Common/LexicalCast.h>
 
@@ -28,6 +29,7 @@ InterpretApplication::InterpretApplication()
 : configuration_(new Application::DecoderConfiguration)
 , console_(false)
 , fixOutput_(false)
+, jsonOutput_(false)
 , threads_(1)
 , silent_(false)
 {
@@ -66,6 +68,30 @@ InterpretApplication::parseSingleArg(int argc, char * argv[])
     {
       fixOutput_ = true;
       consumed = 1;
+    }
+    else if(opt == "-ojson")
+    {
+      jsonOutput_ = true;
+      consumed = 1;
+    }
+    else if(opt == "-json-keys" && argc > 1)
+    {
+      const std::string mode(argv[1]);
+      if(mode == "name")
+      {
+        jsonOptions_.keyMode = Messages::JsonOptions::KeyMode::Name;
+      }
+      else if(mode == "id")
+      {
+        jsonOptions_.keyMode = Messages::JsonOptions::KeyMode::Id;
+      }
+      else
+      {
+        std::cerr << "-json-keys expects \"name\" or \"id\", got \""
+                  << mode << "\"" << std::endl;
+        return Application::CommandArgHandler::ARGUMENT_VALUE_ERROR;
+      }
+      consumed = 2;
     }
     else if(opt == "-connection" && argc > 1)
     {
@@ -135,6 +161,8 @@ InterpretApplication::usage(std::ostream & out) const
   out << "                         Note that you must hit ENTER before the command will be recognized." << std::endl;
   out << std::endl;
   out << "  -ofix                : Write the output as newline separated FIX records." << std::endl;
+  out << "  -ojson               : Write each decoded message as one JSON object per line (NDJSON)." << std::endl;
+  out << "  -json-keys name|id   : With -ojson, use field local names (default) or FAST tag ids as keys." << std::endl;
   out << "  -buffer file         : Input from raw FAST message file into a buffer; decode from buffer." << std::endl;
   out << std::endl;
 }
@@ -149,6 +177,11 @@ InterpretApplication::applyArgs()
     {
       ok = false;
       std::cerr << "ERROR: -t [templatefile] option is required." << std::endl;
+    }
+    if(fixOutput_ && jsonOutput_)
+    {
+      ok = false;
+      std::cerr << "ERROR: -ofix and -ojson are mutually exclusive." << std::endl;
     }
   }
   catch (std::exception& e)
@@ -172,7 +205,8 @@ InterpretApplication::run()
   int result = 0;
   try
   {
-    MessageInterpreter handler(std::cout, silent_);
+    MessageInterpreter textHandler(std::cout, silent_);
+    JsonMessageConsumer jsonHandler(std::cout, jsonOptions_, silent_);
     for(Configurations::const_iterator pConfig = configurations_.begin();
       pConfig != configurations_.end();
       ++pConfig)
@@ -183,9 +217,13 @@ InterpretApplication::run()
       {
         builder.reset(new ValueToFix(std::cout));
       }
+      else if(jsonOutput_)
+      {
+        builder.reset(new Codecs::GenericMessageBuilder(jsonHandler));
+      }
       else
       {
-        builder.reset(new Codecs::GenericMessageBuilder(handler));
+        builder.reset(new Codecs::GenericMessageBuilder(textHandler));
       }
       builders_.push_back(builder);
 
