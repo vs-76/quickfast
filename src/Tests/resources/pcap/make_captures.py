@@ -140,6 +140,10 @@ def main():
         "truncated-record.pcap": classic_pcap(frame)[: 24 + 16 + 10],
         # No records at all, just a valid file header.
         "empty.pcap": classic_pcap(frame)[:24],
+        # Three packets, so a consumer can be tested over more than one.
+        "three-packets.pcap": classic_pcap(frame)
+        + classic_pcap(frame)[24:]
+        + classic_pcap(frame)[24:],
         # Nothing resembling a capture.
         "not-a-capture.bin": b"this is not a capture file, not even close\n",
     }

@@ -108,18 +108,6 @@ PCapToMulticast::parseSingleArg(int argc, char * argv[])
       pauseEveryPass_ = true;
       consumed = 1;
     }
-    else if(opt == "-32")
-    {
-      pcapReader_.set32bit(true);
-      pcapReader_.set64bit(false);
-      consumed = 1;
-    }
-    else if(opt == "-64")
-    {
-      pcapReader_.set32bit(false);
-      pcapReader_.set64bit(true);
-      consumed = 1;
-    }
     else if(opt == "-v")
     {
       verbose_ = !verbose_;
@@ -147,8 +135,6 @@ PCapToMulticast::usage(std::ostream & out) const
   out << "                       (default 1; 0 means forever.)" << std::endl;
   out << "  -pausemessage      : Wait for 'Enter' before every message." << std::endl;
   out << "  -pausepass         : Wait for 'Enter' before every pass." << std::endl;
-  out << "  -32                : Data file was captured on 32 bit system." << std::endl;
-  out << "  -64                : Data file was captured on 64 bit system." << std::endl;
   out << "  -packetchecksum n  : size of packet checksum (default is 4)" << std::endl;
   out << "  -v                 : Noise to the console while it runs" << std::endl;
 }
@@ -265,7 +251,12 @@ PCapToMulticast::sendBurst()
 
       const unsigned char * msgBuffer = 0;
       size_t bytesRead = 0;
-      pcapReader_.read(msgBuffer, bytesRead);
+      if(!pcapReader_.read(msgBuffer, bytesRead))
+      {
+        // Without this the end of a pass sent a zero length datagram before
+        // good() was next tested.
+        return;
+      }
 
       nMsg_ += 1;
       totalMessageCount_ += 1;

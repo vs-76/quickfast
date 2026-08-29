@@ -5,12 +5,15 @@
 
 #include <gtest/gtest.h>
 #include <string>
+#include <vector>
 
 #include <Application/DecoderConfiguration.h>
 #include <Application/DecoderConnection.h>
 #include <Codecs/GenericMessageBuilder.h>
 #include <Codecs/SingleMessageConsumer.h>
+#include <Communication/PCapFileReceiver.h>
 #include <Communication/PCapReader.h>
+#include <Codecs/TemplateRegistry.h>
 
 #include "TestPaths.h"
 
@@ -51,7 +54,6 @@ TEST(QuickFAST, testUnreadableCaptureIsFatalRatherThanASilentStall)
   // over a receiver that had never been started and no buffers allocated, so
   // the process reported the problem and waited forever for data that could
   // never arrive.  Refusing to configure turns that hang into a clean exit.
-  EXPECT_THROW(configureFromCapture("modern.pcapng"), UsageError);
   EXPECT_THROW(configureFromCapture("not-a-capture.bin"), UsageError);
   EXPECT_THROW(configureFromCapture("no-such-file.pcap"), UsageError);
 }
@@ -60,12 +62,70 @@ namespace
 {
   const char payload[] = "QUICKFAST-PCAP-CORPUS";
 
-  // set32bit selects the only packet-record layout classic pcap actually has;
-  // the default is finding #17 and is fixed separately.
+  class SilentLogger : public Common::Logger
+  {
+  public:
+    virtual bool wantLog(unsigned short) { return false; }
+    virtual bool logMessage(unsigned short, const std::string &) { return true; }
+    virtual bool reportDecodingError(const std::string &) { return true; }
+    virtual bool reportCommunicationError(const std::string &) { return true; }
+  };
+
+  // Collects the bytes a Receiver delivers, so the test can assert on what a
+  // real consumer would see rather than only on the reader's out-parameters.
+  class CapturingAssembler : public Communication::Assembler
+  {
+  public:
+    CapturingAssembler()
+      : Communication::Assembler(
+          Codecs::TemplateRegistryPtr(new Codecs::TemplateRegistry(1, 1, 1)),
+          logger_)
+    {
+    }
+
+    virtual void receiverStarted(Communication::Receiver &) {}
+    virtual void receiverStopped(Communication::Receiver &) {}
+
+    virtual bool serviceQueue(Communication::Receiver & receiver)
+    {
+      Communication::LinkedBuffer * buffer = 0;
+      while((buffer = receiver.getBuffer(false)) != 0)
+      {
+        packets.push_back(
+          std::string(reinterpret_cast<const char *>(buffer->get()), buffer->used()));
+        receiver.releaseBuffer(buffer);
+      }
+      return true;
+    }
+
+    std::vector<std::string> packets;
+
+  private:
+    SilentLogger logger_;
+  };
+
   void openCapture(Communication::PCapReader & reader, const char * name)
   {
-    reader.set32bit(true);
-    ASSERT_TRUE(reader.open(capture(name).c_str()));
+    ASSERT_TRUE(reader.open(capture(name).c_str())) << name << ": " << reader.errorMessage();
+  }
+
+  // Read the one datagram a well-formed corpus file carries.
+  void expectSinglePayloadPacket(const char * name)
+  {
+    Communication::PCapReader reader;
+    openCapture(reader, name);
+
+    const unsigned char * buffer = 0;
+    size_t size = 0;
+    ASSERT_TRUE(reader.read(buffer, size)) << name << ": " << reader.errorMessage();
+    ASSERT_EQ((size), (sizeof(payload) - 1)) << name;
+    EXPECT_EQ((std::string(reinterpret_cast<const char *>(buffer), size)), (std::string(payload)))
+      << name;
+
+    // One packet per file, so the next read is a clean end of data.
+    EXPECT_FALSE(reader.read(buffer, size)) << name;
+    EXPECT_TRUE(reader.atEnd()) << name;
+    EXPECT_EQ((reader.errorMessage()), (std::string())) << name;
   }
 
   // Drain a capture, asserting only that nothing is reported out of bounds.
@@ -99,19 +159,50 @@ namespace
   }
 }
 
-TEST(QuickFAST, testPCapReaderReadsAWellFormedCapture)
+TEST(QuickFAST, testPCapReaderReadsEveryCaptureFormat)
 {
+  // The default configuration used to read the record header through a
+  // 24 byte struct timeval layout that no savefile has ever used, so caplen
+  // and len came out of payload bytes, differed, and every packet in a valid
+  // capture was discarded as truncated while the process exited 0.
+  expectSinglePayloadPacket("classic-le.pcap");
+  expectSinglePayloadPacket("classic-be.pcap");
+
+  // Both of these were reported as "Invalid pcap file: missing magic." even
+  // though each carries a perfectly valid magic.
+  expectSinglePayloadPacket("nanosecond.pcap");
+  expectSinglePayloadPacket("modern.pcapng");
+}
+
+TEST(QuickFAST, testPCapReaderRewindsToTheFirstPacket)
+{
+  // A savefile is a forward-only stream, so replaying it means reopening.
   Communication::PCapReader reader;
-  openCapture(reader, "classic-le.pcap");
+  openCapture(reader, "modern.pcapng");
 
   const unsigned char * buffer = 0;
   size_t size = 0;
   ASSERT_TRUE(reader.read(buffer, size));
-  ASSERT_EQ((size), (sizeof(payload) - 1));
-  EXPECT_EQ((std::string(reinterpret_cast<const char *>(buffer), size)), (std::string(payload)));
+  const std::string first(reinterpret_cast<const char *>(buffer), size);
+  ASSERT_FALSE(reader.read(buffer, size));
 
-  // One packet in the file, so the next read is a clean end of data.
-  EXPECT_FALSE(reader.read(buffer, size));
+  ASSERT_TRUE(reader.rewind());
+  ASSERT_TRUE(reader.good());
+  ASSERT_TRUE(reader.read(buffer, size));
+  EXPECT_EQ((std::string(reinterpret_cast<const char *>(buffer), size)), (first));
+}
+
+TEST(QuickFAST, testPCapReaderReportsWhyAFileWasRejected)
+{
+  Communication::PCapReader reader;
+  EXPECT_FALSE(reader.open(capture("not-a-capture.bin").c_str()));
+  EXPECT_FALSE(reader.good());
+  // The old reader blamed a missing magic whatever the real problem was.
+  EXPECT_FALSE(reader.errorMessage().empty());
+  EXPECT_FALSE(reader.atEnd());
+
+  EXPECT_FALSE(reader.open(capture("no-such-file.pcap").c_str()));
+  EXPECT_FALSE(reader.errorMessage().empty());
 }
 
 TEST(QuickFAST, testPCapReaderRejectsMalformedWireLengths)
@@ -146,4 +237,20 @@ TEST(QuickFAST, testPCapReaderRejectsAFileThatCannotBeSized)
     EXPECT_FALSE(reader.open(TestPaths::resource("/src/Tests/resources").c_str()));
   });
   EXPECT_FALSE(reader.good());
+}
+
+TEST(QuickFAST, testPCapFileReceiverDeliversTheCargo)
+{
+  // The whole point of the reader: the bytes that reach a Receiver's buffer
+  // are the UDP cargo, with every layer of header removed.
+  Communication::PCapFileReceiver receiver(capture("three-packets.pcap"));
+  CapturingAssembler assembler;
+  ASSERT_TRUE(receiver.start(assembler));
+  receiver.poll();
+
+  EXPECT_EQ((assembler.packets.size()), (3u));
+  for(size_t n = 0; n < assembler.packets.size(); ++n)
+  {
+    EXPECT_EQ((assembler.packets[n]), (std::string(payload)));
+  }
 }

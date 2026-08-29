@@ -6,8 +6,16 @@ First-party code is always compiled with `-Wall -Werror -pedantic`.
 ## Prerequisites
 
 ```bash
-sudo apt-get install -y cmake build-essential libxerces-c-dev
+sudo apt-get install -y cmake build-essential libxerces-c-dev libpcap-dev
 ```
+
+On Fedora/RHEL the last two are `xerces-c-devel` and `libpcap-devel`.
+
+`libpcap` is what reads packet capture files, so it is needed for the
+`-pcap` input mode and for the capture-file tests. Build without it using
+`-DQUICKFAST_USE_LIBPCAP=OFF`; `PCapReader` then refuses to open a file and
+says why. pcapng support arrived in libpcap 1.1.0, so any current
+distribution package is new enough.
 
 Optional compilers / libc++ / coverage (examples below use the packaged names on this tree):
 
@@ -30,6 +38,7 @@ With `-DQUICKFAST_USE_SPDLOG=ON` it also finds or fetches
 | `QUICKFAST_SANITIZE_UNDEFINED` | `OFF` | UndefinedBehaviorSanitizer (`-fsanitize=undefined`) |
 | `QUICKFAST_SANITIZE_THREAD` | `OFF` | ThreadSanitizer (`-fsanitize=thread`; incompatible with ASan/UBSan) |
 | `QUICKFAST_USE_SPDLOG` | `OFF` | Build `SpdlogLogger` + `managed_file_sink_mt` (find/FetchContent spdlog; requires zlib, tzdata) |
+| `QUICKFAST_USE_LIBPCAP` | `ON` | Read capture files through libpcap (adds pcapng and nanosecond pcap); requires `libpcap-dev` |
 | `QUICKFAST_ENABLE_TEST_HOOKS` | follows `QUICKFAST_BUILD_TESTS` | Compile `managed_file_sink_mt` test-only hooks into the library; keep `OFF` for shipping builds |
 | `QUICKFAST_ENABLE_PVS_STUDIO` | `ON` | Create `pvs-studio` target if `pvs-studio-analyzer` is installed |
 | `CMAKE_BUILD_TYPE` | (unset) | Prefer `Release` or `Debug` |

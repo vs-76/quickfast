@@ -232,6 +232,11 @@ namespace QuickFAST{
 
 
       /// @brief What word size is used in the PCAP file.
+      /// @brief Deprecated: capture files are read through libpcap, which
+      /// determines the record layout from the file itself.
+      ///
+      /// The value is retained only so the managed binding keeps compiling;
+      /// nothing reads it.
       size_t pcapWordSize()const
       {
         return pcapWordSize_;
@@ -502,6 +507,7 @@ namespace QuickFAST{
       }
 
       /// @brief What word size is used in the PCAP file.
+      /// @brief Deprecated: has no effect. See pcapWordSize().
       void setPcapWordSize(size_t pcapWordSize)
       {
         pcapWordSize_ = pcapWordSize;
@@ -752,7 +758,6 @@ namespace QuickFAST{
         out << "  -afile file          : Use asynchronous reads from FAST message file." << std::endl;
         out << "  -bfile file          : Buffer entire FAST message file in memory." << std::endl;
         out << "  -pcap file           : Input from PCap FAST message file." << std::endl;
-        out << "  -pcapsource [64|32]    : Word size of the machine where the PCap data was captured." << std::endl;
         out << "                           Defaults to the current platform." << std::endl;
         out << "  -mname name          : Declare a new multicast feed with the given name." << std::endl;
         out << "                         May appear multiple times. The first occurrence names the default feed." << std::endl;
@@ -929,20 +934,6 @@ namespace QuickFAST{
           setReceiverType(PCAPFILE_RECEIVER);
           setPcapFileName(argv[1]);
           consumed = 2;
-        }
-        else if(opt == "-pcapsource" && argc > 1)
-        {
-          std::string argv1(argv[1]);
-          if(argv1 == "64")
-          {
-            setPcapWordSize(64);
-            consumed = 2;
-          }
-          else if(argv1 == "32" )
-          {
-            setPcapWordSize(32);
-            consumed = 2;
-          }
         }
         else if(opt == "-mname" && argc > 1)
         {
