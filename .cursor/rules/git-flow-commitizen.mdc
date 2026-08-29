@@ -1,5 +1,5 @@
 ---
-description: Always use Git Flow branching and Commitizen (Conventional Commits)
+description: Git Flow branching, local integration, fork PRs, and Commitizen commits
 alwaysApply: true
 ---
 
@@ -7,11 +7,12 @@ alwaysApply: true
 
 Always follow **Git Flow** for branches and **Commitizen / Conventional Commits** for messages.
 
-**Never commit directly to `master`/`main` or `develop`.** All changes reach these branches **only via PR** (Github PR for the fork `vs-76/quickfast`). Never push the feature/fix branch directly into `develop`/`master`; open a PR and let it be merged.
+The line that matters is **what reaches `origin`**, the fork [vs-76/quickfast](https://github.com/vs-76/quickfast): `develop` and `master` there change **only via PR**. Locally, integrating side branches into `develop` is allowed — see *Local integration* below.
 
-- All work happens on side branches (`feature/`, `bugfix/`, `hotfix/`, `release/`); commits go on those branches and nowhere else.
-- No `git checkout develop && git commit` / `git commit` while on `develop`/`master`/`main`. If asked to commit on a protected branch, stop, warn, and switch to a feature branch.
-- "Merge into" targets below describe the PR that merges that branch, not direct commits.
+- Author commits only on side branches (`feature/`, `bugfix/`, `hotfix/`, `release/`). Never write a commit while on `develop`/`master`/`main`; if asked to, stop, warn, and switch to a side branch.
+- Never push `develop`, `master` or `main`, and never push a side branch straight into them.
+- Local merge commits on `develop` are the one exception to "no commits on `develop`".
+- "Merge into" targets in the table below name the PR that lands the branch, not a direct push.
 
 ## Branching (Git Flow)
 
@@ -37,6 +38,42 @@ git push -u origin feature/decoder-timeout   # then open PR to develop (or maste
 git checkout -b my-fix
 git commit            # on develop/master directly
 git push origin develop
+```
+
+## Local integration (no push)
+
+When asked to bring work "to local `develop`", "without pushing", or to integrate a
+stack of branches, merge locally and stop there. This is expected, not a violation.
+
+```bash
+# ✅ local integration
+git checkout develop
+git merge --no-ff bugfix/dst-rotation-schedule
+cmake --build build-dev-final -j && ctest --test-dir build-dev-final   # verify the merge
+# stop here — no push
+```
+
+- Use `--no-ff` so every integration stays one reviewable unit.
+- Verify the **merged** result, not just the branch that was merged.
+- Keep the side branch: its PR is what actually lands the change upstream.
+- `develop` sitting ahead of `origin/develop` is a normal outcome; do not "fix" it by pushing.
+- Say plainly that the merge is local only, so it is not mistaken for a landed change.
+
+## Pull requests (fork)
+
+- Base repo is always [vs-76/quickfast](https://github.com/vs-76/quickfast) — never the OCI upstream (see `no-upstream-oci-writes`).
+- Push the **side branch**, never `develop`, then open the PR against `develop` (or `master` for a hotfix).
+- One PR per side branch. If local `develop` already holds several local merges, open a PR per branch instead of pushing `develop`.
+- A hotfix needs two PRs: into `master` and into `develop`.
+
+```bash
+# ✅ landing a branch
+git push -u origin bugfix/dst-rotation-schedule
+gh pr create --repo vs-76/quickfast --base develop --head bugfix/dst-rotation-schedule
+
+# ❌ never
+git push origin develop            # bypasses review
+gh pr create --repo objectcomputing/quickfast ...
 ```
 
 ## Commits (Commitizen)
