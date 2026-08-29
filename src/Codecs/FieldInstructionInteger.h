@@ -188,6 +188,39 @@ namespace QuickFAST{
         Codecs::Decoder & decoder,
         INTEGER_TYPE & value) const;
 
+      /// @brief Apply a decoded delta, reporting a result outside the field.
+      ///
+      /// The specification requires an error when applying a delta leaves the
+      /// field's range. The previous code wrote value + delta and narrowed:
+      /// undefined behaviour for int64, and for everything narrower a silent
+      /// truncation -- a uInt32 holding 4,000,000,000 with a wire delta of
+      /// 1,000,000,000 became 705,032,704 without a word.
+      ///
+      /// The sum is taken modulo 2^64, which is well defined and which the
+      /// 64-bit instantiations depend on: a uInt64 delta of -1 from zero is
+      /// how UINT64_MAX is expressed, since no int64 delta can carry 2^64-1
+      /// directly. That wrap loses nothing when the field is as wide as the
+      /// arithmetic, so the range check asks the question that actually
+      /// matters -- whether the result survives the trip through
+      /// INTEGER_TYPE -- rather than whether the addition wrapped.
+      ///
+      /// @param decoder supplies the error handler.
+      /// @param[in,out] value the previous value, replaced by the new one.
+      /// @param delta as decoded from the wire.
+      void applyDelta(
+        Codecs::Decoder & decoder, INTEGER_TYPE & value, int64 delta) const
+      {
+        const uint64 sum = uint64(value) + uint64(delta);
+        const INTEGER_TYPE narrowed = INTEGER_TYPE(sum);
+        if(uint64(narrowed) != sum)
+        {
+          decoder.reportError("[ERR D2]",
+            "Applying delta leaves the range of the field.", identity_);
+          return;
+        }
+        value = narrowed;
+      }
+
     private:
       FieldInstructionInteger(const FieldInstructionInteger<INTEGER_TYPE, VALUE_TYPE, SIGNED> &);
       FieldInstructionInteger<INTEGER_TYPE, VALUE_TYPE, SIGNED> & operator=(const FieldInstructionInteger<INTEGER_TYPE, VALUE_TYPE, SIGNED> &);
@@ -525,7 +558,7 @@ namespace QuickFAST{
         }
       }
       // Apply delta
-      value = INTEGER_TYPE(value + delta);
+      applyDelta(decoder, value, delta);
       // Save the results
       builder.addValue(
         identity_,
@@ -581,7 +614,17 @@ namespace QuickFAST{
         Context::DictionaryStatus previousStatus = fieldOp_->getDictionaryValue(decoder, value);
         if(previousStatus == Context::OK_VALUE)
         {
-          value += 1;
+          // The increment operator exists for monotonically rising fields, so
+          // a sequence number reaching the type maximum is where a
+          // long-running feed ends up rather than an attack. It used to
+          // continue at zero, or invoke undefined behaviour for the signed
+          // instantiations.
+          if(value == std::numeric_limits<INTEGER_TYPE>::max())
+          {
+            decoder.reportError("[ERR D2]",
+              "Increment leaves the range of the field.", identity_);
+          }
+          value = INTEGER_TYPE(uint64(value) + 1);
         }
         else if(previousStatus == Context::UNDEFINED_VALUE)
         {
@@ -942,13 +985,29 @@ namespace QuickFAST{
 
       if(present)
       {
-        int64 deltaValue = int64(value) - int64(previousValue);
-        if(!isMandatory())
+        // int64(value) - int64(previousValue) converted a uint64 above
+        // INT64_MAX to a negative int64 before subtracting, and could overflow
+        // besides. The difference taken modulo 2^64 is the exact inverse of
+        // what applyDelta does on the far side, at every width and for both
+        // signednesses, and is well defined.
+        const uint64 difference = uint64(value) - uint64(previousValue);
+        int64 deltaValue = int64(difference);
+
+        if(!isMandatory() && deltaValue >= 0)
         {
-          if(deltaValue >= 0)
+          // FAST reserves zero for null, so a non-negative delta goes out one
+          // larger. The addition used to be unguarded, and a delta already at
+          // INT64_MAX came out as INT64_MIN -- a large positive jump arriving
+          // as a large negative one.
+          if(deltaValue == std::numeric_limits<int64>::max())
           {
-            deltaValue += 1;
+            encoder.reportError("[ERR D2]",
+              "Delta between consecutive values is too large for an optional"
+              " field to encode.",
+              identity_);
+            return;
           }
+          deltaValue += 1;
         }
         encodeSignedInteger(destination, encoder.getWorkingBuffer(), deltaValue);
         if(previousStatus != Context::OK_VALUE  || value != previousValue)
@@ -987,7 +1046,12 @@ namespace QuickFAST{
       {
         // pretend the previous value was the value attribute - 1 so that
         // the increment will produce cause the initial value to be sent.
-        previousValue = typedValue_ - 1;
+        //
+        // The wrap at the type minimum is deliberate and the comparison below
+        // wraps back to match, so the optimisation still fires. Routing it
+        // through uint64 only makes that defined for the signed types, where
+        // INT32_MIN - 1 was undefined behaviour.
+        previousValue = INTEGER_TYPE(uint64(typedValue_) - 1);
 //        fieldOp_->setDictionaryValue(encoder, previousValue);
         previousStatus = Context::OK_VALUE;
       }
@@ -1010,7 +1074,8 @@ namespace QuickFAST{
 
       if(present)
       {
-        if(previousStatus == Context::OK_VALUE && previousValue + 1 == value)
+        if(previousStatus == Context::OK_VALUE &&
+          INTEGER_TYPE(uint64(previousValue) + 1) == value)
         {
           pmap.setNextField(false);
           fieldOp_->setDictionaryValue(encoder, value);
