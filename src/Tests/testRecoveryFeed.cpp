@@ -30,16 +30,22 @@ namespace
   };
 
   /// @brief A buffer the feed can hand out, owned by the caller.
+  ///
+  /// The storage is held separately rather than as a member: passing the
+  /// address of a member array to a base constructor is legal but reads as
+  /// use-before-initialisation to the compiler, and this is a test.
   class OwnedBuffer : public Communication::LinkedBuffer
   {
   public:
     OwnedBuffer()
-      : Communication::LinkedBuffer(storage_, sizeof(storage_))
+      : Communication::LinkedBuffer(new unsigned char[16], 16)
     {
     }
 
-  private:
-    unsigned char storage_[16];
+    ~OwnedBuffer()
+    {
+      delete [] get();
+    }
   };
 
   /// @brief Wait for a flag, but never longer than the test can afford.

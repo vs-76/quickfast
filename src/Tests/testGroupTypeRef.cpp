@@ -49,7 +49,10 @@ namespace
   /// Encoding rather than hand-writing the bytes, because the wire layout is
   /// exactly what the typeRef changes and a hand-written stream would be
   /// asserting the layout this test is trying not to depend on.
-  void roundTrip(const std::string & templateText, Codecs::SingleMessageConsumer & consumer)
+  /// The registry owns the field identities the decoded message refers to, so
+  /// the caller has to keep it alive for as long as it reads the message.
+  Codecs::TemplateRegistryPtr roundTrip(
+    const std::string & templateText, Codecs::SingleMessageConsumer & consumer)
   {
     std::stringstream templates(templateText);
     Codecs::XMLTemplateParser parser;
@@ -74,6 +77,7 @@ namespace
     Codecs::Decoder decoder(registry);
     Codecs::GenericMessageBuilder builder(consumer);
     decoder.decodeMessage(source, builder);
+    return registry;
   }
 
   const char * withoutTypeRef =
@@ -103,7 +107,7 @@ namespace
 TEST(QuickFAST, testGroupWithoutTypeRefFoldsIntoTheParent)
 {
   Codecs::SingleMessageConsumer consumer;
-  roundTrip(withoutTypeRef, consumer);
+  const Codecs::TemplateRegistryPtr registry = roundTrip(withoutTypeRef, consumer);
   const Messages::Message & message = consumer.message();
 
   Messages::FieldCPtr field;
@@ -123,7 +127,7 @@ TEST(QuickFAST, testGroupWithoutTypeRefFoldsIntoTheParent)
 TEST(QuickFAST, testGroupWithTypeRefAppearsInTheMessage)
 {
   Codecs::SingleMessageConsumer consumer;
-  roundTrip(withTypeRef, consumer);
+  const Codecs::TemplateRegistryPtr registry = roundTrip(withTypeRef, consumer);
   const Messages::Message & message = consumer.message();
 
   Messages::FieldCPtr field;
@@ -150,7 +154,7 @@ TEST(QuickFAST, testGroupWithTypeRefAppearsInTheMessage)
 TEST(QuickFAST, testGroupTypeRefMatchingTheParentStillFolds)
 {
   Codecs::SingleMessageConsumer consumer;
-  roundTrip(
+  const Codecs::TemplateRegistryPtr registry = roundTrip(
     "<templates>"
     "  <template name=\"t\" id=\"1\">"
     "    <typeRef name=\"SharedType\"/>"
@@ -180,7 +184,7 @@ TEST(QuickFAST, testGroupTypeRefMatchingTheParentStillFolds)
 TEST(QuickFAST, testTemplateTypeRefAlsoUnfoldsAnUnannotatedGroup)
 {
   Codecs::SingleMessageConsumer consumer;
-  roundTrip(
+  const Codecs::TemplateRegistryPtr registry = roundTrip(
     "<templates>"
     "  <template name=\"t\" id=\"1\">"
     "    <typeRef name=\"MessageType\"/>"
@@ -210,7 +214,7 @@ TEST(QuickFAST, testTemplateTypeRefAlsoUnfoldsAnUnannotatedGroup)
 TEST(QuickFAST, testGroupTypeRefUnfoldsWithoutATemplateTypeRef)
 {
   Codecs::SingleMessageConsumer consumer;
-  roundTrip(
+  const Codecs::TemplateRegistryPtr registry = roundTrip(
     "<templates>"
     "  <template name=\"t\" id=\"1\">"
     "    <uInt32 name=\"a\"/>"
