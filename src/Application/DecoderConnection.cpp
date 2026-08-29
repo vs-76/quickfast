@@ -426,8 +426,16 @@ DecoderConnection::configure(
     }
   }
 
-  receiver_->start(*assembler_, configuration.bufferSize(), configuration.bufferCount());
-
+  // A receiver that fails to initialize never allocates buffers and never
+  // arms a read, so running its event loop waits forever for data that cannot
+  // arrive.  Discarding this result turned an unreadable capture file into a
+  // hang; a batch or CI caller needs it to be a non-zero exit instead.
+  if(!receiver_->start(*assembler_, configuration.bufferSize(), configuration.bufferCount()))
+  {
+    throw UsageError(
+      "Cannot start connection",
+      "The receiver could not be initialized. Check that the input source exists and is readable.");
+  }
 }
 
 Codecs::Decoder &
