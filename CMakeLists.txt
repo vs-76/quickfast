@@ -11,6 +11,33 @@ option(QUICKFAST_BUILD_EXAMPLES "Build QuickFAST example applications" ON)
 option(QUICKFAST_USE_LIBCXX
   "Use LLVM libc++ instead of the default C++ standard library (Clang only)"
   OFF)
+option(QUICKFAST_SANITIZE_ADDRESS "Build with AddressSanitizer (-fsanitize=address)" OFF)
+option(QUICKFAST_SANITIZE_UNDEFINED "Build with UndefinedBehaviorSanitizer (-fsanitize=undefined)" OFF)
+option(QUICKFAST_SANITIZE_THREAD "Build with ThreadSanitizer (-fsanitize=thread)" OFF)
+
+if(QUICKFAST_SANITIZE_THREAD AND (QUICKFAST_SANITIZE_ADDRESS OR QUICKFAST_SANITIZE_UNDEFINED))
+  message(FATAL_ERROR
+    "QUICKFAST_SANITIZE_THREAD cannot be combined with AddressSanitizer or "
+    "UndefinedBehaviorSanitizer")
+endif()
+
+set(QUICKFAST_SANITIZE_FLAGS "")
+if(QUICKFAST_SANITIZE_ADDRESS)
+  list(APPEND QUICKFAST_SANITIZE_FLAGS -fsanitize=address -fno-omit-frame-pointer)
+endif()
+if(QUICKFAST_SANITIZE_UNDEFINED)
+  list(APPEND QUICKFAST_SANITIZE_FLAGS -fsanitize=undefined -fno-omit-frame-pointer)
+endif()
+if(QUICKFAST_SANITIZE_THREAD)
+  list(APPEND QUICKFAST_SANITIZE_FLAGS -fsanitize=thread -fno-omit-frame-pointer)
+  # libstdc++ (esp. GCC 16) diagnoses atomic_thread_fence under TSan; do not
+  # promote that into a hard -Werror failure for sanitizer builds.
+  list(APPEND QUICKFAST_SANITIZE_FLAGS -Wno-error=tsan)
+endif()
+if(QUICKFAST_SANITIZE_FLAGS)
+  add_compile_options(${QUICKFAST_SANITIZE_FLAGS})
+  add_link_options(${QUICKFAST_SANITIZE_FLAGS})
+endif()
 
 if(QUICKFAST_USE_LIBCXX)
   if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
@@ -287,4 +314,7 @@ if(QUICKFAST_USE_LIBCXX)
   message(STATUS "C++ standard library: libc++ (-stdlib=libc++)")
 else()
   message(STATUS "C++ standard library: default (set -DQUICKFAST_USE_LIBCXX=ON for libc++ with Clang)")
+endif()
+if(QUICKFAST_SANITIZE_FLAGS)
+  message(STATUS "Sanitizers: ${QUICKFAST_SANITIZE_FLAGS}")
 endif()

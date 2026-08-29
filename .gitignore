@@ -46,6 +46,7 @@ Release
 
 # test output files
 *.log
+cachegrind.out*
 
 #helper/customized commands
 # (use single letter names and don't add to repo)
