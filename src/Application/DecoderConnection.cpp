@@ -387,8 +387,7 @@ DecoderConnection::configure(
   case Application::DecoderConfiguration::PCAPFILE_RECEIVER:
     {
       receiver_.reset(new Communication::PCapFileReceiver(
-        configuration.pcapFileName(),
-        configuration.pcapWordSize()));
+        configuration.pcapFileName()));
       break;
     }
   case Application::DecoderConfiguration::ASYNCHRONOUS_FILE_RECEIVER:
