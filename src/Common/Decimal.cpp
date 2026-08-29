@@ -17,6 +17,48 @@ namespace {
     str.erase(str.begin(), std::find_if(str.begin(), str.end(), notSpace));
     str.erase(std::find_if(str.rbegin(), str.rend(), notSpace).base(), str.end());
   }
+
+  /// @brief Can this mantissa be multiplied by ten and still be a mantissa_t?
+  ///
+  /// Both bounds are needed: guarding only the positive side leaves every
+  /// negative mantissa unbounded, which is how the multiply became undefined
+  /// behaviour rather than a value the caller could notice.
+  bool canScaleUp(mantissa_t mantissa)
+  {
+    return mantissa <= (LLONG_MAX / 10) && mantissa >= (LLONG_MIN / 10);
+  }
+
+  /// @brief Refuse an arithmetic operation whose operands share no exponent.
+  ///
+  /// Adding mantissas that stand for different powers of ten produces a
+  /// number unrelated to either operand, which is worse than declining.
+  void requireCommonExponent(bool reached)
+  {
+    if(!reached)
+    {
+      throw OverflowError(
+        "[ERR R1]Decimal operands cannot be brought to a common exponent.");
+    }
+  }
+
+  /// @brief Narrow an exponent computed at full width.
+  ///
+  /// exponent_t is int8_t while normalize() permits 64, so a sum of two legal
+  /// exponents need not be legal. The narrowing is well-defined modular
+  /// conversion, so it wrapped silently: 64 + 64 became -128 and normalize
+  /// then reported an *underflow* for what was an overflow.
+  exponent_t checkedExponent(int exponent)
+  {
+    if(exponent > 64)
+    {
+      throw OverflowError("[ERR R1]Decimal Exponent overflow.");
+    }
+    if(exponent < -64)
+    {
+      throw OverflowError("[ERR R1]Decimal Exponent undeflow.");
+    }
+    return exponent_t(exponent);
+  }
 }
 
 Decimal::Decimal(
@@ -219,10 +261,17 @@ Decimal::normalize(bool strict /*= true*/)
     {
       throw OverflowError("[ERR R1]Decimal Exponent overflow.");
     }
-    while(exponent_ > 64)
+    // Scaling the mantissa up is a recovery only while it still fits. Past
+    // that the multiply overflowed and the "recovered" value was nonsense, so
+    // report the condition the non-strict path could not actually recover from.
+    while(exponent_ > 64 && canScaleUp(mantissa_))
     {
       mantissa_ *= 10;
       exponent_ -= 1;
+    }
+    if(exponent_ > 64)
+    {
+      throw OverflowError("[ERR R1]Decimal Exponent overflow.");
     }
   }
   if(exponent_ < -64)
@@ -239,21 +288,22 @@ Decimal::normalize(bool strict /*= true*/)
   }
 }
 
-void
+bool
 Decimal::denormalize(exponent_t exponent)
 {
-  while(exponent_ > exponent && mantissa_ < (LLONG_MAX/10))
+  while(exponent_ > exponent && canScaleUp(mantissa_))
   {
     exponent_ -= 1;
     mantissa_ *= 10;
-    // todo check mantissa overflow
   }
+  return exponent_ == exponent;
 }
+
 void
 Decimal::maximizeMantissa()
 {
   // this could be considerably faster!
-  while(exponent_ > SCHAR_MIN && mantissa_ < (LLONG_MAX/10))
+  while(exponent_ > SCHAR_MIN && canScaleUp(mantissa_))
   {
     exponent_ -= 1;
     mantissa_ *= 10;
@@ -271,19 +321,25 @@ Decimal::operator<(const Decimal & rhs) const
   if(rhs.exponent_ < exponent_)
   {
     Decimal temp(*this);
-    temp.denormalize(rhs.exponent_);
-    return temp.mantissa_ < rhs.mantissa_;
+    if(temp.denormalize(rhs.exponent_))
+    {
+      return temp.mantissa_ < rhs.mantissa_;
+    }
   }
   else
   {
     Decimal temp(rhs);
-    temp.denormalize(exponent_);
-    return mantissa_ < temp.mantissa_;
+    if(temp.denormalize(exponent_))
+    {
+      return mantissa_ < temp.mantissa_;
+    }
   }
-//  // at this point comparison is iffy, converting to double doesn't
-//  // hurt
-//  return (double) *this < (double)rhs;
-
+  // No common exponent fits in a mantissa_t, so the two cannot be compared as
+  // integers at all.  Comparing the truncated mantissas is not an
+  // approximation, it is a different question with a different answer:
+  // 1e20 < 5e18 came out true.  double loses precision but keeps the ordering,
+  // which is the part a comparison operator has to get right.
+  return double(*this) < double(rhs);
 }
 
 bool
@@ -297,15 +353,22 @@ Decimal::operator==(const Decimal & rhs) const
   if(rhs.exponent_ < exponent_)
   {
     Decimal temp(*this);
-    temp.denormalize(rhs.exponent_);
-    return temp.mantissa_ == rhs.mantissa_;
+    if(temp.denormalize(rhs.exponent_))
+    {
+      return temp.mantissa_ == rhs.mantissa_;
+    }
   }
   else
   {
     Decimal temp(rhs);
-    temp.denormalize(exponent_);
-    return mantissa_== temp.mantissa_;
+    if(temp.denormalize(exponent_))
+    {
+      return mantissa_== temp.mantissa_;
+    }
   }
+  // See operator<: without a common exponent the truncated mantissas can be
+  // equal while the values are not, which reported 1e20 == 1e18.
+  return double(*this) == double(rhs);
 }
 
 Decimal::operator double()const
@@ -344,7 +407,7 @@ Decimal::operator+=(const Decimal & rhs)
   if(rhs.exponent_ < exponent_)
   {
     Decimal temp(*this);
-    temp.denormalize(rhs.exponent_);
+    requireCommonExponent(temp.denormalize(rhs.exponent_));
     temp.mantissa_ += rhs.mantissa_;
     temp.normalize();
     swap(temp);
@@ -352,7 +415,7 @@ Decimal::operator+=(const Decimal & rhs)
   else
   {
     Decimal temp(rhs);
-    temp.denormalize(exponent_);
+    requireCommonExponent(temp.denormalize(exponent_));
     temp.mantissa_ += mantissa_;
     temp.normalize();
     swap(temp);
@@ -367,7 +430,7 @@ Decimal::operator-=(const Decimal & rhs)
   if(rhs.exponent_ < exponent_)
   {
     Decimal temp(*this);
-    temp.denormalize(rhs.exponent_);
+    requireCommonExponent(temp.denormalize(rhs.exponent_));
     temp.mantissa_ -= rhs.mantissa_;
     temp.normalize();
     swap(temp);
@@ -375,7 +438,7 @@ Decimal::operator-=(const Decimal & rhs)
   else
   {
     Decimal temp(rhs);
-    temp.denormalize(exponent_);
+    requireCommonExponent(temp.denormalize(exponent_));
     temp.mantissa_ = mantissa_ - temp.mantissa_;
     temp.normalize();
     swap(temp);
@@ -387,7 +450,7 @@ Decimal &
 Decimal::operator*=(const Decimal & rhs)
 {
   Decimal temp(*this);
-  temp.exponent_ += rhs.exponent_;
+  temp.exponent_ = checkedExponent(int(exponent_) + int(rhs.exponent_));
   temp.mantissa_ *= rhs.mantissa_;
   temp.normalize();
   swap(temp);
@@ -397,9 +460,26 @@ Decimal::operator*=(const Decimal & rhs)
 Decimal&
 Decimal::operator/=(const Decimal & rhs)
 {
+  if(rhs.mantissa_ == 0)
+  {
+    // A default-constructed Decimal has a zero mantissa, so this was reachable
+    // by dividing by one: SIGFPE rather than something a caller can handle.
+    throw OverflowError("[ERR R1]Decimal division by zero.");
+  }
   Decimal temp(*this);
   temp.maximizeMantissa();
-  temp.exponent_ -= rhs.exponent_;
+  // normalize(false) below pulls an out-of-range exponent back, so only the
+  // int8_t narrowing itself has to be guarded here.
+  const int exponent = int(temp.exponent_) - int(rhs.exponent_);
+  if(exponent > SCHAR_MAX || exponent < SCHAR_MIN)
+  {
+    throw OverflowError("[ERR R1]Decimal Exponent overflow.");
+  }
+  temp.exponent_ = exponent_t(exponent);
+  if(temp.mantissa_ == LLONG_MIN && rhs.mantissa_ == -1)
+  {
+    throw OverflowError("[ERR R1]Decimal mantissa overflow on division.");
+  }
   temp.mantissa_ /= rhs.mantissa_;
   temp.normalize(false);
   swap(temp);
