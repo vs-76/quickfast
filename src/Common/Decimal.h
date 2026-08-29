@@ -74,9 +74,14 @@ namespace QuickFAST{
 
     /// @brief denormalize to achieve a specific exponent
     ///
-    /// Normalization will happen even if it means a loss of precision
+    /// Normalization will happen even if it means a loss of precision.
+    /// The target is not always reachable: scaling the mantissa up by ten
+    /// eventually overflows, and this stops rather than overflowing.
     /// @param exponent is the desired exponent
-    void denormalize(exponent_t exponent);
+    /// @returns true if the requested exponent was reached. A false return
+    ///          means the mantissa is no longer comparable with one at the
+    ///          requested exponent.
+    bool denormalize(exponent_t exponent);
 
     /// @brief Nothrow; no allocate; constant time swap values.
     /// @param rhs is the Decimal with which to swap
