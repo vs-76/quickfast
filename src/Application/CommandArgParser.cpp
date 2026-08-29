@@ -44,6 +44,16 @@ CommandArgParser::parseArgs(int argc, char * argv[], int start)
   while(result && argp < argc)
   {
     int consumed = parseSingleArg(argc - argp, &argv[argp]);
+
+    // The option was recognized and its value was not. The handler has said
+    // what was wrong with it, and announcing that the option is unknown on top
+    // of that would contradict it.
+    if(consumed == CommandArgHandler::ARGUMENT_VALUE_ERROR)
+    {
+      usage(std::cerr);
+      return false;
+    }
+
     if(consumed == 0)
     {
       std::string arg(argv[argp]);
