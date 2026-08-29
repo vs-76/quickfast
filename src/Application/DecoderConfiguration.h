@@ -69,6 +69,11 @@ namespace QuickFAST{
         std::string listenInterfaceIP_;
         /// @brief For MulticastReceiver the IP to which the socket will be bound
         std::string bindIP_;
+        /// @brief The senders this feed will accept, empty for any-source multicast
+        ///
+        /// A non-empty list turns the feed into a source-specific (RFC 4607)
+        /// subscription, carried by a SourceSpecificMulticastReceiver.
+        std::vector<std::string> sourceIPs_;
 
         /// @brief Construct a fully specified Multicast feed
         MulticastFeed(
@@ -347,6 +352,40 @@ namespace QuickFAST{
           return multicastFeeds_[index].listenInterfaceIP_;
         }
         return multicastFeeds_[index].bindIP_;
+      }
+
+      /// @brief Was a bind address supplied for the indexth multicast group?
+      ///
+      /// The default differs by subscription type -- an any-source feed binds
+      /// to the listen interface, a source-specific feed to the group -- so
+      /// the caller has to be able to tell a default from a choice.
+      bool multicastBindIPIsSet(size_t index = 0)const
+      {
+        needMulticastFeed();
+        return !multicastFeeds_[index].bindIP_.empty();
+      }
+
+      /// @brief For MulticastReceiver the senders accepted on the indexth feed
+      ///
+      /// Empty means any-source multicast: whoever sends to the group is heard.
+      const std::vector<std::string> & multicastSourceIPs(size_t index = 0)const
+      {
+        needMulticastFeed();
+        return multicastFeeds_[index].sourceIPs_;
+      }
+
+      /// @brief Does any configured feed name the senders it will accept?
+      /// @returns true if the multicast input is source-specific
+      bool sourceSpecificMulticast()const
+      {
+        for(size_t index = 0; index < multicastFeeds_.size(); ++index)
+        {
+          if(!multicastFeeds_[index].sourceIPs_.empty())
+          {
+            return true;
+          }
+        }
+        return false;
       }
 
 
@@ -634,6 +673,18 @@ namespace QuickFAST{
         multicastFeeds_[currentFeed_].bindIP_ = multicastBindIP;
       }
 
+      /// @brief Accept traffic on the current feed only from this sender.
+      ///
+      /// Call more than once to accept more than one sender, which is what
+      /// redundant publishers on a single group need.
+      ///
+      /// @param sourceIP the dotted IP of a permitted sender
+      void addMulticastSourceIP(const std::string & sourceIP)
+      {
+        needMulticastFeed();
+        multicastFeeds_[currentFeed_].sourceIPs_.push_back(sourceIP);
+      }
+
       /// @brief For TCPIPReceiver, Host name or IP
       void setHostName(const std::string & hostName)
       {
@@ -740,6 +791,10 @@ namespace QuickFAST{
         out << "                           on which to subscribe and listen." << std::endl;
         out << "                           0.0.0.0 means pick any NIC." << std::endl;
         out << "  -mbind ip            : Multicast bind address.  Defaults to listenIP. Override if you dare." << std::endl;
+        out << "                           (source specific feeds bind to the group instead)." << std::endl;
+        out << "  -msource ip[,ip...]  : Accept traffic only from these senders." << std::endl;
+        out << "                           Subscribes source-specific (RFC 4607, 232.0.0.0/8)." << std::endl;
+        out << "                           Repeatable; applies to the current -mname feed." << std::endl;
         out << "  -tcp host:port       : Input from TCP/IP.  Connect to \"host\" name or" << std::endl;
         out << "                         dotted IP on named or numbered port." << std::endl;
         out << std::endl;
@@ -932,6 +987,28 @@ namespace QuickFAST{
           setMulticastBindIP(argv[1]);
           consumed = 2;
         }
+        else if(opt == "-msource" && argc > 1)
+        {
+          std::string list = argv[1];
+          std::string::size_type start = 0;
+          while(start <= list.size())
+          {
+            std::string::size_type comma = list.find(',', start);
+            std::string source = list.substr(
+              start,
+              comma == std::string::npos ? std::string::npos : comma - start);
+            if(!source.empty())
+            {
+              addMulticastSourceIP(source);
+            }
+            if(comma == std::string::npos)
+            {
+              break;
+            }
+            start = comma + 1;
+          }
+          consumed = 2;
+        }
         else if(opt == "-tcp" && argc > 1)
         {
           setReceiverType(TCP_RECEIVER);
@@ -1094,7 +1171,10 @@ namespace QuickFAST{
       {
         if(multicastFeeds_.empty())
         {
-          multicastFeeds_.push_back(MulticastFeed(DEFAULT_MULTICAST_NAME, "224.1.2.133", 13014, "0.0.0.0", "0.0.0.0"));
+          // The bind address is left unset rather than spelled 0.0.0.0: it
+          // resolves to the listen interface anyway, and only an unset value
+          // lets a source specific feed apply its own default.
+          multicastFeeds_.push_back(MulticastFeed(DEFAULT_MULTICAST_NAME, "224.1.2.133", 13014, "0.0.0.0", ""));
           currentFeed_ = 0;
         }
       }

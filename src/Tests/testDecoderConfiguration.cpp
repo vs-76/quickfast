@@ -130,3 +130,57 @@ TEST(QuickFAST, testFeedWithoutAnAddressIsNotReportedAsConfigured)
   EXPECT_FALSE(configuration.portNumberIsSet(1));
   EXPECT_TRUE(configuration.portNumberIsSet(0));
 }
+
+/// @brief Multicast is any-source until -msource says otherwise.
+TEST(QuickFAST, testMulticastIsAnySourceByDefault)
+{
+  Application::DecoderConfiguration configuration;
+  parse(configuration, {"-multicast", "224.1.1.1:1111"});
+
+  EXPECT_FALSE(configuration.sourceSpecificMulticast());
+  EXPECT_TRUE(configuration.multicastSourceIPs(0).empty());
+  EXPECT_FALSE(configuration.multicastBindIPIsSet(0));
+}
+
+/// @brief -msource accepts a list, because redundant publishers share a group.
+TEST(QuickFAST, testMulticastSourceOptionAcceptsSeveralSenders)
+{
+  Application::DecoderConfiguration configuration;
+  parse(configuration, {"-multicast", "232.1.1.1:1111",
+                        "-msource", "10.0.0.1,10.0.0.2"});
+
+  EXPECT_TRUE(configuration.sourceSpecificMulticast());
+  ASSERT_EQ(2u, configuration.multicastSourceIPs(0).size());
+  EXPECT_EQ("10.0.0.1", configuration.multicastSourceIPs(0)[0]);
+  EXPECT_EQ("10.0.0.2", configuration.multicastSourceIPs(0)[1]);
+}
+
+/// @brief -msource applies to the feed named by the preceding -mname.
+TEST(QuickFAST, testMulticastSourceOptionConfiguresTheNamedFeed)
+{
+  Application::DecoderConfiguration configuration;
+  parse(configuration, {
+    "-mname", "FEED_A", "-multicast", "232.1.1.1:1111", "-msource", "10.0.0.1",
+    "-mname", "FEED_B", "-multicast", "232.2.2.2:2222", "-msource", "10.0.0.2",
+                        "-msource", "10.0.0.3"});
+
+  ASSERT_EQ(2u, configuration.multicastCount());
+  ASSERT_EQ(1u, configuration.multicastSourceIPs(0).size());
+  EXPECT_EQ("10.0.0.1", configuration.multicastSourceIPs(0)[0]);
+  ASSERT_EQ(2u, configuration.multicastSourceIPs(1).size());
+  EXPECT_EQ("10.0.0.2", configuration.multicastSourceIPs(1)[0]);
+  EXPECT_EQ("10.0.0.3", configuration.multicastSourceIPs(1)[1]);
+}
+
+/// @brief The source list must survive the copy InterpretApplication makes.
+TEST(QuickFAST, testConfigurationCopyPreservesMulticastSources)
+{
+  Application::DecoderConfiguration original;
+  parse(original, {"-multicast", "232.1.1.1:1111", "-msource", "10.0.0.1"});
+
+  const Application::DecoderConfiguration copy(original);
+
+  EXPECT_TRUE(copy.sourceSpecificMulticast());
+  ASSERT_EQ(1u, copy.multicastSourceIPs(0).size());
+  EXPECT_EQ("10.0.0.1", copy.multicastSourceIPs(0)[0]);
+}

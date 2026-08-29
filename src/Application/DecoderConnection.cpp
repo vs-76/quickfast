@@ -15,6 +15,7 @@
 #include <Codecs/DataSource.h>
 
 #include <Communication/MulticastReceiver.h>
+#include <Communication/SourceSpecificMulticastReceiver.h>
 #include <Communication/TCPReceiver.h>
 #include <Communication/RawFileReceiver.h>
 #include <Communication/BufferedRawFileReceiver.h>
@@ -48,6 +49,55 @@ void
 DecoderConnection::setTemplateRegistry(Codecs::TemplateRegistryPtr registry)
 {
   registry_ = registry;
+}
+
+void
+DecoderConnection::createSourceSpecificMulticastReceiver(
+  const Application::DecoderConfiguration & configuration)
+{
+  // One receiver could carry feeds of both kinds, but one configuration
+  // should not: -msource applies to the feed named by the most recent
+  // -mname, so a misplaced option leaves a feed silently any-source --
+  // accepting exactly the senders the operator asked to exclude.
+  for(size_t nFeed = 0; nFeed < configuration.multicastCount(); ++nFeed)
+  {
+    if(configuration.multicastSourceIPs(nFeed).empty())
+    {
+      std::stringstream msg;
+      msg << "Multicast feed " << configuration.multicastName(nFeed)
+        << " names no source while other feeds in this connection do."
+        << "  Use -msource for every feed, or for none.";
+      throw std::invalid_argument(msg.str());
+    }
+  }
+
+  Communication::SourceSpecificMulticastReceiver * receiver;
+  if(configuration.privateIOService())
+  {
+    ioService_.reset(new asio::io_context);
+    receiver = new Communication::SourceSpecificMulticastReceiver(*ioService_);
+  }
+  else
+  {
+    receiver = new Communication::SourceSpecificMulticastReceiver();
+  }
+  receiver_.reset(receiver);
+
+  for(size_t nFeed = 0; nFeed < configuration.multicastCount(); ++nFeed)
+  {
+    // An unset bind address is passed on as unset: the receiver binds a
+    // source specific feed to the group, not to the listen interface.
+    receiver->addFeed(
+      configuration.multicastName(nFeed),
+      configuration.multicastGroupIP(nFeed),
+      configuration.multicastSourceIPs(nFeed),
+      configuration.listenInterfaceIP(nFeed),
+      configuration.multicastBindIPIsSet(nFeed)
+        ? configuration.multicastBindIP(nFeed)
+        : std::string(),
+      configuration.portNumber(nFeed)
+      );
+  }
 }
 
 void
@@ -338,34 +388,33 @@ DecoderConnection::configure(
   {
   case Application::DecoderConfiguration::MULTICAST_RECEIVER:
     {
-      Communication::MulticastReceiver * receiver;
-      if(configuration.privateIOService())
+      if(configuration.sourceSpecificMulticast())
       {
-        ioService_.reset(new asio::io_context);
-        receiver = new Communication::MulticastReceiver(*ioService_);
+        createSourceSpecificMulticastReceiver(configuration);
       }
       else
       {
-        receiver = new Communication::MulticastReceiver();
-      }
-      receiver_.reset(receiver);
-      receiver->addFeed(
-        configuration.multicastName(),
-        configuration.multicastGroupIP(),
-        configuration.listenInterfaceIP(),
-        configuration.multicastBindIP(),
-        configuration.portNumber()
-        );
-
-      for(size_t nFeed = 1; nFeed < configuration.multicastCount(); ++nFeed)
-      {
-        receiver->addFeed(
-          configuration.multicastName(nFeed),
-          configuration.multicastGroupIP(nFeed),
-          configuration.listenInterfaceIP(nFeed),
-          configuration.multicastBindIP(nFeed),
-          configuration.portNumber(nFeed)
-          );
+        Communication::MulticastReceiver * receiver;
+        if(configuration.privateIOService())
+        {
+          ioService_.reset(new asio::io_context);
+          receiver = new Communication::MulticastReceiver(*ioService_);
+        }
+        else
+        {
+          receiver = new Communication::MulticastReceiver();
+        }
+        receiver_.reset(receiver);
+        for(size_t nFeed = 0; nFeed < configuration.multicastCount(); ++nFeed)
+        {
+          receiver->addFeed(
+            configuration.multicastName(nFeed),
+            configuration.multicastGroupIP(nFeed),
+            configuration.listenInterfaceIP(nFeed),
+            configuration.multicastBindIP(nFeed),
+            configuration.portNumber(nFeed)
+            );
+        }
       }
       break;
     }
