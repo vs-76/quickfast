@@ -967,9 +967,10 @@ TemplateBuilder::parseNop(const std::string & tag, const AttributeMap& attribute
 void
 TemplateBuilder::parseConstant(const std::string & tag, const AttributeMap& attributes)
 {
-  getRequiredAttribute(attributes, "value");
   FieldOpPtr op(new FieldOpConstant);
-  parseInitialValue(tag, attributes, op);
+  op->setValue(getRequiredAttribute(attributes, "value"));
+  schemaElements_.top().second->setFieldOp(op);
+  schemaElements_.push(StackEntry(tag, op));
 }
 
 void
