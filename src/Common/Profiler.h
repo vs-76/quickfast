@@ -27,7 +27,7 @@ __declspec(dllimport) DWORD GetTickCount(void);
 # endif // _WINBASE_
 # define PROFILER_GET_TIME ::GetTickCount()
 # define PROFILER_TIME_TYPE DWORD
-# define PROFILER_DIFF_MSEC(a, b) (a - b)
+# define PROFILER_DIFF_MSEC(a, b) ((a) - (b))
 #else // _WIN32
 # define PROFILER_GET_TIME std::chrono::steady_clock::now()
 # define PROFILER_TIME_TYPE std::chrono::steady_clock::time_point
