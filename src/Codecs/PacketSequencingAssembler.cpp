@@ -44,6 +44,22 @@ PacketSequencingAssembler::PacketSequencingAssembler(
   {
     throw UsageError("Configuration error", "Arbitrage requires sequence number support from packet header analyzer.");
   }
+  // new LinkedBuffer *[0] is legal and yields a valid pointer to no objects,
+  // so construction used to succeed and the first line of the service loop
+  // then evaluated "% lookAheadCount_" -- a division by zero, and there are
+  // nine of them in this file. Zero is a reasonable thing for a caller to
+  // pass, meaning "sequence checking without look-ahead buffering", and
+  // nothing said otherwise.
+  if(lookAheadCount == 0)
+  {
+    throw UsageError("Configuration error", "Arbitrage requires a look-ahead count of at least one.");
+  }
+  // The sequence space wraps, so ordering is decided by signed difference.
+  // That needs the window to fit in the signed half of the space.
+  if(lookAheadCount > size_t(std::numeric_limits<int32>::max()))
+  {
+    throw UsageError("Configuration error", "Arbitrage look-ahead count is larger than the sequence number space.");
+  }
   for(size_t nBuffer = 0; nBuffer < lookAheadCount; ++ nBuffer)
   {
     lookAhead_[nBuffer] = 0;
@@ -54,13 +70,34 @@ PacketSequencingAssembler::~PacketSequencingAssembler()
 {
 }
 
+namespace
+{
+  /// @brief Distance from base to value in a wrapping sequence space.
+  ///
+  /// sequence_t is a uint32, so a feed wraps every 4.29 billion packets.
+  /// Ordinary wraparound survived, because nextSequenceNumber_ wrapped in step
+  /// with the feed, but a loss at the boundary did not: with the next expected
+  /// number at 0xFFFFFFFE and packet 1 arriving, "1 < 0xFFFFFFFE" is true, so
+  /// the packet was released as stale rather than deferred as future. Every
+  /// packet after it went the same way and the gap was never reported, because
+  /// gap detection depends on packets accumulating in the deferred queue.
+  ///
+  /// @param value is the sequence number being placed.
+  /// @param base is the number it is being placed relative to.
+  /// @returns how far ahead of base value is; negative means behind.
+  int32 sequenceDistance(sequence_t value, sequence_t base)
+  {
+    return int32(uint32(value) - uint32(base));
+  }
+}
+
 bool
 PacketSequencingAssembler::serviceQueue(Communication::Receiver & receiver)
 {
   bool result = true;
   receiver_ = & receiver;
   bool more = true;
-  while(more)
+  while(more && result)
   {
     // More becomes true when *something* happens
     more = false;
@@ -70,7 +107,12 @@ PacketSequencingAssembler::serviceQueue(Communication::Receiver & receiver)
     if(buffer != 0)
     {
       lookAhead_[nextSequenceNumber_ % lookAheadCount_] = 0;
-      processPacket(buffer);
+      // decodeBuffer's answer used to be discarded here and in capturePacket,
+      // and "result" was assigned once at its declaration and returned
+      // unchanged. So setMessageLimit had no effect -- the limit was computed,
+      // returned and dropped -- and a builder that answered reportDecodingError
+      // with false, its way of saying the stream is unusable, was ignored.
+      result = processPacket(buffer);
       more = true;
     }
 
@@ -84,7 +126,7 @@ PacketSequencingAssembler::serviceQueue(Communication::Receiver & receiver)
       if(buffer != 0)
       {
         buffer->clearFlag(FROM_RECOVERY_QUEUE);
-        capturePacket(buffer);
+        result = capturePacket(buffer);
         more = true;
       }
     }
@@ -106,7 +148,7 @@ PacketSequencingAssembler::serviceQueue(Communication::Receiver & receiver)
       if(buffer != 0)
       {
         buffer->setFlag(FROM_RECOVERY_QUEUE);
-        capturePacket(buffer);
+        result = capturePacket(buffer);
         more = true;
       }
     }
@@ -118,7 +160,7 @@ PacketSequencingAssembler::serviceQueue(Communication::Receiver & receiver)
       // lookahead range, promote them to the lookahead array.
       more = promoteDeferred();
     }
-    if(!more && (nextSequenceNumber_ < gapEnd_ || !deferredQueue_.isEmpty()))
+    if(!more && (sequenceDistance(nextSequenceNumber_, gapEnd_) < 0 || !deferredQueue_.isEmpty()))
     {
       /////////////////////////////////////////////////////////////////////////////////////////////
       // if the next sequence number is < end of the gap we are filling a previously discovered gap
@@ -137,24 +179,43 @@ PacketSequencingAssembler::serviceQueue(Communication::Receiver & receiver)
 }
 
 
-void
+bool
 PacketSequencingAssembler::capturePacket(Communication::LinkedBuffer * buffer)
 {
-  sequence_t sequenceNumber = packetHeaderAnalyzer_.getSequenceNumber(buffer->get(), buffer->used());
+  sequence_t sequenceNumber = 0;
+  try
+  {
+    sequenceNumber = packetHeaderAnalyzer_.getSequenceNumber(buffer->get(), buffer->used());
+  }
+  catch(const std::exception & ex)
+  {
+    // The sequence number used to be read without reference to buffer->used(),
+    // so a datagram shorter than the configured offset and length -- a
+    // keepalive, a probe, a truncated packet, all of which come from the
+    // network -- assembled its number from stale bytes left in the pooled
+    // buffer by a previous packet. That arbitrary number then drove the
+    // routing below: silently discarded as old, filed in the wrong look-ahead
+    // slot, or deferred as far-future, where it could fabricate a gap and
+    // trigger a retransmission request for packets that were never missing.
+    const bool more = builder_.reportDecodingError(ex.what());
+    releasePacket(buffer);
+    return more;
+  }
   if(first_)
   {
     first_ = false;
     nextSequenceNumber_ = sequenceNumber;
   }
-  if(sequenceNumber == nextSequenceNumber_)
+  const int32 distance = sequenceDistance(sequenceNumber, nextSequenceNumber_);
+  if(distance == 0)
   {
-    processPacket(buffer);
+    return processPacket(buffer);
   }
-  else if(sequenceNumber < nextSequenceNumber_)
+  else if(distance < 0)
   {
     releasePacket(buffer);
   }
-  else if(sequenceNumber <  nextSequenceNumber_ + lookAheadCount_)
+  else if(distance < int32(lookAheadCount_))
   {
     if(lookAhead_[sequenceNumber % lookAheadCount_] != 0)
     {
@@ -170,14 +231,16 @@ PacketSequencingAssembler::capturePacket(Communication::LinkedBuffer * buffer)
     /// buffer is beyond look-ahead
     addToDeferred(buffer, sequenceNumber);
   }
+  return true;
 }
 
-void
+bool
 PacketSequencingAssembler::processPacket(Communication::LinkedBuffer * buffer)
 {
-  decodeBuffer(buffer->get(), buffer->used());
+  const bool more = decodeBuffer(buffer->get(), buffer->used());
   releasePacket(buffer);
   ++nextSequenceNumber_;
+  return more;
 }
 
 void
@@ -217,7 +280,7 @@ PacketSequencingAssembler::addToDeferred(Communication::LinkedBuffer * buffer, s
     releasePacket(buffer);
     return;
   }
-  if(sequenceNumber > deferredSequenceNumber)
+  if(sequenceDistance(sequenceNumber, deferredSequenceNumber) > 0)
   {
     deferredQueue_.push(buffer);
     return;
@@ -225,7 +288,7 @@ PacketSequencingAssembler::addToDeferred(Communication::LinkedBuffer * buffer, s
 
   // the other "easy" case is the buffer comes before everything in the deferred queue
   deferredSequenceNumber = packetHeaderAnalyzer_.getSequenceNumber(positionInDeferred->get(), positionInDeferred->used());
-  if(sequenceNumber < deferredSequenceNumber)
+  if(sequenceDistance(sequenceNumber, deferredSequenceNumber) < 0)
   {
     deferredQueue_.push_front(buffer);
     return;
@@ -249,7 +312,7 @@ PacketSequencingAssembler::addToDeferred(Communication::LinkedBuffer * buffer, s
       releasePacket(buffer);
       return;
     }
-    if(sequenceNumber < deferredSequenceNumber)
+    if(sequenceDistance(sequenceNumber, deferredSequenceNumber) < 0)
     {
       buffer->link(positionInDeferred->link());
       positionInDeferred->link(buffer);
@@ -267,13 +330,19 @@ PacketSequencingAssembler::promoteDeferred()
 {
   bool result = false;
   Communication::LinkedBuffer * buffer = deferredQueue_.peek();
-  while(buffer != 0 && packetHeaderAnalyzer_.getSequenceNumber(buffer->get(), buffer->used()) < nextSequenceNumber_)
+  while(buffer != 0
+    && sequenceDistance(
+        packetHeaderAnalyzer_.getSequenceNumber(buffer->get(), buffer->used()),
+        nextSequenceNumber_) < 0)
   {
     releasePacket(deferredQueue_.pop());
     buffer = deferredQueue_.peek();
   }
 
-  while(buffer != 0 && packetHeaderAnalyzer_.getSequenceNumber(buffer->get(), buffer->used()) < nextSequenceNumber_ + lookAheadCount_)
+  while(buffer != 0
+    && sequenceDistance(
+        packetHeaderAnalyzer_.getSequenceNumber(buffer->get(), buffer->used()),
+        nextSequenceNumber_) < int32(lookAheadCount_))
   {
     buffer = deferredQueue_.pop();
     sequence_t sequenceNumber = packetHeaderAnalyzer_.getSequenceNumber(buffer->get(), buffer->used());
@@ -295,7 +364,7 @@ void
 PacketSequencingAssembler::handleGap()
 {
   // If this is a new gap
-  if(nextSequenceNumber_ >= gapEnd_)
+  if(sequenceDistance(nextSequenceNumber_, gapEnd_) >= 0)
   {
     gapEnd_ = findGapEnd();
     gapWait_ = false;
@@ -308,7 +377,7 @@ PacketSequencingAssembler::handleGap()
   else
   {
     sequence_t newGapEnd = findGapEnd();
-    if(newGapEnd < gapEnd_)
+    if(sequenceDistance(newGapEnd, gapEnd_) < 0)
     {
       gapEnd_ = newGapEnd;
     }
@@ -343,7 +412,7 @@ sequence_t
 PacketSequencingAssembler::findGapEnd() const
 {
   sequence_t gapEnd = nextSequenceNumber_ + 1;
-  while( gapEnd < nextSequenceNumber_ + lookAheadCount_)
+  while(sequenceDistance(gapEnd, nextSequenceNumber_) < int32(lookAheadCount_))
   {
     if(lookAhead_[gapEnd % lookAheadCount_] != 0)
     {
@@ -352,6 +421,16 @@ PacketSequencingAssembler::findGapEnd() const
     ++gapEnd;
   }
   Communication::LinkedBuffer * deferredBuffer = deferredQueue_.peek();
-  // assert deferredBuffer != 0
+  if(deferredBuffer == 0)
+  {
+    // The comment here used to state this precondition and leave it at that.
+    // Nothing in the code as written can reach it -- the invariant holds, but
+    // it is distributed across handleGap's branch structure, its caller's
+    // guard, and promoteDeferred's release conditions, so every future reader
+    // has to re-derive it across three functions to be sure this pointer is
+    // not null. An empty window and an empty deferred queue mean the gap is
+    // exactly one packet wide.
+    return nextSequenceNumber_ + 1;
+  }
   return packetHeaderAnalyzer_.getSequenceNumber(deferredBuffer->get(), deferredBuffer->used());
 }
