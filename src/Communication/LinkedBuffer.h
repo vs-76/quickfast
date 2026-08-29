@@ -95,7 +95,7 @@ namespace QuickFAST
       /// @brief Support indexing
       unsigned char & operator[](size_t index)
       {
-        if((capacity_ == 0 && index >= used_) || index >= capacity_)
+        if(index >= indexLimit())
         {
           throw std::range_error("LinkedBuffer: Index out of bounds.");
         }
@@ -105,7 +105,7 @@ namespace QuickFAST
       /// @brief Support indexing constant
       const unsigned char & operator[](size_t index) const
       {
-        if((capacity_ == 0 && index >= used_) || index >= capacity_)
+        if(index >= indexLimit())
         {
           throw std::range_error("LinkedBuffer (const): Index out of bounds.");
         }
@@ -209,6 +209,17 @@ namespace QuickFAST
       uint32 getFlags()const
       {
         return flags_;
+      }
+
+    private:
+      /// @brief How far operator[] may index.
+      ///
+      /// An owned buffer bounds against its allocation; an external one has no
+      /// allocation of its own (capacity_ == 0) and bounds against the bytes
+      /// the supplier said were present.
+      size_t indexLimit() const
+      {
+        return (capacity_ != 0) ? capacity_ : used_;
       }
 
     private:
