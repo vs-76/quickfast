@@ -506,8 +506,13 @@ TemplateBuilder::getOptionalBooleanAttribute(
   AttributeMap::const_iterator it = attributes.find(name);
   if(it != attributes.end())
   {
-    char yn = it->second[0];
-    yn = (char)toupper(yn);
+    // char is signed here, so any attribute value beginning with a byte at or
+    // above 0x80 -- which is every non-ASCII value, and template files are
+    // UTF-8 -- used to hand toupper a negative int. That is outside its
+    // domain: glibc indexes a table offset by 128, so a negative argument
+    // reads before the table's intended start.
+    char yn = static_cast<char>(
+      std::toupper(static_cast<unsigned char>(it->second[0])));
     if(yn != 'Y' && yn != 'N' && yn != 'T' && yn != 'F')
     {
       std::stringstream msg;
@@ -615,6 +620,12 @@ TemplateBuilder::parseInt8(const std::string & tag, const AttributeMap& attribut
   {
     field->setPresence(presence == "mandatory");
   }
+  // ignore_overflows reached parseInt32 and nowhere else, so on the other
+  // seven integer types the attribute was read from the file and thrown
+  // away. It also skipped the validation every other boolean attribute
+  // gets: ignore_overflows="ture" quietly meant false.
+  field->setIgnoreOverflow(
+    getOptionalBooleanAttribute(attributes, "ignore_overflows", false));
   enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
@@ -636,6 +647,12 @@ TemplateBuilder::parseUInt8(const std::string & tag, const AttributeMap& attribu
   {
     field->setPresence(presence == "mandatory");
   }
+  // ignore_overflows reached parseInt32 and nowhere else, so on the other
+  // seven integer types the attribute was read from the file and thrown
+  // away. It also skipped the validation every other boolean attribute
+  // gets: ignore_overflows="ture" quietly meant false.
+  field->setIgnoreOverflow(
+    getOptionalBooleanAttribute(attributes, "ignore_overflows", false));
   enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
@@ -657,6 +674,12 @@ TemplateBuilder::parseInt16(const std::string & tag, const AttributeMap& attribu
   {
     field->setPresence(presence == "mandatory");
   }
+  // ignore_overflows reached parseInt32 and nowhere else, so on the other
+  // seven integer types the attribute was read from the file and thrown
+  // away. It also skipped the validation every other boolean attribute
+  // gets: ignore_overflows="ture" quietly meant false.
+  field->setIgnoreOverflow(
+    getOptionalBooleanAttribute(attributes, "ignore_overflows", false));
   enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
@@ -678,6 +701,12 @@ TemplateBuilder::parseUInt16(const std::string & tag, const AttributeMap& attrib
   {
     field->setPresence(presence == "mandatory");
   }
+  // ignore_overflows reached parseInt32 and nowhere else, so on the other
+  // seven integer types the attribute was read from the file and thrown
+  // away. It also skipped the validation every other boolean attribute
+  // gets: ignore_overflows="ture" quietly meant false.
+  field->setIgnoreOverflow(
+    getOptionalBooleanAttribute(attributes, "ignore_overflows", false));
   enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
@@ -699,11 +728,12 @@ TemplateBuilder::parseInt32(const std::string & tag, const AttributeMap& attribu
   {
     field->setPresence(presence == "mandatory");
   }
-  std::string allowOverflow;
-  if(getOptionalAttribute(attributes, "ignore_overflows", allowOverflow))
-  {
-    field->setIgnoreOverflow(std::tolower(allowOverflow[0]) == 'y');
-  }
+  // ignore_overflows reached parseInt32 and nowhere else, so on the other
+  // seven integer types the attribute was read from the file and thrown
+  // away. It also skipped the validation every other boolean attribute
+  // gets: ignore_overflows="ture" quietly meant false.
+  field->setIgnoreOverflow(
+    getOptionalBooleanAttribute(attributes, "ignore_overflows", false));
   enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
@@ -725,6 +755,12 @@ TemplateBuilder::parseUInt32(const std::string & tag, const AttributeMap& attrib
   {
     field->setPresence(presence == "mandatory");
   }
+  // ignore_overflows reached parseInt32 and nowhere else, so on the other
+  // seven integer types the attribute was read from the file and thrown
+  // away. It also skipped the validation every other boolean attribute
+  // gets: ignore_overflows="ture" quietly meant false.
+  field->setIgnoreOverflow(
+    getOptionalBooleanAttribute(attributes, "ignore_overflows", false));
   enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
@@ -746,6 +782,12 @@ TemplateBuilder::parseInt64(const std::string & tag, const AttributeMap& attribu
   {
     field->setPresence(presence == "mandatory");
   }
+  // ignore_overflows reached parseInt32 and nowhere else, so on the other
+  // seven integer types the attribute was read from the file and thrown
+  // away. It also skipped the validation every other boolean attribute
+  // gets: ignore_overflows="ture" quietly meant false.
+  field->setIgnoreOverflow(
+    getOptionalBooleanAttribute(attributes, "ignore_overflows", false));
   enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
@@ -767,6 +809,12 @@ TemplateBuilder::parseUInt64(const std::string & tag, const AttributeMap& attrib
   {
     field->setPresence(presence == "mandatory");
   }
+  // ignore_overflows reached parseInt32 and nowhere else, so on the other
+  // seven integer types the attribute was read from the file and thrown
+  // away. It also skipped the validation every other boolean attribute
+  // gets: ignore_overflows="ture" quietly meant false.
+  field->setIgnoreOverflow(
+    getOptionalBooleanAttribute(attributes, "ignore_overflows", false));
   enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
@@ -1073,7 +1121,22 @@ TemplateBuilder::parseOp(const std::string & tag, const AttributeMap& attributes
   std::string pmapBitStr;
   if(getOptionalAttribute(attributes, "pmap", pmapBitStr))
   {
-    size_t pmapBit = atoi(pmapBitStr.c_str());
+    // atoi cannot report failure, so pmap="abc" silently meant bit zero -- a
+    // perfectly valid index, and a template accepted with a meaning its author
+    // did not write -- while pmap="-1" became SIZE_MAX. That was never a
+    // memory-safety problem, because checkSpecificField bounds-checks the bit
+    // and refuses it, but a field that is always absent is a stranger failure
+    // than a rejected template.
+    size_t pmapBit = 0;
+    const char * begin = pmapBitStr.c_str();
+    const char * end = begin + pmapBitStr.size();
+    const std::from_chars_result parsed = std::from_chars(begin, end, pmapBit);
+    if(parsed.ec != std::errc() || parsed.ptr != end)
+    {
+      std::stringstream msg;
+      msg << "[ERR S1] Invalid pmap bit \"" << pmapBitStr << "\"";
+      throw TemplateDefinitionError(msg.str());
+    }
     op->setPMapBit(pmapBit);
   }
   enclosingElement(tag)->setFieldOp(op);
