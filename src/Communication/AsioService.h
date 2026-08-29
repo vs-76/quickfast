@@ -133,7 +133,7 @@ namespace QuickFAST
 
       /// Pointer to a boost thread
       typedef std::shared_ptr<std::thread> ThreadPtr;
-      bool stopping_;
+      std::atomic<bool> stopping_;
       std::unique_ptr<ThreadPtr[]> threads_;
       size_t threadCount_;
       size_t threadCapacity_;

@@ -22,6 +22,80 @@ namespace QuickFAST
     class Receiver
     {
     public:
+      /// @brief A counter written by the receiver and read by anyone.
+      ///
+      /// Most of the counters were incremented under bufferMutex_, but the
+      /// public getters read them with no lock and two of them
+      /// (packetsProcessed_, bytesProcessed_) were incremented outside the
+      /// mutex as well. Aligned size_t reads do not tear on the hardware this
+      /// runs on, so the practical damage was limited to stale statistics --
+      /// but it is still formally a race, and it is the kind that fills a
+      /// sanitizer report with noise that hides the findings worth reading.
+      ///
+      /// Relaxed ordering throughout: these counters order nothing and
+      /// synchronise nothing, so a relaxed load and store compile to what a
+      /// plain size_t compiled to. The increments become locked instructions,
+      /// which is the whole cost of the change.
+      ///
+      /// @par Example
+      /// @code
+      /// Statistic packets;
+      /// ++packets;
+      /// size_t howMany = packets;
+      /// @endcode
+      class Statistic
+      {
+      public:
+        /// @brief Construct with an initial value.
+        /// @param value is the starting count.
+        Statistic(size_t value = 0)
+          : value_(value)
+        {
+        }
+
+        /// @brief Read the counter.
+        /// @returns the current count.
+        operator size_t() const
+        {
+          return value_.load(std::memory_order_relaxed);
+        }
+
+        /// @brief Set the counter.
+        /// @param value is the new count.
+        /// @returns this counter.
+        Statistic & operator=(size_t value)
+        {
+          value_.store(value, std::memory_order_relaxed);
+          return *this;
+        }
+
+        /// @brief Add to the counter.
+        /// @param value is the amount to add.
+        /// @returns this counter.
+        Statistic & operator+=(size_t value)
+        {
+          value_.fetch_add(value, std::memory_order_relaxed);
+          return *this;
+        }
+
+        /// @brief Pre-increment.
+        /// @returns the new count.
+        size_t operator++()
+        {
+          return value_.fetch_add(1, std::memory_order_relaxed) + 1;
+        }
+
+        /// @brief Post-increment.
+        /// @returns the count before the increment.
+        size_t operator++(int)
+        {
+          return value_.fetch_add(1, std::memory_order_relaxed);
+        }
+
+      private:
+        std::atomic<size_t> value_;
+      };
+
       Receiver()
         : assembler_(0)
         , bufferSize_(1500)
@@ -133,6 +207,13 @@ namespace QuickFAST
       virtual void stop()
       {
         stopping_ = true;
+      }
+
+      /// @brief Has a stop been requested?
+      /// @returns true once stop() has been called.
+      bool stopping() const
+      {
+        return stopping_;
       }
 
       /// @brief Ignore incoming packets until resume()
@@ -511,10 +592,17 @@ namespace QuickFAST
       size_t bufferSize_;
 
       /// @brief temporarily ignore incoming packets
-      bool paused_;
+      // stop(), pause() and resume() are public, take no lock, and are called
+      // from whatever thread drives shutdown; the flags are read on the
+      // service thread and, for stopping_, on asio completion threads. As
+      // plain bools that is a data race, and the familiar consequence is that
+      // nothing tells the compiler the value can change under a spin: the
+      // load may be hoisted out of the loop and stop() never observed, so the
+      // receiver does not shut down and the multicast socket is never closed.
+      std::atomic<bool> paused_;
 
       /// @brief True when we're trying to shut down
-      bool stopping_;
+      std::atomic<bool> stopping_;
 
       /// @brief Number of reads in progress (usually zero or one)
       unsigned int readsInProgress_;
@@ -522,27 +610,27 @@ namespace QuickFAST
       /////////////
       // Statistics
       /// No buffers avaliable when we could have started a read
-      size_t noBufferAvailable_;
+      Statistic noBufferAvailable_;
       /// Packets accepted (includes error & empty)
-      size_t packetsReceived_;
+      Statistic packetsReceived_;
       /// Bytes in those packets
-      size_t bytesReceived_;
+      Statistic bytesReceived_;
       /// Packets received with errors (usually disconnect or EOF0
-      size_t errorPackets_;
+      Statistic errorPackets_;
       /// Packets received in error due to a linux bug.
-      size_t pausedPackets_;
+      Statistic pausedPackets_;
       /// Packets containing no data (usually during shutdown)
-      size_t emptyPackets_;
+      Statistic emptyPackets_;
       /// Packets containing valid data: queued to be processed
-      size_t packetsQueued_;
+      Statistic packetsQueued_;
       /// Batches of packets collected by queue_
-      size_t batchesProcessed_;
+      Statistic batchesProcessed_;
       /// Individual packets in the batches
-      size_t packetsProcessed_;
+      Statistic packetsProcessed_;
       /// Bytes in the processed packets.
-      size_t bytesProcessed_;
+      Statistic bytesProcessed_;
       /// Largest single packet received
-      size_t largestPacket_;
+      Statistic largestPacket_;
     };
   }
 }

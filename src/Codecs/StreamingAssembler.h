@@ -83,7 +83,7 @@ namespace QuickFAST
     private:
       HeaderAnalyzer & headerAnalyzer_;
       Messages::ValueMessageBuilder & builder_;
-      bool stopping_;
+      std::atomic<bool> stopping_;
       bool waitForCompleteMessage_;
 
       // Nonzero during call to consumeBuffer ->decoder
