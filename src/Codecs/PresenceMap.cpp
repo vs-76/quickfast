@@ -42,17 +42,23 @@ PresenceMap::PresenceMap(size_t bits)
 }
 
 void
-PresenceMap::decode(const unsigned char * buffer, size_t &offset)
+PresenceMap::decode(const unsigned char * buffer, size_t bufferLength, size_t &offset)
 {
   memset(bits_, 0, byteCapacity_);
-  uchar byte = buffer[offset++];
   size_t pos = 0;
-  while((byte & stopBit) == 0)
+  for(;;)
   {
+    if(offset >= bufferLength)
+    {
+      throw EncodingError("[ERR U03] End of buffer while decoding presence map.");
+    }
+    const uchar byte = buffer[offset++];
     appendByte(pos, byte);
-    byte = buffer[offset++];
+    if((byte & stopBit) != 0)
+    {
+      return;
+    }
   }
-  appendByte(pos, byte);
 }
 
 
