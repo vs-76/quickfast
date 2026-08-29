@@ -211,5 +211,10 @@ WorkingBuffer::operator ==(const WorkingBuffer & rhs) const
   {
     return false;
   }
-  return 0 == memcmp(buffer_.get(), rhs.buffer_.get(), size());
+  // The live bytes begin at startPos_, which is nonzero after pop_front() and
+  // for anything built in reverse mode.
+  return 0 == memcmp(
+    buffer_.get() + startPos_,
+    rhs.buffer_.get() + rhs.startPos_,
+    size());
 }
