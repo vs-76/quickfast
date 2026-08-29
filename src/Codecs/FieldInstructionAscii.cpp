@@ -354,7 +354,7 @@ FieldInstructionAscii::decodeTail(
     {
       if(isMandatory())
       {
-        decoder.reportFatal("[ERR D6]", "No value available for mandatory copy field.", identity_);
+        decoder.reportFatal("[ERR D6]", "No value available for mandatory tail field.", identity_);
       }
     }
   }
@@ -643,14 +643,19 @@ FieldInstructionAscii::encodeTail(
   if(accessor.getString(identity_, ValueType::ASCII, valueBuffer))
   {
     std::string value(*valueBuffer);
-    size_t prefix = longestMatchingPrefix(previousValue, value);
-    std::string tailValue = value.substr(prefix);
-    if(tailValue.empty())
+    // An empty tail means "unchanged", which the decoder can only resolve
+    // against an established previous value. An empty *value* also yields an
+    // empty tail, and treating that as unchanged left the decoder with nothing
+    // to resolve: mandatory fields produced a stream it rejected outright, and
+    // optional ones a stream where the field had disappeared.
+    if(previousStatus == Context::OK_VALUE && value == previousValue)
     {
       pmap.setNextField(false);
     }
     else
     {
+      size_t prefix = longestMatchingPrefix(previousValue, value);
+      std::string tailValue = value.substr(prefix);
       pmap.setNextField(true);
       if(!isMandatory())
       {
