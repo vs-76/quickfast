@@ -1019,3 +1019,35 @@ TEST_F(ManagedFileSinkTest, PatternFromConfigIsApplied)
   }();
   EXPECT_NE(std::string::npos, body.find("PFX-payload-SFX"));
 }
+
+TEST_F(ManagedFileSinkTest, ManagedBytesIgnoresUnsizableFiles)
+{
+  // std::filesystem::file_size returns uintmax_t(-1) on failure, so an
+  // unchecked error_code makes the running total wrap to ~1.8e19. That trips
+  // retention_exceeded and evicts logs that should have been kept.
+  ManagedFileSinkConfig cfg = defaultConfig();
+  cfg.compress = false;
+  cfg.recover_uncompressed_on_start = false;
+  cfg.max_managed_bytes = 32ull << 20;
+  auto logger = makeLogger(cfg, "mfs_unsizable");
+  (void)logger;
+
+  const std::size_t plantedBytes = 100;
+  for(int i = 0; i < 2; ++i)
+  {
+    std::ofstream out(
+      dir_ / ("app.2019-01-0" + std::to_string(i) + "_000000.log"),
+      std::ios::binary);
+    out << std::string(plantedBytes, 'x');
+  }
+
+  // Make file_size fail for the active file by putting a directory where it
+  // should be.  This is the persistent form of the race the compress worker
+  // creates by removing files outside the sink mutex.
+  std::error_code ec;
+  fs::remove(cfg.base_path, ec);
+  ASSERT_TRUE(fs::create_directory(cfg.base_path, ec));
+
+  const std::uint64_t total = sink_->managed_bytes();
+  EXPECT_EQ((total), (std::uint64_t(2 * plantedBytes)));
+}
