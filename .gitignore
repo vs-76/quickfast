@@ -23,6 +23,7 @@ lib/
 /bin
 /Output
 /build
+/build-*/
 
 Makefile*
 .depend*

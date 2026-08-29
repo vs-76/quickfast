@@ -77,10 +77,10 @@ namespace
   const char template10MessageB[] =
     "\xC0\x8A";
 
-  const char template20MessageA[] =
+  [[maybe_unused]] const char template20MessageA[] =
     "\xC0\x94\xE0\x81\x8b\x8c";
 
-  const char template20MessageB[] =
+  [[maybe_unused]] const char template20MessageB[] =
     "\xC0\x94\x80\x81";
 
 }

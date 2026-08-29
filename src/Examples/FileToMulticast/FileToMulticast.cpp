@@ -27,9 +27,9 @@ FileToMulticast::FileToMulticast()
 , pauseEveryPass_(false)
 , pauseEveryMessage_(false)
 , verbose_(false)
-, dataFile_(0)
 , strand_(ioService_)
 , timer_(ioService_)
+, dataFile_(0)
 , bufferSize_(0)
 , nPass_(0)
 , nMsg_(0)
@@ -371,5 +371,5 @@ FileToMulticast::fini()
 void
 FileToMulticast::recycle(Communication::LinkedBuffer * emptyBuffer)
 {
-  int todo;
+  (void)emptyBuffer;
 }

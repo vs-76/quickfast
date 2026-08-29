@@ -122,6 +122,7 @@ namespace QuickFAST{
         else
         {
           ok = false;
+          byte = 0;
         }
 
         if(echo_)

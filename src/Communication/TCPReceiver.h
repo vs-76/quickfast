@@ -181,7 +181,7 @@ namespace QuickFAST
 
     private:
 
-      bool fillBuffer(LinkedBuffer * buffer, std::unique_lock<std::mutex>& lock)
+      bool fillBuffer(LinkedBuffer * buffer, [[maybe_unused]] std::unique_lock<std::mutex>& lock)
       {
         socket_.async_receive(
           asio::buffer(buffer->get(), buffer->capacity()),

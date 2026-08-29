@@ -12,7 +12,7 @@ which supports using QuickFAST in the .NET environment. Ask if you want support 
 
 Native library, examples, and tests no longer depend on Boost. Dependencies:
 
-- C++23 compiler (GCC 13+ / Clang 16+)
+- C++23 compiler (verified with g++ 16 and clang++ 22; GCC 13+ / Clang 16+ expected to work)
 - [Xerces-C++](https://xerces.apache.org/xerces-c/)
 - Standalone [Asio](https://github.com/chriskohlhoff/asio) and [GoogleTest](https://github.com/google/googletest) / GoogleMock (fetched by CMake)
 
@@ -22,12 +22,22 @@ Ubuntu/Debian packages:
 sudo apt-get install -y cmake build-essential libxerces-c-dev
 ```
 
-Configure and build:
+Configure and build (first-party code is compiled with `-Wall -Werror -pedantic`):
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ctest --test-dir build --output-on-failure
+```
+
+Dual-compiler check:
+
+```bash
+cmake -S . -B build-gcc16 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++-16
+cmake --build build-gcc16 -j && ctest --test-dir build-gcc16 --output-on-failure
+
+cmake -S . -B build-clang22 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++-22
+cmake --build build-clang22 -j && ctest --test-dir build-clang22 --output-on-failure
 ```
 
 Optional flags: `-DQUICKFAST_BUILD_TESTS=OFF`, `-DQUICKFAST_BUILD_EXAMPLES=OFF`.

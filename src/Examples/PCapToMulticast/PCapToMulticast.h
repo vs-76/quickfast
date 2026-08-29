@@ -57,9 +57,6 @@ namespace QuickFAST{
       size_t burst_;
       bool pauseEveryPass_;
       bool pauseEveryMessage_;
-      bool force32_;
-      bool force64_;
-      size_t packetChecksumSize_;
       bool verbose_;
 
       asio::io_context ioService_;

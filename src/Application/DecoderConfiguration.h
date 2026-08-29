@@ -72,7 +72,7 @@ namespace QuickFAST{
             const std::string & bindIP)
           : name_(name)
           , groupIP_(groupIP)
-          , portNumber_(13014)
+          , portNumber_(portNumber)
           , listenInterfaceIP_(listenIP)
           , bindIP_(bindIP)
         {

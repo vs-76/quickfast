@@ -112,7 +112,7 @@ namespace
 
 
 // template string where template 5 (nxAccountGroupDefinition) comes BEFORE template 4 (nxAccountDefinition)
-  const char id5FirstTemplateString[] = "\n\
+  [[maybe_unused]] const char id5FirstTemplateString[] = "\n\
 <templates>\n\
   <template id=\"5\" name=\"nxAccountGroupDefinition\">\n\
     <typeRef name=\"nxAccountGroupDefinition\"/>\n\

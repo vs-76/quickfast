@@ -28,8 +28,6 @@ StreamingAssembler::StreamingAssembler(
   , skipBlock_(false)
   , blockSize_(0)
   , inDecoder_(false)
-  , messageCount_(0)
-  , byteCount_(0)
   , messageLimit_(0)
 {
 }

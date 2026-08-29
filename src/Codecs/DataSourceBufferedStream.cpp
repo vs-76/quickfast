@@ -8,7 +8,6 @@ using namespace ::QuickFAST::Codecs;
 
 DataSourceBufferedStream::DataSourceBufferedStream(std::istream & stream)
 : first_(true)
-, pos_(0)
 , end_(0)
 {
   stream.seekg(0,std::ios::end);

@@ -92,18 +92,14 @@ AsioService::runThreads(size_t threadCount /*= 0*/, bool useThisThread /* = true
 void
 AsioService::run()
 {
-  long tc = 0;
   if(usingSharedService_)
   {
-    tc = ++sharedRunningThreadCount_;
+    ++sharedRunningThreadCount_;
   }
   else
   {
-    tc = ++runningThreadCount_;
+    ++runningThreadCount_;
   }
-//  std::ostringstream msg;
-//  msg << '{' << (void *) this << " :: " << (void *) &ioService_ << "} Starting AsioService thread #" << tc << std::endl;
-//  std::cout << msg.str();
 
   size_t count = 1;
   while(! stopping_ && count != 0)

@@ -128,8 +128,8 @@ namespace QuickFAST
       ///
       /// Process data from an external buffer;
       virtual void receiveBuffer(
-        const unsigned char * buffer,
-        size_t used
+        [[maybe_unused]] const unsigned char * buffer,
+        [[maybe_unused]] size_t used
         )
       {
         throw std::logic_error("Unexpected call to Communications::Receiver::receiveBuffer()");

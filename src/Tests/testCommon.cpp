@@ -341,9 +341,6 @@ TEST(QuickFAST, TestStringBuffer)
   const char * st1("12345");
   const char * st2("6789");
 
-  const unsigned char * ut1(reinterpret_cast<const unsigned char *>("Hello"));
-  const unsigned char * ut2(reinterpret_cast<const unsigned char *>("World"));
-
   String10 s1(st1);
   s1 += st2;
   EXPECT_TRUE(s1 == "123456789");

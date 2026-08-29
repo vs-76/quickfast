@@ -558,11 +558,12 @@ namespace{
 
 TEST(QuickFAST, TestSmallestValue)
 {
-  // Be sure the compiler and CPU agree that this number is its own negative.
+  // Be sure the compiler and CPU agree that this number is its own negative
+  // under two's-complement wrap (via unsigned, so the check is well-defined).
   // If this check fails, encoding this number will produce incorrect results.
-  // This check makes the reason for the failure more obvious (defective compiler I think)
-  // Fortunately the number doesn't show up all that often.
-  EXPECT_EQ((INT64_SINGULARITY), (-INT64_SINGULARITY));
+  const auto singularity_neg = static_cast<long long>(
+    0ull - static_cast<unsigned long long>(INT64_SINGULARITY));
+  EXPECT_EQ(INT64_SINGULARITY, singularity_neg);
   std::string xml = QuickFAST::TestPaths::resource("/src/Tests/resources/smallest_value.xml");
   smallest_value_test (xml);
 }

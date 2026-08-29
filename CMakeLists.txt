@@ -23,8 +23,13 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(asio)
 add_library(asio INTERFACE)
 add_library(asio::asio ALIAS asio)
-target_include_directories(asio INTERFACE ${asio_SOURCE_DIR}/asio/include)
+target_include_directories(asio SYSTEM INTERFACE ${asio_SOURCE_DIR}/asio/include)
 target_compile_definitions(asio INTERFACE ASIO_STANDALONE ASIO_NO_DEPRECATED)
+
+# Strict warnings for first-party code (deps use SYSTEM includes / silenced below).
+# Exact set required for dual-compiler CI: -Werror -Wall -pedantic
+set(QUICKFAST_WARNING_FLAGS -Wall -Werror -pedantic)
+
 
 set(QUICKFAST_LIB_SOURCES
   src/Application/CommandArgParser.cpp
@@ -131,9 +136,7 @@ target_link_libraries(QuickFAST
     XercesC::XercesC
 )
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-  target_compile_options(QuickFAST PRIVATE -Wall -Wno-unused-parameter)
-endif()
+target_compile_options(QuickFAST PRIVATE ${QUICKFAST_WARNING_FLAGS})
 
 set_target_properties(QuickFAST PROPERTIES
   OUTPUT_NAME QuickFAST
@@ -147,6 +150,7 @@ set_target_properties(QuickFAST PROPERTIES
 if(QUICKFAST_BUILD_TESTS)
   set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
   set(BUILD_GMOCK ON CACHE BOOL "" FORCE)
+  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
   FetchContent_Declare(
     googletest
     GIT_REPOSITORY https://github.com/google/googletest.git
@@ -154,6 +158,11 @@ if(QUICKFAST_BUILD_TESTS)
     GIT_SHALLOW    TRUE
   )
   FetchContent_MakeAvailable(googletest)
+  foreach(_gtest_target gtest gtest_main gmock gmock_main)
+    if(TARGET ${_gtest_target})
+      target_compile_options(${_gtest_target} PRIVATE -w)
+    endif()
+  endforeach()
 
   enable_testing()
   include(GoogleTest)
@@ -168,6 +177,7 @@ if(QUICKFAST_BUILD_TESTS)
       GTest::gtest_main
       GTest::gmock
   )
+  target_compile_options(QuickFASTTest PRIVATE ${QUICKFAST_WARNING_FLAGS})
   set_target_properties(QuickFASTTest PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
   )
@@ -191,6 +201,7 @@ if(QUICKFAST_BUILD_EXAMPLES)
     add_executable(${name} ${ARGN} ${QUICKFAST_EXAMPLE_COMMON})
     target_include_directories(${name} PRIVATE src/Examples)
     target_link_libraries(${name} PRIVATE QuickFAST)
+    target_compile_options(${name} PRIVATE ${QUICKFAST_WARNING_FLAGS})
     set_target_properties(${name} PROPERTIES
       RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
     )
@@ -224,3 +235,4 @@ if(QUICKFAST_BUILD_EXAMPLES)
 endif()
 
 message(STATUS "QuickFAST ${PROJECT_VERSION}: C++${CMAKE_CXX_STANDARD}, XercesC ${XercesC_VERSION} (no Boost)")
+message(STATUS "Warning flags: ${QUICKFAST_WARNING_FLAGS}")

@@ -35,7 +35,6 @@ namespace QuickFAST{
     private:
       bool first_;
       std::unique_ptr<unsigned char[]> buffer_;
-      size_t pos_;
       size_t end_;
     };
   }

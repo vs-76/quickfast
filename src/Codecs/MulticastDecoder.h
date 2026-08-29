@@ -185,8 +185,6 @@ namespace QuickFAST{
       Codecs::MessagePerPacketAssemblerPtr assembler_;
       Messages::ValueMessageBuilder * builder_;
       size_t messageLimit_;
-      size_t byteCount_;
-      size_t messageCount_;
       bool strict_;
       std::ostream * verboseOut_;
     };

@@ -171,8 +171,8 @@ namespace QuickFAST
       /// @param fileName the file to read
       /// @param additionalAttributes for use in the Windows CreateFile function
       AsynchFileReceiver(
-        const std::string & fileName,
-        uint32 additionalAttributes = 0
+        [[maybe_unused]] const std::string & fileName,
+        [[maybe_unused]] uint32 additionalAttributes = 0
         )
         : AsynchReceiver()
       {
@@ -184,9 +184,9 @@ namespace QuickFAST
       /// @param fileName the file to read
       /// @param additionalAttributes for use in the Windows CreateFile function
       AsynchFileReceiver(
-        asio::io_context & ioService,
-        const std::string & fileName,
-        uint32 additionalAttributes = 0
+        [[maybe_unused]] asio::io_context & ioService,
+        [[maybe_unused]] const std::string & fileName,
+        [[maybe_unused]] uint32 additionalAttributes = 0
         )
         : AsynchReceiver()
       {
@@ -206,7 +206,7 @@ namespace QuickFAST
 
     private:
 
-      bool fillBuffer(LinkedBuffer * buffer, std::unique_lock<std::mutex>& lock)
+      bool fillBuffer([[maybe_unused]] LinkedBuffer * buffer, [[maybe_unused]] std::unique_lock<std::mutex>& lock)
       {
         return false;
       }

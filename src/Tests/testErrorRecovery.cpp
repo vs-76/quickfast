@@ -81,7 +81,7 @@ namespace
   PACKET(28);
   PACKET(29);
 
-  Communication::LinkedBuffer * buffers[] =
+  [[maybe_unused]] Communication::LinkedBuffer * buffers[] =
   {
     & buffer0,& buffer1,& buffer2,& buffer3,& buffer4,& buffer5,& buffer6,& buffer7,& buffer8,& buffer9,
     & buffer10,& buffer11,& buffer12,& buffer13,& buffer14,& buffer15,& buffer16,& buffer17,& buffer18,& buffer19,
@@ -89,7 +89,7 @@ namespace
     0
   };
 
-  Communication::LinkedBuffer * bufferAs[] =
+  [[maybe_unused]] Communication::LinkedBuffer * bufferAs[] =
   {
     & bufferA0,& bufferA1,& bufferA2,& bufferA3,& bufferA4,& bufferA5,& bufferA6,& bufferA7,& bufferA8,& bufferA9,
     & bufferA10,& bufferA11,& bufferA12,& bufferA13,& bufferA14,& bufferA15,& bufferA16,& bufferA17,& bufferA18,& bufferA19,

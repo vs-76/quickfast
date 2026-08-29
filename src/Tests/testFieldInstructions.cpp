@@ -282,7 +282,7 @@ TEST(QuickFAST, test_Spec_1x1_Appendix3_1_1_1)
 
 TEST(QuickFAST, test_Spec_1x1_Appendix3_1_1_2)
 {
-//Int32 Example – Mandatory Positive Number
+//Int32 Example - Mandatory Positive Number
 //<int32 id="1" presence="mandatory" name="Value"/>
 //Input Value     942755
 //Native  Hex     0x0e 0x62 0xa3
@@ -346,7 +346,7 @@ TEST(QuickFAST, test_Spec_1x1_Appendix3_1_1_2)
 
 TEST(QuickFAST, test_Spec_1x1_Appendix3_1_1_3)
 {
-//Int32 Example – Optional Negative Number
+//Int32 Example - Optional Negative Number
 //<int32 id="1" presence="optional" name="Value"/>
 //Input Value       -942755
 //Native  Hex       0xf1 0x9d 0x5d
@@ -409,7 +409,7 @@ TEST(QuickFAST, test_Spec_1x1_Appendix3_1_1_3)
 
 TEST(QuickFAST, test_Spec_1x1_Appendix3_1_1_4)
 {
-//Int32 Example – Mandatory Negative Number
+//Int32 Example - Mandatory Negative Number
 //<int32 id="1" presence="mandatory" name="Value"/>
 //Input Value -7942755
 //Native Hex  0xff 0x86 0xcd 0x9d
@@ -472,7 +472,7 @@ TEST(QuickFAST, test_Spec_1x1_Appendix3_1_1_4)
 
 TEST(QuickFAST, test_Spec_1x1_Appendix3_1_1_5)
 {
-//Int32 Example – Mandatory Positive Number with sign-bit extension
+//Int32 Example - Mandatory Positive Number with sign-bit extension
 //<int32 id="1" presence="mandatory" name="Value"/>
 //Input Value   8193
 //Native Hex    0x20 0x01
@@ -536,7 +536,7 @@ TEST(QuickFAST, test_Spec_1x1_Appendix3_1_1_5)
 
 TEST(QuickFAST, test_Spec_1x1_Appendix3_1_1_6)
 {
-//Int32 Example – Mandatory Negative Number with sign-bit extension
+//Int32 Example - Mandatory Negative Number with sign-bit extension
 //<int32 id="1" presence="mandatory" name="Value"/>
 //Input Value   -8193
 //Native Hex    0xff 0xdf 0xff
@@ -602,7 +602,7 @@ TEST(QuickFAST, test_Spec_1x1_Appendix3_1_1_6)
 
 TEST(QuickFAST, test_Spec_1x1_Appendix3_1_2_1a)
 {
-//uInt32 Example – Optional Number
+//uInt32 Example - Optional Number
 //<uInt32 id="1" presence="optional" name="Value"/>
 
 //Input Value   NULL
@@ -664,7 +664,7 @@ TEST(QuickFAST, test_Spec_1x1_Appendix3_1_2_1a)
 
 TEST(QuickFAST, test_Spec_1x1_Appendix3_1_2_1b)
 {
-//uInt32 Example – Optional Number
+//uInt32 Example - Optional Number
 //<uInt32 id="1" presence="optional" name="Value"/>
 
 //Input Value   0
@@ -730,7 +730,7 @@ TEST(QuickFAST, test_Spec_1x1_Appendix3_1_2_1b)
 
 TEST(QuickFAST, test_Spec_1x1_Appendix3_1_2_1c)
 {
-//uInt32 Example – Optional Number
+//uInt32 Example - Optional Number
 //<uInt32 id="1" presence="optional" name="Value"/>
 
 //Input Value   1
@@ -796,7 +796,7 @@ TEST(QuickFAST, test_Spec_1x1_Appendix3_1_2_1c)
 
 TEST(QuickFAST, test_Spec_1x1_Appendix3_1_2_1d)
 {
-//uInt32 Example – Optional Number
+//uInt32 Example - Optional Number
 //<uInt32 id="1" presence="optional" name="Value"/>
 
 //Input Value   942755
@@ -862,7 +862,7 @@ TEST(QuickFAST, test_Spec_1x1_Appendix3_1_2_1d)
 
 TEST(QuickFAST, test_Spec_1x1_Appendix3_1_2_2a)
 {
-//uInt32 Example – Mandatory Number
+//uInt32 Example - Mandatory Number
 //<uInt32 id="1" presence="mandatory" name="Value"/>
 
 //Input Value   0
@@ -928,7 +928,7 @@ TEST(QuickFAST, test_Spec_1x1_Appendix3_1_2_2a)
 
 TEST(QuickFAST, test_Spec_1x1_Appendix3_1_2_2b)
 {
-//uInt32 Example – Mandatory Number
+//uInt32 Example - Mandatory Number
 //<uInt32 id="1" presence="mandatory" name="Value"/>
 
 //Input Value   1
@@ -994,7 +994,7 @@ TEST(QuickFAST, test_Spec_1x1_Appendix3_1_2_2b)
 
 TEST(QuickFAST, test_Spec_1x1_Appendix3_1_2_2c)
 {
-//uInt32 Example – Optional Number
+//uInt32 Example - Optional Number
 //<uInt32 id="1" presence="optional" name="Value"/>
 
 //Input Value   942755
@@ -1716,7 +1716,7 @@ TEST(QuickFAST, test_Spec_1x1_Appendix3_1_4_2b)
 
 TEST(QuickFAST, test_Spec_1x1_Appendix3_1_5_1)
 {
-//Decimal Example – Mandatory Positive Decimal
+//Decimal Example - Mandatory Positive Decimal
 //<decimal id="1" presence="mandatory" name="Value"/>
 //Input Value  94275500
 //Decomposed Input Value 942755 * 10 ^ 2
@@ -1781,7 +1781,7 @@ TEST(QuickFAST, test_Spec_1x1_Appendix3_1_5_1)
 
 TEST(QuickFAST, test_Spec_1x1_Appendix3_1_5_2)
 {
-//Decimal Example – Mandatory Positive Decimal with Scaled Mantissa
+//Decimal Example - Mandatory Positive Decimal with Scaled Mantissa
 //<decimal id="1" presence="mandatory" name="Value"/>
 //Input Value  94275500
 //Decomposed Input Value 942755 * 10 ^ 2
@@ -1845,7 +1845,7 @@ TEST(QuickFAST, test_Spec_1x1_Appendix3_1_5_2)
 
 TEST(QuickFAST, test_Spec_1x1_Appendix3_1_5_3)
 {
-//Decimal Example – Optional Positive Decimal
+//Decimal Example - Optional Positive Decimal
 //<decimal id="1" presence="optional" name="Value"/>
 //Input Value  94275500
 //Decomposed Input Value 942755 * 10 ^ 2
@@ -1909,7 +1909,7 @@ TEST(QuickFAST, test_Spec_1x1_Appendix3_1_5_3)
 
 TEST(QuickFAST, test_Spec_1x1_Appendix3_1_5_4)
 {
-//Decimal Example – Mandatory Positive Decimal negative exponent
+//Decimal Example - Mandatory Positive Decimal negative exponent
 //<decimal id="1" presence="mandatory" name="Value"/>
 //Input Value  9427.55
 //Decomposed Input Value 942755 * 10 ^ 2
@@ -1973,7 +1973,7 @@ TEST(QuickFAST, test_Spec_1x1_Appendix3_1_5_4)
 
 TEST(QuickFAST, test_Spec_1x1_Appendix3_1_5_5)
 {
-//Decimal Example – Optional Negative Decimal negative exponent
+//Decimal Example - Optional Negative Decimal negative exponent
 //<decimal id="1" presence="optional" name="Value"/>
 //Input Value  -9427.55
 //Decomposed Input Value 942755 * 10 ^ 2
@@ -2036,7 +2036,7 @@ TEST(QuickFAST, test_Spec_1x1_Appendix3_1_5_5)
 
 TEST(QuickFAST, test_Spec_1x1_Appendix3_1_5_6)
 {
-//Decimal Example – Optional Positive Decimal with single field operator
+//Decimal Example - Optional Positive Decimal with single field operator
 //<decimal id="1" presence="optional" name="Value"> <copy/> </decimal>
 //Input Value  9427.55
 //Decomposed Input Value 942755 * 10 ^ 2
@@ -2103,7 +2103,7 @@ TEST(QuickFAST, test_Spec_1x1_Appendix3_1_5_6)
 
 TEST(QuickFAST, test_OptionalDecimalZeroExponent)
 {
-//Decimal Example – Optional Positive Decimal with single field operator
+//Decimal Example - Optional Positive Decimal with single field operator
 //<decimal id="1" presence="optional" name="Value"> <copy/> </decimal>
 //Input Value  .942755
 //Decomposed Input Value 942755 * 10 ^ 0
@@ -2170,7 +2170,7 @@ TEST(QuickFAST, test_OptionalDecimalZeroExponent)
 
 TEST(QuickFAST, test_Spec_1x1_Appendix3_1_5_7)
 {
-//Decimal Example – Optional Positive Decimal with individual field operators
+//Decimal Example - Optional Positive Decimal with individual field operators
 // <decimal id="1" presence="optional" name="Value">
 //   <exponent> <copy/> </exponent>
 //   <mantissa> <delta/> </mantissa>
@@ -2242,7 +2242,7 @@ TEST(QuickFAST, test_Spec_1x1_Appendix3_1_5_7)
 
 TEST(QuickFAST, test_Spec_1x1_Appendix3_1_5_8)
 {
-    //Decimal Example – Optional Negative Decimal with sign bit extension
+    //Decimal Example - Optional Negative Decimal with sign bit extension
     // <decimal id="1" presence="optional" name="Value"/>
     // Input   Exp:Man Pmap  FAST Exp:Man Hex/Binary
     // -8.193  -3:8193 1     FD:7F 3F FF / 0111111 00111111 11111111
@@ -2301,7 +2301,7 @@ TEST(QuickFAST, test_Spec_1x1_Appendix3_1_5_8)
 
 TEST(QuickFAST, test_issue_31)
 {
-  //Decimal Example – Decimal with individual field operators
+  //Decimal Example - Decimal with individual field operators
   // Contained in optional group
   // this is the same as test_Spec_1x1_Appendix3_1_5_7 except for the group
   // <group name="Group" presence="optional">

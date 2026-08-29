@@ -82,12 +82,11 @@ namespace QuickFAST
 
       void open()
       {
-        int todo;
       }
 
       void send(LinkedBuffer * buffer)
       {
-        int todo;
+        (void)buffer;
       }
 
       /// @brief Provide direct access to the internal asio socket.

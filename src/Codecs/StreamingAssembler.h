@@ -92,8 +92,6 @@ namespace QuickFAST
 
       bool inDecoder_;
 
-      size_t messageCount_;
-      size_t byteCount_;
       size_t messageLimit_;
     };
   }

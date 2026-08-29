@@ -155,7 +155,7 @@ TEST(QuickFAST, testFieldOperationDispatch)
 
 TEST(QuickFAST, testAppendix_3_2_1_1)
 {
-// Constant Operator Example – Mandatory Unsigned Integer
+// Constant Operator Example - Mandatory Unsigned Integer
 // <uInt32 id="1" presence="mandatory" name="Flag"> <constant value="0"/></uInt32>
 // Input   Prior   Encoded   Pmap      FAST Hex/Binary
 // 0       N/A     None      No        None
@@ -231,7 +231,7 @@ TEST(QuickFAST, testAppendix_3_2_1_1)
 
 TEST(QuickFAST, testAppendix_3_2_1_2)
 {
-//Constant Operator Example – Optional Unsigned Integer
+//Constant Operator Example - Optional Unsigned Integer
 // <uInt32 id="1" presence="optional" name="Flag"> <constant value="0"/> </uInt32>
 // Input  Prior Encoded Pmap FAST Hex/Binary
 // 0      N/A   None    1    None
@@ -309,7 +309,7 @@ TEST(QuickFAST, testAppendix_3_2_1_2)
 
 TEST(QuickFAST, testAppendix_3_2_2_1)
 {
-  // Default Operator Example – Mandatory Unsigned Integer
+  // Default Operator Example - Mandatory Unsigned Integer
   // <uInt32 id="1" presence="mandatory" name="Flag"> <default value="0"/> </uInt32>// Input  Prior Encoded Pmap FAST Hex/Binary
   // Input  Prior Encoded PMap  FAST Hex/Binary
   // 0      N/A   None    0     None
@@ -392,7 +392,7 @@ TEST(QuickFAST, testAppendix_3_2_2_1)
 
 TEST(QuickFAST, testAppendix_3_2_2_2)
 {
-  // Default Operator Example for NULL– Optional Unsigned Integer
+  // Default Operator Example for NULL- Optional Unsigned Integer
   // <uInt32 id="1" presence="optional" name="Flag"> <default/> </uInt32>
   // Input  Prior Encoded PMap  FAST Hex/Binary
   // none   N/A   None    0     None
@@ -446,7 +446,7 @@ TEST(QuickFAST, testAppendix_3_2_2_2)
 
 TEST(QuickFAST, testAppendix_3_2_3_1)
 {
-  // Copy Operator Example – Mandatory String
+  // Copy Operator Example - Mandatory String
   // <string id="1" presence="mandatory" name="Flag"> <copy/> </string>
   // Input  Prior Encoded PMap  FAST Hex/Binary
   // CME    None  CME     1     0x43 0x4d 0xc5 /01000011 01001101 11000101
@@ -542,7 +542,7 @@ TEST(QuickFAST, testAppendix_3_2_3_1)
 
 TEST(QuickFAST, testAppendix_3_2_3_2)
 {
-  // Copy Operator Example for NULL – Optional String
+  // Copy Operator Example for NULL - Optional String
   // <string id="1" presence="optional" name="Flag"> <copy/> </string>
   // Input  Prior Encoded PMap  FAST Hex/Binary
   // None   None  Null    1     0x80 / 10000000
@@ -559,7 +559,7 @@ TEST(QuickFAST, testAppendix_3_2_3_2)
   //  is changed to empty.
   //
   // The revised example:
-  // Copy Operator Example for NULL – Optional String
+  // Copy Operator Example for NULL - Optional String
   // <string id="1" presence="optional" name="Flag"> <copy/> </string>
   // Input  Prior Encoded PMap  FAST Hex/Binary
   // None   None  Null    0     None
@@ -646,7 +646,7 @@ TEST(QuickFAST, testAppendix_3_2_3_2)
 
 TEST(QuickFAST, testAppendix_3_2_4_1)
 {
-  // Increment Operator Example – Mandatory Unsigned Integer
+  // Increment Operator Example - Mandatory Unsigned Integer
   // <uInt32 id="1" presence="mandatory" name="Flag"> <increment value="1"/> </uInt32>
   // Input  Prior Encoded PMap  FAST Hex/Binary
   // 1      1     None    0     None
@@ -755,7 +755,7 @@ TEST(QuickFAST, testAppendix_3_2_4_1)
 
 TEST(QuickFAST, testAppendix_3_2_5_1)
 {
-  // Delta Operator Example – Mandatory Signed Integer
+  // Delta Operator Example - Mandatory Signed Integer
   // <int32 id="1" presence="mandatory" name="Price"> <delta/> </int32>
   // Input  Prior   Encoded PMap  FAST Hex/Binary
   // 942755 0       942755  n/a   0x39 0x45 0xa3 /00111001 01000101 10100011
@@ -856,7 +856,7 @@ TEST(QuickFAST, testAppendix_3_2_5_1)
 
 TEST(QuickFAST, testAppendix_3_2_5_2)
 {
-  // Delta Operator Example – Mandatory Decimal
+  // Delta Operator Example - Mandatory Decimal
   // <decimal id="1" presence="mandatory" name="Price"> <delta/> </decimal>
   // No PMAP bits are used
   // Input    Prior     Encoded     FAST Hex/Binary
@@ -950,7 +950,7 @@ TEST(QuickFAST, testAppendix_3_2_5_2)
 
 TEST(QuickFAST, testAppendix_3_2_5_3)
 {
-  // Delta Operator Example – Mandatory Decimal with Initial Value
+  // Delta Operator Example - Mandatory Decimal with Initial Value
   // <decimal id="1" presence="mandatory" name="Price"> <delta value="12000"/> </decimal>
   // No PMAP bits are used
   // Input    Prior     Encoded     FAST Hex/Binary
@@ -1045,7 +1045,7 @@ TEST(QuickFAST, testAppendix_3_2_5_3)
 
 TEST(QuickFAST, testAppendix_3_2_5_4)
 {
-  // Delta Operator Example – Mandatory String
+  // Delta Operator Example - Mandatory String
   // <string id="1" presence="mandatory" name="Security"> <delta/> </string>
   // No PMAP bits are used
   // Input    Prior     Encoded     FAST Hex/Binary
@@ -1152,7 +1152,7 @@ TEST(QuickFAST, testAppendix_3_2_5_4)
 TEST(QuickFAST, testAsciiTailMandatory)
 {
   //  Not in spec
-  // Tail Operator Example – Mandatory String
+  // Tail Operator Example - Mandatory String
   // <string id="1" presence="mandatory" name="Security"> <tail/> </string>
   // Input    Prior   PMAP  Encoded     FAST Hex/Binary
   // GEH6     Empty   1     GEH6        47 45 48 B6
@@ -1245,7 +1245,7 @@ TEST(QuickFAST, testAsciiTailMandatory)
 
 TEST(QuickFAST, testAppendix_3_2_6) // SPEC ERROR: _3 s/b _1
 {
-  // Multiple Pmap Slot Example – Optional Positive Decimal with individual field operators
+  // Multiple Pmap Slot Example - Optional Positive Decimal with individual field operators
 
   // <decimal id="1" presence="optional" name="Value">
   //    <exponent> <copy/> </exponent>
@@ -1357,7 +1357,7 @@ TEST(QuickFAST, testAppendix_3_2_6) // SPEC ERROR: _3 s/b _1
 
 TEST(QuickFAST, test_Utf8_Copy_Mandatory)
 {
-  // Copy Operator Example – Mandatory Unicode String
+  // Copy Operator Example - Mandatory Unicode String
   // <string id="1" charset="unicode" presence="mandatory" name="Flag"> <copy/> </string>
   // Input  Prior Encoded PMap  FAST Hex/Binary
   // CME    None  3:CME   1     83 43 4d 45 /10000011 01000011 01001101 01000101
@@ -1451,7 +1451,7 @@ TEST(QuickFAST, test_Utf8_Copy_Mandatory)
 
 TEST(QuickFAST, test_Utf8_Copy_optional)
 {
-  // Copy Operator Example for NULL – Optional Unicode String
+  // Copy Operator Example for NULL - Optional Unicode String
   // <string id="1" charset="unicode" presence="optional" name="Flag"> <copy/> </string>
   // Input  Prior Encoded PMap  FAST Hex/Binary
   // None   None  Null    1     80 / 10000000
@@ -1467,7 +1467,7 @@ TEST(QuickFAST, test_Utf8_Copy_optional)
   //  is changed to empty.
   //
   // The revised example:
-  // Copy Operator Example for NULL – Optional Unicode String
+  // Copy Operator Example for NULL - Optional Unicode String
   // <string id="1" charset="unicode" presence="optional" name="Flag"> <copy/> </string>
   // Input  Prior Encoded PMap  FAST Hex/Binary
   // None   None  Null    0     None
@@ -1556,7 +1556,7 @@ TEST(QuickFAST, test_Utf8_Copy_optional)
 
 TEST(QuickFAST, test_Utf8_Delta_Mandatory)
 {
-  // Delta Operator Example – Mandatory Unicode String
+  // Delta Operator Example - Mandatory Unicode String
   // <string id="1" charset="unicode" presence="mandatory" name="Security"> <delta/> </string>
   // No PMAP bits are used
   // Input    Prior     Encoded     FAST Hex/Binary
@@ -1663,7 +1663,7 @@ TEST(QuickFAST, test_Utf8_Delta_Mandatory)
 TEST(QuickFAST, testUtf8_Tail_Mandatory)
 {
   //  Not in spec
-  // Tail Operator Example – Mandatory Unicode String
+  // Tail Operator Example - Mandatory Unicode String
   // <string id="1" charset="unicode" presence="mandatory" name="Security"> <tail/> </string>
   // Input    Prior   PMAP  Encoded     FAST Hex/Binary
   // GEH6     Empty   1     4:GEH6      84:47 45 48 36
@@ -2400,7 +2400,7 @@ MDEntryType     "2"      "2"   --      0      --
 
 TEST(QuickFAST, testAppendix_optionalDefaultNonNullUnsignedInt)
 {
-/* Default Operator Example for nonnull– Optional Unsigned Integer
+/* Default Operator Example for nonnull- Optional Unsigned Integer
    <uInt32 id="1" presence="optional" name="Flag"> <default value="1"/> </uInt32>
 
 Name    Input  Prior Encoded PMap  FAST Hex/Binary
@@ -2510,7 +2510,7 @@ Flag    126    1     126+1   1     FF
 
 TEST(QuickFAST, testAppendix_optionalDefaultNonNullSignedInt)
 {
-/* Default Operator Example for nonnull– Optional signed Integer
+/* Default Operator Example for nonnull- Optional signed Integer
    <int32 id="1" presence="optional" name="Flag"> <default value="1"/> </uInt32>
 
 Name    Input  Prior Encoded PMap  FAST Hex/Binary

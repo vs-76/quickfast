@@ -196,7 +196,7 @@ namespace QuickFAST{
       ///
       /// @param startGap the sequence number of the first missing packet
       /// @param endGap the sequence number of the first packet present after the gap.
-      virtual void reportGap(sequence_t startGap, sequence_t endGap)
+      virtual void reportGap([[maybe_unused]] sequence_t startGap, [[maybe_unused]] sequence_t endGap)
       {
       }
 

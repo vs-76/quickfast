@@ -60,7 +60,7 @@ namespace QuickFAST{
       /// repeatedly and will produce the same result each time.
       /// @param buffer points to the header
       /// @returns the sequence number;
-      virtual uint32 getSequenceNumber(const uchar * buffer) const
+      virtual uint32 getSequenceNumber([[maybe_unused]] const uchar * buffer) const
       {
         return 0;
       }

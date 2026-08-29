@@ -128,7 +128,7 @@ namespace QuickFAST
         return count;
       }
 
-      virtual void runThreads(size_t threadCount = 0, bool useThisThread = true)
+      virtual void runThreads([[maybe_unused]] size_t threadCount = 0, bool useThisThread = true)
       {
         if(useThisThread)
         {
