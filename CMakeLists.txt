@@ -20,6 +20,11 @@ option(QUICKFAST_SANITIZE_THREAD "Build with ThreadSanitizer (-fsanitize=thread)
 option(QUICKFAST_USE_SPDLOG
   "Build SpdlogLogger + managed_file_sink_mt (spdlog + zlib)"
   OFF)
+option(QUICKFAST_USE_LIBPCAP
+  "Read capture files via libpcap (adds pcapng and nanosecond pcap support)"
+  ON)
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 # The test-only sink hook is compiled into the shared library, so a shipping build
 # (QUICKFAST_BUILD_TESTS=OFF) must not carry it.
 option(QUICKFAST_ENABLE_TEST_HOOKS
@@ -230,6 +235,12 @@ target_link_libraries(QuickFAST
     XercesC::XercesC
 )
 
+if(QUICKFAST_USE_LIBPCAP)
+  find_package(PCAP REQUIRED)
+  target_link_libraries(QuickFAST PRIVATE PCAP::PCAP)
+  target_compile_definitions(QuickFAST PUBLIC QUICKFAST_HAVE_LIBPCAP=1)
+endif()
+
 if(QUICKFAST_USE_SPDLOG)
   target_compile_definitions(QuickFAST PUBLIC QUICKFAST_HAS_SPDLOG=1)
   target_link_libraries(QuickFAST PUBLIC spdlog::spdlog ZLIB::ZLIB)
@@ -405,4 +416,11 @@ if(QUICKFAST_USE_SPDLOG)
   message(STATUS "spdlog: SpdlogLogger adapter enabled (QUICKFAST_HAS_SPDLOG)")
 else()
   message(STATUS "spdlog: OFF (set -DQUICKFAST_USE_SPDLOG=ON for Common::SpdlogLogger)")
+endif()
+if(QUICKFAST_USE_LIBPCAP)
+  message(STATUS "libpcap: ${PCAP_LIBRARY} (pcap and pcapng capture files)")
+else()
+  message(STATUS
+    "libpcap: OFF -- PCapReader will refuse to open capture files "
+    "(set -DQUICKFAST_USE_LIBPCAP=ON)")
 endif()
