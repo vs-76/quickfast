@@ -124,11 +124,18 @@ FieldSet::replaceField(const FieldIdentity & identity,
   {
     if(identity.matches(fields_[index].getIdentity()))
     {
-      if(fields_[index].getField()->isDefined()) {
-        (fields_ + index)->~MessageField();  // Explicit destroy
-        new (fields_ + index) MessageField(identity, value);
-        return true;
+      // Falling through to the next iteration on an undefined field meant
+      // that, with a duplicate identity in the set, a later entry was replaced
+      // instead -- the opposite of the first-match rule getField and isPresent
+      // implement over this same array. The answer to "the field is here but
+      // absent" is still false; it just no longer keeps looking.
+      if(!fields_[index].getField()->isDefined())
+      {
+        return false;
       }
+      (fields_ + index)->~MessageField();  // Explicit destroy
+      new (fields_ + index) MessageField(identity, value);
+      return true;
     }
   }
   return false;
@@ -152,6 +159,13 @@ FieldSet::getField(const Messages::FieldIdentity & identity, FieldCPtr & value) 
 void
 FieldSet::getFieldInfo(size_t index, std::string & name, ValueType::Type & type, FieldCPtr & fieldPtr)const
 {
+  // operator[], six lines above, has always checked this. Past used_ the slots
+  // hold the raw bytes of the unsigned char[] allocation, so the three reads
+  // below would dereference a garbage FieldCPtr.
+  if(index >= used_)
+  {
+    throw UsageError("Coding Error", "Accessing FieldSet entry: index out of range.");
+  }
   name = fields_[index].name();
   type = fields_[index].getField()->getType();
   fieldPtr = fields_[index].getField();
@@ -288,7 +302,20 @@ FieldSet::getSequenceEntry(const FieldIdentity & identity, size_t index, const M
   if(result)
   {
     const SequenceCPtr & sequence = field->toSequence();
-    entryAccessor = (*sequence)[index].get();
+    // Sequence::operator[] is a plain std::vector index. Nothing inside
+    // FieldSet can get here out of range, because the encoder takes its count
+    // from getSequenceLength over the same vector, but a consumer supplying
+    // its own MessageAccessor whose length disagrees with its entry count is
+    // better served by a decode error than by undefined behaviour, and the
+    // interface documents no requirement that the two agree.
+    if(index >= sequence->size())
+    {
+      result = false;
+    }
+    else
+    {
+      entryAccessor = (*sequence)[index].get();
+    }
   }
   return result;
 }
