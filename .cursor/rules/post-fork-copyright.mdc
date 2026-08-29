@@ -1,0 +1,43 @@
+---
+description: Mandatory copyright header for code written after the fork
+alwaysApply: true
+---
+
+# Post-fork copyright attribution
+
+All code **written after the fork** (new files, and new content in this fork) is attributed to
+**QuickFAST contributors** — never to Object Computing, Inc. (OCI). OCI holds copyright only on
+the pre-fork upstream code it actually wrote.
+
+## Required header for every new file
+
+C++ sources and headers (`src/**/*.cpp`, `src/**/*.h`):
+
+```cpp
+// Copyright (c) 2026, QuickFAST contributors.
+// All rights reserved.
+// See the file license.txt for licensing information.
+```
+
+Use the comment syntax of the file's language (`#` for CMake/Python/shell, `<!-- -->` for HTML),
+but keep the three lines and the exact wording, including the comma and trailing period.
+
+## Hard rules
+
+- Do **not** write `Copyright (c) 2026, Object Computing, Inc.` or any other year paired with OCI on
+  a file created after the fork.
+- Do **not** ship a bare `// Copyright (c) 2026` with no holder.
+- Do **not** edit or remove existing pre-fork OCI headers (e.g. `Copyright (c) 2009, Object
+  Computing, Inc.`) on files that came from upstream — leave them intact even when modifying the file.
+- When you notice a post-fork file carrying an OCI header, fix it to the contributors line.
+
+```cpp
+// ❌ new file, wrong holder
+// Copyright (c) 2026 Object Computing, Inc.
+
+// ❌ no holder
+// Copyright (c) 2026
+
+// ✅
+// Copyright (c) 2026, QuickFAST contributors.
+```

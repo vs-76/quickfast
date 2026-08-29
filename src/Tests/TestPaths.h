@@ -1,4 +1,6 @@
-// Copyright (c) 2026
+// Copyright (c) 2026, QuickFAST contributors.
+// All rights reserved.
+// See the file license.txt for licensing information.
 // Helper for unit tests that locate repo resources via QUICKFAST_ROOT.
 #ifndef QUICKFAST_TESTPATHS_H
 #define QUICKFAST_TESTPATHS_H

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026, QuickFAST contributors.
+# All rights reserved.
+# See the file license.txt for licensing information.
 """Generate the capture-file corpus used by testPCapReader.cpp.
 
 Each capture holds one UDP datagram carrying PAYLOAD over Ethernet II / IPv4,
