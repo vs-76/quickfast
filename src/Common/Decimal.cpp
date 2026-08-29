@@ -197,6 +197,12 @@ Decimal::swap(Decimal & rhs)
   mantissa_t tman = mantissa_;
   mantissa_ = rhs.mantissa_;
   rhs.mantissa_ = tman;
+  // operator= is copy-and-swap, so leaving this out made assignment produce a
+  // different object than copy construction from the same source: the value
+  // came from rhs while the flag stayed with the target.
+  bool tnorm = autoNormalize_;
+  autoNormalize_ = rhs.autoNormalize_;
+  rhs.autoNormalize_ = tnorm;
 }
 
 void
