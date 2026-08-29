@@ -99,6 +99,13 @@ namespace QuickFAST{
       /// @param allowOverflow is true to disable/false to enable overflow checking (default is false)
       virtual void setIgnoreOverflow(bool allowOverflow);
 
+      /// @brief Is overflow checking disabled for this field?
+      /// @returns true when ignore_overflows was asked for.
+      bool getIgnoreOverflow() const
+      {
+        return ignoreOverflow_;
+      }
+
       /// @brief Set a field operation
       ///
       /// Assigns the appropriate dispatching object to this field instruction.
