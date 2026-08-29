@@ -275,8 +275,8 @@ DecoderConnection::configure(
         {
           Codecs::MessagePerPacketAssembler * pAssembler = new Codecs::MessagePerPacketAssembler(
             registry_,
-            *messageHeaderAnalyzer_,
             *packetHeaderAnalyzer_,
+            *messageHeaderAnalyzer_,
             builder);
           assembler_.reset(pAssembler);
           pAssembler->setEcho(
