@@ -500,3 +500,44 @@ TEST(QuickFAST, TestDecimal)
   EXPECT_GT(f, g);
 
 }
+
+TEST(QuickFAST, TestWorkingBufferEquality)
+{
+  // Equality must compare the live bytes, which start at startPos_, not the
+  // raw allocation base.
+  WorkingBuffer forward;
+  forward.clear(false);
+  forward.push('a');
+  forward.push('b');
+  forward.push('c');
+
+  // Same contents, but reached by dropping a leading byte.
+  WorkingBuffer popped;
+  popped.clear(false);
+  popped.push('x');
+  popped.push('a');
+  popped.push('b');
+  popped.push('c');
+  popped.pop_front();
+  ASSERT_EQ((popped.size()), (forward.size()));
+  EXPECT_TRUE(forward == popped);
+  EXPECT_TRUE(popped == forward);
+
+  // Same contents, but built in reverse mode where startPos_ is large.
+  WorkingBuffer reversed;
+  reversed.clear(true);
+  reversed.push('c');
+  reversed.push('b');
+  reversed.push('a');
+  ASSERT_EQ((reversed.size()), (forward.size()));
+  EXPECT_TRUE(forward == reversed);
+  EXPECT_TRUE(reversed == forward);
+
+  // Different contents of the same length must still compare unequal.
+  WorkingBuffer other;
+  other.clear(false);
+  other.push('a');
+  other.push('b');
+  other.push('d');
+  EXPECT_TRUE(!(forward == other));
+}
