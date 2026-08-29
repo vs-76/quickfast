@@ -57,7 +57,7 @@ namespace QuickFAST
         if(bytesReceived > 0)
         {
           ++packetsQueued_;
-          largestPacket_ = std::max(largestPacket_, bytesReceived);
+          largestPacket_ = std::max<size_t>(largestPacket_, bytesReceived);
           buffer->setUsed(bytesReceived);
           needService = queue_.push(buffer, lock);
         }

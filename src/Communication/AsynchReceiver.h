@@ -178,7 +178,7 @@ namespace QuickFAST
             {
               ++packetsQueued_;
               bytesReceived_ += bytesReceived;
-              largestPacket_ = std::max(largestPacket_, bytesReceived);
+              largestPacket_ = std::max<size_t>(largestPacket_, bytesReceived);
               buffer->setUsed(bytesReceived);
               if(queue_.push(buffer, lock))
               {
