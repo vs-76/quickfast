@@ -8,8 +8,20 @@
 #include <Common/Decimal.h>
 #include <Common/Exceptions.h>
 
+#include <Codecs/DataSourceString.h>
+#include <Codecs/Decoder.h>
+#include <Codecs/DictionaryIndexer.h>
+#include <Codecs/FieldInstructionDecimal.h>
+#include <Codecs/FieldOpDelta.h>
+#include <Codecs/GenericMessageBuilder.h>
+#include <Codecs/PresenceMap.h>
+#include <Codecs/SingleMessageConsumer.h>
+#include <Codecs/TemplateRegistry.h>
+#include <Messages/Message.h>
+
 #include <climits>
 #include <string>
+#include <vector>
 
 using namespace QuickFAST;
 
@@ -134,4 +146,99 @@ TEST(QuickFAST, testDecimalMultiplyReportsExponentOverflow)
     EXPECT_NE((std::string(e.what()).find("overflow")), (std::string::npos))
       << "reported as: " << e.what();
   }
+}
+
+namespace
+{
+  // Decode a decimal field carrying a <delta> operator straight from wire
+  // bytes, the way a hostile counterparty would deliver it. Successive wire
+  // strings share one decoder, so each delta applies to the value the previous
+  // one left in the dictionary.
+  Decimal decodeDecimalDeltas(const std::vector<std::string> & messages)
+  {
+    Codecs::DictionaryIndexer indexer;
+    Codecs::FieldInstructionDecimal field("Value", "");
+    Codecs::FieldOpPtr fieldOp(new Codecs::FieldOpDelta);
+    field.setFieldOp(fieldOp);
+    field.indexDictionaries(indexer, "global", "", "");
+    Codecs::TemplateRegistryPtr registry(
+      new Codecs::TemplateRegistry(3, 3, indexer.size()));
+    field.finalize(*registry);
+
+    Codecs::Decoder decoder(registry);
+    Decimal result;
+    for(const std::string & wire : messages)
+    {
+      Codecs::DataSourceString source(wire);
+      Codecs::PresenceMap pmap(1);
+      Codecs::SingleMessageConsumer consumer;
+      Codecs::GenericMessageBuilder builder(consumer);
+
+      builder.startMessage("UNIT_TEST", "", 10);
+      field.decode(source, pmap, decoder, builder);
+      builder.endMessage(builder);
+
+      Messages::Message & fieldSet = consumer.message();
+      if(fieldSet.size() != 1)
+      {
+        throw std::runtime_error("decode produced no field");
+      }
+      result = fieldSet.begin()->getField()->toDecimal();
+    }
+    return result;
+  }
+
+  Decimal decodeDecimalDelta(const std::string & wire)
+  {
+    return decodeDecimalDeltas(std::vector<std::string>(1, wire));
+  }
+
+  // A signed FAST integer holding INT64_MAX: nine all-ones septets, with a
+  // leading zero septet so the sign bit does not make it negative.
+  const std::string int64MaxDelta("\x00\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\xff", 10);
+}
+
+TEST(QuickFAST, testDecimalDeltaRejectsAnOutOfRangeExponent)
+{
+  // A decimal delta is an exponent delta followed by a mantissa delta, each a
+  // stop-bit encoded signed integer. getExponent() returns int8_t and the
+  // delta is int64, so the sum was computed at full width and then narrowed by
+  // an explicit exponent_t cast: a delta of 200 against an exponent of 0 gave
+  // int8_t(200) == -56, putting the value out by a factor of 10^56 with no
+  // diagnostic. Being an explicit cast, no sanitizer reports it.
+  //
+  // 200 as a signed FAST integer is 0x01 0xC8; the mantissa delta is zero.
+  EXPECT_THROW(
+    decodeDecimalDelta(std::string("\x01\xC8\x80", 3)),
+    EncodingError);
+
+  // The FAST spec confines exponents to [-63, 63]; 64 is already out.
+  EXPECT_THROW(
+    decodeDecimalDelta(std::string("\x00\xC0\x80", 3)),
+    EncodingError);
+
+  // A delta that lands inside the legal range still decodes.
+  const Decimal value = decodeDecimalDelta(std::string("\x83\x85", 2));
+  EXPECT_EQ((value.getExponent()), (3));
+  EXPECT_EQ((value.getMantissa()), (5));
+}
+
+TEST(QuickFAST, testDecimalDeltaRejectsAMantissaThatOverflows)
+{
+  // value.getMantissa() + mantissaDelta is added as two int64 values before
+  // the mantissa_t cast, so the cast cannot rescue it: a large stored mantissa
+  // plus a large wire delta is signed overflow -- undefined behaviour, not a
+  // wrong number anything downstream could notice.
+  //
+  // The first delta parks INT64_MAX in the dictionary; the second adds one.
+  std::vector<std::string> messages;
+  messages.push_back(std::string("\x80", 1) + int64MaxDelta);
+  messages.push_back(std::string("\x80\x81", 2));
+  EXPECT_THROW(decodeDecimalDeltas(messages), EncodingError);
+
+  // Reaching INT64_MAX on its own is legal and must still work.
+  std::vector<std::string> justTheMaximum;
+  justTheMaximum.push_back(std::string("\x80", 1) + int64MaxDelta);
+  const Decimal value = decodeDecimalDeltas(justTheMaximum);
+  EXPECT_EQ((value.getMantissa()), (LLONG_MAX));
 }

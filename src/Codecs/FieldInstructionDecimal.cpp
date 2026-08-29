@@ -16,6 +16,13 @@
 
 #include <Common/Profiler.h>
 
+namespace
+{
+  /// The FAST specification confines a decimal exponent to this range.
+  const QuickFAST::int64 minExponent = -63;
+  const QuickFAST::int64 maxExponent = 63;
+}
+
 using namespace QuickFAST;
 using namespace QuickFAST::Codecs;
 
@@ -268,8 +275,36 @@ FieldInstructionDecimal::decodeDelta(
 
   Decimal value(typedValue_);
   (void)fieldOp_->getDictionaryValue(decoder, value);
-  value.setExponent(exponent_t(value.getExponent() + exponentDelta));
-  value.setMantissa(mantissa_t(value.getMantissa() + mantissaDelta));
+
+  // Both deltas arrive from the wire and both sums used to be applied without
+  // a range check. The exponent narrowed through an explicit exponent_t cast,
+  // which is well-defined modular conversion, so a delta of 200 silently
+  // became -56 and no sanitizer could ever report it. The mantissa was added
+  // as two int64 values before its cast, so the cast could not rescue it and
+  // the addition was plain signed overflow.
+  const int64 exponent = int64(value.getExponent()) + exponentDelta;
+  if(exponent < minExponent || exponent > maxExponent)
+  {
+    decoder.reportError(
+      "[ERR R1]",
+      "Decimal exponent delta produces an exponent outside the legal range.",
+      identity_);
+    return;
+  }
+
+  const int64 mantissa = value.getMantissa();
+  if((mantissaDelta > 0 && mantissa > LLONG_MAX - mantissaDelta)
+    || (mantissaDelta < 0 && mantissa < LLONG_MIN - mantissaDelta))
+  {
+    decoder.reportError(
+      "[ERR R1]",
+      "Decimal mantissa delta overflows the mantissa.",
+      identity_);
+    return;
+  }
+
+  value.setExponent(exponent_t(exponent));
+  value.setMantissa(mantissa_t(mantissa + mantissaDelta));
   accessor.addValue(
     identity_,
     ValueType::DECIMAL,
