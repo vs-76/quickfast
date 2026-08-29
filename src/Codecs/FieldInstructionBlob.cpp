@@ -248,7 +248,11 @@ FieldInstructionBlob::decodeDelta(
     if(static_cast<unsigned long>(deltaLength) > previousLength)
     {
       decoder.reportError("[ERR D7]", "String tail delta front length exceeds length of previous string.", identity_);
-      deltaLength = QuickFAST::int32(previousLength);
+      // [ERR D7] always throws, so the clamp that used to follow could
+      // never run. It also disagreed with itself: int32 here against
+      // uint32 in the other branch, over a size_t, so a base value longer
+      // than INT32_MAX would have handed substr a negative length if it
+      // ever had run.
     }
     std::string value = deltaValue + previousValue.substr(deltaLength);
     builder.addValue(
@@ -268,7 +272,11 @@ FieldInstructionBlob::decodeDelta(
       std::cout << "decode blob delta length: " << deltaLength << " previous: " << previousLength << std::endl;
 #endif
       decoder.reportError("[ERR D7]", "String tail delta back length exceeds length of previous string.", identity_);
-      deltaLength = QuickFAST::uint32(previousLength);
+      // [ERR D7] always throws, so the clamp that used to follow could
+      // never run. It also disagreed with itself: int32 here against
+      // uint32 in the other branch, over a size_t, so a base value longer
+      // than INT32_MAX would have handed substr a negative length if it
+      // ever had run.
     }
 
     std::string value = previousValue.substr(0, previousLength - deltaLength) + deltaValue;
@@ -309,6 +317,11 @@ FieldInstructionBlob::decodeTail(
         }
       }
       size_t previousLength = previousValue.length();
+      // Not a truncation: FAST 1.1 6.3.8.1 and 6.3.8.3 say that if the
+      // tail value is longer than the base value, the combined value is
+      // the tail value, and clamping the overlay to the whole base is how
+      // that falls out. Unlike the delta operators, there is no error to
+      // report here.
       if(tailLength > previousLength)
       {
         tailLength = previousLength;
