@@ -37,25 +37,11 @@ namespace
 
 
 DecoderConnection::DecoderConnection()
-: fastFile_(0)
-, echoFile_(0)
-, verboseFile_(0)
-, ownEchoFile_(false)
-, ownVerboseFile_(false)
 {
 }
 
 DecoderConnection::~DecoderConnection()
 {
-  delete fastFile_;
-  if(ownEchoFile_)
-  {
-    delete echoFile_;
-  }
-  if(ownVerboseFile_)
-  {
-    delete verboseFile_;
-  }
 }
 
 void
@@ -100,7 +86,9 @@ DecoderConnection::configure(
     else
 #endif
     {
-      fastFile_ = new std::ifstream(configuration.fastFileName().c_str(), binaryMode);
+      ownedFastFile_ = std::make_unique<std::ifstream>(
+        configuration.fastFileName().c_str(), binaryMode);
+      fastFile_ = ownedFastFile_.get();
     }
     if(!fastFile_->good())
     {
@@ -123,8 +111,9 @@ DecoderConnection::configure(
     }
     else
     {
-      ownVerboseFile_ = true;
-      verboseFile_ = new std::ofstream(configuration.verboseFileName().c_str());
+      ownedVerboseFile_ = std::make_unique<std::ofstream>(
+        configuration.verboseFileName().c_str());
+      verboseFile_ = ownedVerboseFile_.get();
       if(!verboseFile_->good())
       {
         std::stringstream msg;
@@ -137,7 +126,6 @@ DecoderConnection::configure(
 
   if(! configuration.echoFileName().empty())
   {
-    ownEchoFile_ = true;
     std::ios::openmode mode = std::ios::out | std::ios::trunc;
     if(configuration.echoType() == DecoderConfigurationEnums::RAW)
     {
@@ -146,16 +134,16 @@ DecoderConnection::configure(
     if(configuration.echoFileName() == "cout")
     {
       echoFile_ = & std::cout;
-      ownEchoFile_ = false;
     }
     else if(configuration.echoFileName() == "cerr")
     {
       echoFile_ = & std::cerr;
-      ownEchoFile_ = false;
     }
     else
     {
-      echoFile_ = new std::ofstream(configuration.echoFileName().c_str(), mode);
+      ownedEchoFile_ = std::make_unique<std::ofstream>(
+        configuration.echoFileName().c_str(), mode);
+      echoFile_ = ownedEchoFile_.get();
     }
     if(!echoFile_->good())
     {
@@ -250,6 +238,23 @@ DecoderConnection::configure(
     }
   }
 
+  // echoFile_ stays null when no echo file is configured, and every assembler
+  // branch used to pass *echoFile_ regardless. The null lands back in
+  // DataSource::getEcho()'s documented "0 means no echo", so it worked, but
+  // forming a reference from a null lvalue is undefined and a compiler is
+  // entitled to assume a reference is never null.
+  const auto applyEcho = [this, &configuration](auto * pAssembler)
+  {
+    if(echoFile_ != nullptr)
+    {
+      pAssembler->setEcho(
+        *echoFile_,
+        static_cast<Codecs::DataSource::EchoType>(configuration.echoType()),
+        configuration.echoMessage(),
+        configuration.echoField());
+    }
+  };
+
   switch(configuration.assemblerType())
   {
   case Application::DecoderConfiguration::MESSAGE_PER_PACKET_ASSEMBLER:
@@ -260,11 +265,7 @@ DecoderConnection::configure(
         *messageHeaderAnalyzer_,
         builder);
       assembler_.reset(pAssembler);
-      pAssembler->setEcho(
-        *echoFile_,
-        static_cast<Codecs::DataSource::EchoType>(configuration.echoType()),
-        configuration.echoMessage(),
-        configuration.echoField());
+      applyEcho(pAssembler);
       pAssembler->setMessageLimit(configuration.head());
       break;
     }
@@ -276,11 +277,7 @@ DecoderConnection::configure(
         builder,
         configuration.waitForCompleteMessage());
       assembler_.reset(pAssembler);
-      pAssembler->setEcho(
-        *echoFile_,
-        static_cast<Codecs::DataSource::EchoType>(configuration.echoType()),
-        configuration.echoMessage(),
-        configuration.echoField());
+      applyEcho(pAssembler);
       pAssembler->setMessageLimit(configuration.head());
       break;
     }
@@ -299,11 +296,7 @@ DecoderConnection::configure(
             *messageHeaderAnalyzer_,
             builder);
           assembler_.reset(pAssembler);
-          pAssembler->setEcho(
-            *echoFile_,
-            static_cast<Codecs::DataSource::EchoType>(configuration.echoType()),
-            configuration.echoMessage(),
-            configuration.echoField());
+          applyEcho(pAssembler);
           pAssembler->setMessageLimit(configuration.head());
           break;
         }
@@ -318,11 +311,7 @@ DecoderConnection::configure(
             builder,
             configuration.waitForCompleteMessage());
           assembler_.reset(pAssembler);
-          pAssembler->setEcho(
-            *echoFile_,
-            static_cast<Codecs::DataSource::EchoType>(configuration.echoType()),
-            configuration.echoMessage(),
-            configuration.echoField());
+          applyEcho(pAssembler);
           pAssembler->setMessageLimit(configuration.head());
           break;
         }
