@@ -164,11 +164,18 @@ namespace QuickFAST{
       Codecs::Decoder & decoder() const;
 
     private:
-      std::istream * fastFile_;
-      std::ostream * echoFile_;
-      std::ostream * verboseFile_ ;
-      bool ownEchoFile_;
-      bool ownVerboseFile_;
+      // Each of these streams may be one this connection opened or one it is
+      // merely borrowing -- cin, cout or cerr. That distinction used to be
+      // carried by a bool beside each raw pointer, and fastFile_ never got
+      // one, so -file cin ended in delete &std::cin. Ownership now lives in
+      // the type, and the view pointers below say nothing about lifetime.
+      std::unique_ptr<std::istream> ownedFastFile_;
+      std::unique_ptr<std::ostream> ownedEchoFile_;
+      std::unique_ptr<std::ostream> ownedVerboseFile_;
+
+      std::istream * fastFile_ = nullptr;
+      std::ostream * echoFile_ = nullptr;
+      std::ostream * verboseFile_ = nullptr;
 
       Codecs::TemplateRegistryPtr registry_;
       std::unique_ptr<asio::io_context> ioService_;
