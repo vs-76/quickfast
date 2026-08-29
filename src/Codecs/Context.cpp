@@ -111,7 +111,7 @@ Context::reportError(
   const std::string & message,
   const Messages::FieldIdentity & identity)
 {
-  throw EncodingError(errorCode + ' ' + message + " Field: " + identity.name());
+  reportError(errorCode, message, identity.name());
 }
 
 void
@@ -120,7 +120,9 @@ Context::reportError(
   const std::string & message,
   const std::string & name)
 {
-  throw EncodingError(errorCode + ' ' + message + " Field: " + name);
+  // Every [ERR D2] site in the codec names a field, so setStrict(false) would
+  // do nothing at all unless this overload honours it too.
+  reportError(errorCode, message + " Field: " + name);
 }
 
 void
