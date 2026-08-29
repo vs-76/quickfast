@@ -2584,3 +2584,39 @@ TEST(QuickFAST, testSequenceLengthIsNotPreallocated)
     instruction.decode(source, pmap, decoder, builder),
     EncodingError);
 }
+
+TEST(QuickFAST, testTruncatedAsciiStringIsRejected)
+{
+  // Input that ends before the stop bit leaves partial bytes in the working
+  // buffer.  decodeAscii reports the truncation; the caller must not ignore it.
+  EXPECT_THROW(
+    decodeSingleIntegerField<Codecs::FieldInstructionAscii>(
+      std::string("\x41\x42", 2)),
+    EncodingError);
+
+  // An optional field is no different.
+  Codecs::DataSourceString source(std::string("\x41\x42", 2));
+  Codecs::DictionaryIndexer indexer;
+  Codecs::PresenceMap pmap(1);
+  Codecs::FieldInstructionAscii field("Value", "");
+  field.setPresence(false);
+  field.indexDictionaries(indexer, "global", "", "");
+  Codecs::TemplateRegistryPtr registry(
+    new Codecs::TemplateRegistry(3, 3, indexer.size()));
+  field.finalize(*registry);
+  Codecs::Decoder decoder(registry);
+  Codecs::SingleMessageConsumer consumer;
+  Codecs::GenericMessageBuilder builder(consumer);
+  builder.startMessage("UNIT_TEST", "", 10);
+  EXPECT_THROW(field.decode(source, pmap, decoder, builder), EncodingError);
+}
+
+TEST(QuickFAST, testCompleteAsciiStringStillDecodes)
+{
+  // 0x41 0x42 0xC3 is "ABC" with the stop bit on the final byte.
+  Messages::FieldCPtr value =
+    decodeSingleIntegerField<Codecs::FieldInstructionAscii>(
+      std::string("\x41\x42\xC3", 3));
+  ASSERT_TRUE(bool(value));
+  EXPECT_EQ((value->toAscii()), ("ABC"));
+}
