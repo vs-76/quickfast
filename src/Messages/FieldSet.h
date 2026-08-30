@@ -152,6 +152,7 @@ namespace QuickFAST{
         swap_i(used_, rhs.used_);
         swap_i(lookupCursor_, rhs.lookupCursor_);
         swap_i(mayHaveDuplicateIdentities_, rhs.mayHaveDuplicateIdentities_);
+        swap_i(duplicatesKnown_, rhs.duplicatesKnown_);
       }
 
       ///// @brief access the field set
@@ -184,6 +185,15 @@ namespace QuickFAST{
       /// duplicate identities are present.
       size_t findIndex(const FieldIdentity & identity) const;
 
+      /// @brief Work out, once per set of additions, whether any two entries
+      /// could match the same lookup.
+      ///
+      /// Deliberately not done in addField: building a set of F fields is on
+      /// the decode path and a per-add scan makes it O(F^2) identity compares.
+      /// Lookup is the only operation that needs the answer, so a set that is
+      /// built and iterated -- never looked up -- pays nothing.
+      void detectDuplicateIdentities() const;
+
 #if defined(QUICKFAST_ENABLE_TEST_HOOKS)
       static void bumpIdentityCompareCount();
       static uint64_t identityCompareCount_;
@@ -209,7 +219,9 @@ namespace QuickFAST{
       /// Hint for the next in-order lookup (mutable: getters are const).
       mutable size_t lookupCursor_;
       /// When true, cursor hits must still scan earlier slots for first-match.
-      bool mayHaveDuplicateIdentities_;
+      mutable bool mayHaveDuplicateIdentities_;
+      /// False once a field is added; the next lookup recomputes the flag.
+      mutable bool duplicatesKnown_;
     };
   }
 }

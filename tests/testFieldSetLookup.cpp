@@ -138,4 +138,56 @@ TEST(QuickFAST, testFieldSetInOrderLookupIsAmortizedLinear)
   EXPECT_LE(compares, F + 2u);
   EXPECT_LT(compares, (F * (F + 1)) / 2);
 }
+
+TEST(QuickFAST, testFieldSetBuildCostsNoIdentityCompares)
+{
+  // Building a message is the decode path. Duplicate detection belongs to
+  // lookup, so adding F fields must not compare identities at all -- doing it
+  // per add costs O(F^2) three-way string compares on every decoded message.
+  const size_t F = 64;
+  std::vector<Messages::FieldIdentity> ids;
+  ids.reserve(F);
+  for(size_t i = 0; i < F; ++i)
+  {
+    ids.emplace_back("f" + std::to_string(i));
+  }
+
+  Messages::FieldSet fields(F);
+  Messages::FieldSet::resetIdentityCompareCount();
+  for(size_t i = 0; i < F; ++i)
+  {
+    fields.addField(ids[i], Messages::FieldUInt32::create(static_cast<uint32>(i)));
+  }
+  EXPECT_EQ(0u, Messages::FieldSet::identityCompareCount());
+
+  // The flag still has to be right once somebody does look something up.
+  Messages::FieldCPtr value;
+  ASSERT_TRUE(fields.getField(ids[F - 1], value));
+  EXPECT_EQ(static_cast<uint32>(F - 1), value->toUInt32());
+}
+
+TEST(QuickFAST, testFieldSetDuplicateDetectedAfterLateAdd)
+{
+  // A duplicate added after lookups have already run must still be honored:
+  // the cached "no duplicates" answer has to be invalidated by addField.
+  Messages::FieldIdentity a("dup");
+  Messages::FieldIdentity b("other");
+  Messages::FieldIdentity later("dup");
+
+  Messages::FieldSet fields(4);
+  fields.addField(a, Messages::FieldUInt32::create(1));
+  fields.addField(b, Messages::FieldUInt32::create(2));
+
+  Messages::FieldCPtr value;
+  ASSERT_TRUE(fields.getField(b, value));
+  EXPECT_EQ(2u, value->toUInt32());
+
+  fields.addField(later, Messages::FieldUInt32::create(3));
+
+  // First match wins, even though the cursor is sitting past the first entry.
+  ASSERT_TRUE(fields.getField(later, value));
+  EXPECT_EQ(1u, value->toUInt32());
+  ASSERT_TRUE(fields.getField(a, value));
+  EXPECT_EQ(1u, value->toUInt32());
+}
 #endif

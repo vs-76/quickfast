@@ -8,6 +8,10 @@
 #include <Common/Exceptions.h>
 #include <Common/Profiler.h>
 
+#include <algorithm>
+#include <functional>
+#include <vector>
+
 using namespace ::QuickFAST;
 using namespace ::QuickFAST::Messages;
 
@@ -31,6 +35,7 @@ FieldSet::FieldSet(size_t res)
 , used_(0)
 , lookupCursor_(0)
 , mayHaveDuplicateIdentities_(false)
+, duplicatesKnown_(true)
 {
 }
 
@@ -56,12 +61,42 @@ FieldSet::bumpIdentityCompareCount()
 }
 #endif
 
+void
+FieldSet::detectDuplicateIdentities() const
+{
+  duplicatesKnown_ = true;
+  mayHaveDuplicateIdentities_ = false;
+  if(used_ < 2)
+  {
+    return;
+  }
+  // matches() cannot be true unless the qualified names are equal, so equal
+  // names are a superset of the pairs first-match has to worry about. Sorting
+  // hashes answers "any duplicates?" in O(F log F) cheap integer compares
+  // instead of O(F^2) three-way string compares.
+  static thread_local std::vector<size_t> nameHashes;
+  nameHashes.clear();
+  nameHashes.reserve(used_);
+  std::hash<std::string> hasher;
+  for(size_t i = 0; i < used_; ++i)
+  {
+    nameHashes.push_back(hasher(fields_[i].getIdentity().name()));
+  }
+  std::sort(nameHashes.begin(), nameHashes.end());
+  mayHaveDuplicateIdentities_ =
+    std::adjacent_find(nameHashes.begin(), nameHashes.end()) != nameHashes.end();
+}
+
 size_t
 FieldSet::findIndex(const FieldIdentity & identity) const
 {
   if(used_ == 0)
   {
     return 0;
+  }
+  if(!duplicatesKnown_)
+  {
+    detectDuplicateIdentities();
   }
 
   const size_t cursor = lookupCursor_;
@@ -150,6 +185,7 @@ FieldSet::clear(size_t capacity)
   }
   lookupCursor_ = 0;
   mayHaveDuplicateIdentities_ = false;
+  duplicatesKnown_ = true;
   if(capacity > capacity_)
   {
     reserve(capacity);
@@ -181,17 +217,7 @@ void
 FieldSet::addField(const FieldIdentity & identity, const FieldCPtr & value)
 {
   PROFILE_POINT("FieldSet::addField");
-  if(!mayHaveDuplicateIdentities_)
-  {
-    for(size_t i = 0; i < used_; ++i)
-    {
-      if(identity.matches(fields_[i].getIdentity()))
-      {
-        mayHaveDuplicateIdentities_ = true;
-        break;
-      }
-    }
-  }
+  duplicatesKnown_ = false;
   if(used_ >= capacity_)
   {
     PROFILE_POINT("FieldSet::grow");
@@ -218,6 +244,8 @@ FieldSet::replaceField(const FieldIdentity & identity,
   }
   (fields_ + index)->~MessageField();  // Explicit destroy
   new (fields_ + index) MessageField(identity, value);
+  // The stored identity may differ from the one it replaced.
+  duplicatesKnown_ = false;
   return true;
 }
 
