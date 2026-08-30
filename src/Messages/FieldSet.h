@@ -14,6 +14,19 @@
 namespace QuickFAST{
   namespace Messages{
     /// @brief Internal representation of a set of fields to be encoded or decoded.
+    ///
+    /// @par Lookup
+    /// Fields are held in insertion order and found by scanning. Lookup keeps a
+    /// cursor at the previous hit, so reading fields in the order they were
+    /// added -- what the encoder does -- costs one comparison per field instead
+    /// of rescanning from the start. When the same identity appears twice, the
+    /// first match still wins.
+    ///
+    /// @par Thread safety
+    /// The cursor is updated by the const lookups (isPresent, getField and the
+    /// MessageAccessor getters), so a single instance must not be read from
+    /// more than one thread at a time even through a const reference. Separate
+    /// instances are independent.
     class QuickFAST_Export FieldSet
       : public MessageAccessor
     {

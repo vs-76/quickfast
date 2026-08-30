@@ -59,6 +59,8 @@ namespace QuickFAST{
       }
 
       /// @brief Add a definition to the registry
+      ///
+      /// Invalidates the getTemplate() id index; finalize() rebuilds it.
       /// @param value smart pointer to the template to be added
       virtual void addTemplate(TemplatePtr value);
 
@@ -67,6 +69,9 @@ namespace QuickFAST{
       using SchemaElement::finalize;
 
       /// @brief do any final processing after parsing is complete.
+      ///
+      /// Also builds the id index that getTemplate() uses, so call this once
+      /// the last template has been added and before the registry is shared.
       virtual void finalize();
 
       /// @brief How many templates are defined?
@@ -97,6 +102,14 @@ namespace QuickFAST{
       }
 
       /// @brief Use Template ID to find a template.
+      ///
+      /// Constant time: served from an id index built by finalize().
+      ///
+      /// @note If addTemplate() ran after finalize() the index is stale and the
+      /// next call rebuilds it, which writes to mutable state. Finish loading
+      /// the registry and call finalize() before sharing it between threads;
+      /// after that this method only reads.
+      ///
       /// @param[in] templateId the desired template
       /// @param[out] valueFound is the result of the search if return is true
       /// @returns true if the template was found.
@@ -215,7 +228,7 @@ namespace QuickFAST{
       void rebuildIdIndex() const;
 
       /// Prefer a dense vector when max id fits; otherwise unordered_map.
-      /// 64K entries of shared_ptr is ~0.5 MiB — fine for market-data schemas.
+      /// 64K shared_ptr entries is ~1 MiB — fine for market-data schemas.
       static const template_id_t denseIdLimit_ = 65536;
 
     private:

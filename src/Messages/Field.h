@@ -21,6 +21,29 @@ namespace QuickFAST{
     /// @brief The value of a field -- for use in Message and Dictionary.
     ///
     /// An abstract class intended to be specialized into the particular field type.
+    ///
+    /// @par Shared instances
+    /// Fields are immutable, so the create() factories are free to hand back a
+    /// shared instance instead of allocating. Every createNull() returns a
+    /// per-type singleton, and these values are interned as well:
+    /// - FieldInt8: the whole range
+    /// - FieldInt32: -128 through 255
+    /// - FieldUInt32: 0 through 255
+    /// - FieldAscii: the empty string (distinct from NULL)
+    ///
+    /// Callers therefore must not assume a create() result is unique, must not
+    /// use pointer identity to tell two fields apart, and must not cast away
+    /// const to modify one -- an interned instance is visible to every holder,
+    /// on every thread. Interned instances live until process exit.
+    ///
+    /// @par Example
+    /// @code
+    /// FieldCPtr a = FieldInt32::create(7);
+    /// FieldCPtr b = FieldInt32::create(7);
+    /// // a.get() == b.get() is likely true, and is not part of the contract
+    /// // either way. Compare values, not pointers:
+    /// bool same = (*a == *b);
+    /// @endcode
     class QuickFAST_Export Field
     {
     protected:

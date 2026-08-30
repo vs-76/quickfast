@@ -190,11 +190,11 @@ Outputs land under `build-msvc-conan/bin/<Config>/` (DLL + example exes).
 
 ## API docs (Doxygen)
 
-`src/Doxyfile` is maintained for **Doxygen 1.15+**. From `src/`:
+`doc/Doxyfile` is maintained for **Doxygen 1.15+**. From `doc/`:
 
 ```bash
 doxygen Doxyfile
-# HTML → Doc/html/index.html  (gitignored)
+# HTML → doc/html/index.html  (gitignored)
 ```
 
 Header-only (`*.h`) under `Codecs`, `Common`, `Communication`, `Messages`,

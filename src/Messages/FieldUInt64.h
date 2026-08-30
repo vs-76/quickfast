@@ -31,6 +31,7 @@ namespace QuickFAST{
       static FieldCPtr create(uint64 value);
       /// @brief Construct a NULL field
       /// @returns a constant pointer to the immutable field
+      /// @note Returns a shared singleton; see Field.
       static FieldCPtr createNull();
 
       virtual ~FieldUInt64();
