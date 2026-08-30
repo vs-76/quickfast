@@ -19,7 +19,8 @@
   "default-features": [
     "pcap",
     "tests",
-    "spdlog"
+    "spdlog",
+    "cares"
   ],
   "features": {
     "pcap": {
@@ -33,6 +34,12 @@
       "dependencies": [
         "spdlog",
         "zlib"
+      ]
+    },
+    "cares": {
+      "description": "Hostname resolve via c-ares (QUICKFAST_USE_CARES)",
+      "dependencies": [
+        "c-ares"
       ]
     },
     "tests": {
@@ -49,6 +56,7 @@
     { "name": "spdlog", "version": "1.17.0#1" },
     { "name": "zlib", "version": "1.3.2#2" },
     { "name": "libpcap", "version": "1.10.6" },
+    { "name": "c-ares", "version": "1.34.8" },
     { "name": "gtest", "version": "1.18.0" }
   ]
 }

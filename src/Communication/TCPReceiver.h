@@ -11,6 +11,7 @@
 //#include <Common/QuickFAST_Export.h>
 #include "TCPReceiver_fwd.h"
 #include <Communication/AsynchReceiver.h>
+#include <Communication/HostResolver.h>
 namespace QuickFAST
 {
   namespace Communication
@@ -58,14 +59,22 @@ namespace QuickFAST
       virtual bool initializeReceiver()
       {
         bool ok = true;
-        // generate a collection of possible endpoints for this host:port
-        asio::ip::tcp::resolver resolver(ioService_);
-        asio::ip::tcp::resolver::results_type endpoints = resolver.resolve(hostName_, port_);
+        // Resolve host:port (Asio getaddrinfo, or c-ares when QUICKFAST_HAVE_CARES).
+        asio::error_code error;
+        const std::vector<asio::ip::tcp::endpoint> endpoints =
+          resolveTcp(ioService_, hostName_, port_, error);
+        if(error || endpoints.empty())
+        {
+          ok = false;
+          std::stringstream msg;
+          msg << "Cannot resolve [" << hostName_ << ':' << port_ << "]: " << error;
+          (void) assembler_->reportCommunicationError(msg.str());
+          return ok;
+        }
 
         // then iterate thru the collection until we find one that works.
-        asio::error_code error;
         bool connected = false;
-        for(asio::ip::tcp::resolver::results_type::iterator iterator = endpoints.begin();
+        for(std::vector<asio::ip::tcp::endpoint>::const_iterator iterator = endpoints.begin();
             !connected && iterator != endpoints.end();
             ++iterator)
         {

@@ -34,6 +34,9 @@ option(QUICKFAST_USE_SPDLOG
 option(QUICKFAST_USE_LIBPCAP
   "Read capture files via libpcap (adds pcapng and nanosecond pcap support)"
   ON)
+option(QUICKFAST_USE_CARES
+  "Resolve hostnames with c-ares instead of Asio getaddrinfo (static-link friendly)"
+  ON)
 # BUILD_SHARED_LIBS is the standard CMake switch. Default OFF (static libQuickFAST.a).
 # Pass -DBUILD_SHARED_LIBS=ON for a shared library.
 if(NOT DEFINED BUILD_SHARED_LIBS)
@@ -173,6 +176,7 @@ set(QUICKFAST_LIB_SOURCES
   src/Communication/AsynchFileSender.cpp
   src/Communication/AsynchSender.cpp
   src/Communication/FileSender.cpp
+  src/Communication/HostResolver.cpp
   src/Communication/MulticastReceiverHandle.cpp
   src/Communication/PCapReader.cpp
   src/Messages/Field.cpp
@@ -247,6 +251,12 @@ if(QUICKFAST_USE_LIBPCAP)
   include(QuickFASTPcap)
   target_link_libraries(QuickFAST PRIVATE PCAP::PCAP)
   target_compile_definitions(QuickFAST PUBLIC QUICKFAST_HAVE_LIBPCAP=1)
+endif()
+
+if(QUICKFAST_USE_CARES)
+  include(QuickFASTCAres)
+  target_link_libraries(QuickFAST PRIVATE ${QUICKFAST_CARES_TARGET})
+  target_compile_definitions(QuickFAST PUBLIC QUICKFAST_HAVE_CARES=1)
 endif()
 
 if(QUICKFAST_USE_SPDLOG)
@@ -426,6 +436,13 @@ else()
   message(STATUS
     "libpcap: OFF -- PCapReader will refuse to open capture files "
     "(set -DQUICKFAST_USE_LIBPCAP=ON)")
+endif()
+if(QUICKFAST_USE_CARES)
+  message(STATUS "c-ares: hostname resolve via c-ares (QUICKFAST_HAVE_CARES)")
+else()
+  message(STATUS
+    "c-ares: OFF -- HostResolver uses Asio getaddrinfo "
+    "(default is ON; pass -DQUICKFAST_USE_CARES=ON to re-enable)")
 endif()
 
 if(QUICKFAST_BUILD_FUZZERS)
