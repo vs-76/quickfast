@@ -10,62 +10,48 @@ which supports using QuickFAST in the .NET environment. Ask if you want support 
 
 ### Linux build (CMake + C++23)
 
-See **[BUILD.md](BUILD.md)** for g++ / clang++ command recipes (Release/Debug, tests,
-examples, libc++), and for optional **Conan 2** / **vcpkg** dependency workflows.
+See **[BUILD.md](BUILD.md)** for g++ / clang++ recipes and **Conan 2** / **vcpkg**
+dependency install (required — Conan 2 or vcpkg only; no system or FetchContent deps).
 
-Native library, examples, and tests no longer depend on Boost. Dependencies:
+Native library, examples, and tests no longer depend on Boost. Dependencies
+(installed via Conan or vcpkg):
 
 - C++23 compiler (verified with g++ 16 and clang++ 22; GCC 13+ / Clang 16+ expected to work)
-- [Xerces-C++](https://xerces.apache.org/xerces-c/) ≥ 3.2.5 (CVE-2024-23807; CMake fetches 3.3.0 if needed)
+- [Xerces-C++](https://xerces.apache.org/xerces-c/) ≥ 3.2.5 (pinned 3.3.0 in manifests)
 - Standalone [Asio](https://github.com/chriskohlhoff/asio) and [GoogleTest](https://github.com/google/googletest) / GoogleMock
 - [spdlog](https://github.com/gabime/spdlog) + zlib (default ON; `-DQUICKFAST_USE_SPDLOG=OFF` to disable)
-- Optional: [libpcap](https://www.tcpdump.org/) (default ON)
+- [libpcap](https://www.tcpdump.org/) (default ON)
 
-Resolve deps via **apt** (default FetchContent fallback), **Conan 2** (`conanfile.py`),
-or **vcpkg** (`vcpkg.json`) — one manager per build directory; see BUILD.md.
-Conan and vcpkg flows install **static** third-party libraries. QuickFAST itself
-defaults to a static archive (`BUILD_SHARED_LIBS=OFF`; pass `ON` for shared).
-
-Ubuntu/Debian packages:
+QuickFAST defaults to a static archive (`BUILD_SHARED_LIBS=OFF`).
 
 ```bash
-sudo apt-get install -y cmake build-essential libxerces-c-dev libpcap-dev
-```
+sudo apt-get install -y cmake build-essential
+# Conan 2: pip install conan && conan profile detect
 
-If the distro Xerces is still 3.2.4 or older, the first CMake configure
-downloads and builds 3.3.0 (needs network once) unless you use Conan/vcpkg.
-
-Configure and build (first-party code is compiled with `-Wall -Werror -pedantic`):
-
-```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+conan install . -of build/conan -s build_type=Release --build=missing
+cmake -S . -B build \
+  -DCMAKE_TOOLCHAIN_FILE="$(pwd)/build/conan/conan_toolchain.cmake" \
+  -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ctest --test-dir build --output-on-failure
 ```
 
-Dual-compiler check:
+Dual-compiler check (re-run `conan install` if the profile compiler changes):
 
 ```bash
-cmake -S . -B build-gcc16 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++-16
+cmake -S . -B build-gcc16 -DCMAKE_TOOLCHAIN_FILE="$(pwd)/build/conan/conan_toolchain.cmake" \
+  -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++-16
 cmake --build build-gcc16 -j && ctest --test-dir build-gcc16 --output-on-failure
 
-cmake -S . -B build-clang22 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++-22
+cmake -S . -B build-clang22 -DCMAKE_TOOLCHAIN_FILE="$(pwd)/build/conan/conan_toolchain.cmake" \
+  -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++-22
 cmake --build build-clang22 -j && ctest --test-dir build-clang22 --output-on-failure
 ```
 
-Clang with libc++ (optional, default OFF):
-
-```bash
-cmake -S . -B build-clang22-libcxx -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_CXX_COMPILER=clang++-22 -DQUICKFAST_USE_LIBCXX=ON
-cmake --build build-clang22-libcxx -j && ctest --test-dir build-clang22-libcxx --output-on-failure
-```
-
 Optional flags: `-DQUICKFAST_BUILD_TESTS=OFF`, `-DQUICKFAST_BUILD_EXAMPLES=OFF`,
-`-DQUICKFAST_FETCH_DEPS=OFF` (with Conan/vcpkg), `-DQUICKFAST_USE_LIBCXX=ON` (Clang only),
-`-DQUICKFAST_ENABLE_PVS_STUDIO=OFF`.
+`-DQUICKFAST_USE_LIBCXX=ON` (Clang only), `-DQUICKFAST_ENABLE_PVS_STUDIO=OFF`.
 
-The legacy MPC/`setup.sh` flow remains available for older toolchains; prefer CMake on modern Linux.
+The legacy MPC/`setup.sh` flow remains for older toolchains; prefer CMake + Conan/vcpkg.
 
 Instructions for [getting started with QuickFAST are here](https://github.com/objectcomputing/quickfast/wiki/GettingStarted)
 

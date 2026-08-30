@@ -1,7 +1,5 @@
-# Locate libpcap.
-#
-# libpcap ships neither a CMake config package nor, on every distribution, a
-# pkg-config file, so a find module is the portable option.
+# Locate libpcap within CMAKE_PREFIX_PATH only (Conan / vcpkg).
+# System prefixes are disabled by QuickFASTPackageManager before this runs.
 #
 # Result variables:
 #   PCAP_FOUND        - true if libpcap was located

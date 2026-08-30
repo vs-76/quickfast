@@ -23,9 +23,6 @@ option(QUICKFAST_USE_SPDLOG
 option(QUICKFAST_USE_LIBPCAP
   "Read capture files via libpcap (adds pcapng and nanosecond pcap support)"
   ON)
-option(QUICKFAST_FETCH_DEPS
-  "Fetch missing third-party deps with FetchContent (set OFF when using Conan or vcpkg)"
-  ON)
 # BUILD_SHARED_LIBS is the standard CMake switch. Default OFF (static libQuickFAST.a).
 # Pass -DBUILD_SHARED_LIBS=ON for a shared library.
 if(NOT DEFINED BUILD_SHARED_LIBS)
@@ -84,15 +81,18 @@ if(QUICKFAST_USE_LIBCXX)
       "QUICKFAST_USE_LIBCXX=ON requires Clang or AppleClang "
       "(CMAKE_CXX_COMPILER_ID=${CMAKE_CXX_COMPILER_ID})")
   endif()
-  # Propagate to all CXX targets created after this point (including FetchContent
-  # deps such as GoogleTest). Prefer CMAKE_CXX_FLAGS over CMAKE_*_LINKER_FLAGS so
-  # C try-compiles (e.g. GoogleTest) are not passed -stdlib=.
+  # Propagate to all CXX targets created after this point (including packaged
+  # deps that add their own targets). Prefer CMAKE_CXX_FLAGS over
+  # CMAKE_*_LINKER_FLAGS so C try-compiles (e.g. GoogleTest) are not passed -stdlib=.
   if(NOT CMAKE_CXX_FLAGS MATCHES "(^|[ \t])-stdlib=libc\\+\\+([ \t]|$)")
     string(APPEND CMAKE_CXX_FLAGS " -stdlib=libc++")
   endif()
 endif()
 
+# Third-party libs must come from Conan 2 or vcpkg — never from system prefixes.
+include(QuickFASTPackageManager)
 find_package(Threads REQUIRED)
+quickfast_disable_system_dependency_search()
 include(QuickFASTXerces)
 include(QuickFASTAsio)
 if(QUICKFAST_USE_SPDLOG)
@@ -387,8 +387,6 @@ if(BUILD_SHARED_LIBS)
 else()
   message(STATUS "Library type: STATIC")
 endif()
-message(STATUS "Deps: fetch=${QUICKFAST_FETCH_DEPS} asio=${QUICKFAST_ASIO_TARGET}")
-message(STATUS "Warning flags: ${QUICKFAST_WARNING_FLAGS}")
 if(QUICKFAST_USE_LIBCXX)
   message(STATUS "C++ standard library: libc++ (-stdlib=libc++)")
 else()

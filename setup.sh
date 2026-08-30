@@ -1,7 +1,6 @@
 # Command file to set QuickFAST environment
-# Preferred Linux build: CMake + C++23 (see README.md / BUILD.md).
-# Runtime deps: Xerces-C++ (>= 3.2.5; CMake may FetchContent 3.3.0, or use Conan/vcpkg).
-# Asio and GoogleTest: find_package, else FetchContent when QUICKFAST_FETCH_DEPS=ON.
+# Preferred Linux build: CMake + C++23 with Conan 2 or vcpkg (see README.md / BUILD.md).
+# Runtime deps come from those package managers (Xerces-C++ >= 3.2.5, Asio, etc.).
 # Customize this file by setting variables to suit your environment
 SOURCE="${BASH_SOURCE[0]}"
 SOURCE_DIR=`dirname $SOURCE`
@@ -15,14 +14,14 @@ then
   fi
 fi
 
-# Prefer system Xerces when XERCES_ROOT is unset.
+# Prefer system Xerces when XERCES_ROOT is unset (legacy MPC path).
 if test "$XERCES_ROOT" = ""
 then
   if test -d /usr/include/xercesc
   then
     export XERCES_ROOT=/usr
   else
-    # Prefer >= 3.2.5 (CVE-2024-23807); 3.3.0 is the FetchContent fallback.
+    # Prefer >= 3.2.5 (CVE-2024-23807); Conan/vcpkg pin 3.3.0 for CMake builds.
     export XERCES_ROOT=~/xerces/xerces-c-3.3.0
   fi
 fi

@@ -3,57 +3,43 @@
 Native library, examples, and tests use **C++23** and do not depend on Boost.
 First-party code is always compiled with `-Wall -Werror -pedantic`.
 
-Dependencies can come from **system packages**, **Conan 2**, or **vcpkg** — pick one
-per build directory. CMake always uses `find_package`; FetchContent is only a
-fallback when `-DQUICKFAST_FETCH_DEPS=ON` (the default for the apt path).
+Third-party libraries are resolved only with `find_package` from **Conan 2** or
+**vcpkg** (pick one per build directory). System packages are never linked for
+those dependencies; there is no CMake FetchContent fallback.
 
 ## Prerequisites
 
 ```bash
-sudo apt-get install -y cmake build-essential libxerces-c-dev libpcap-dev
+sudo apt-get install -y cmake build-essential
+# plus Conan 2 (`pip install conan`) or a vcpkg clone — see below
 ```
 
-On Fedora/RHEL the last two are `xerces-c-devel` and `libpcap-devel`.
-
-**Xerces-C++ must be ≥ 3.2.5** (fixes [CVE-2024-23807](https://nvd.nist.gov/vuln/detail/CVE-2024-23807)).
-Many distros still ship 3.2.4; if `find_package` does not find a new enough
-system library and FetchContent is enabled, CMake downloads and builds **3.3.0**
-automatically (first configure needs network). Conan and vcpkg pin 3.3.0.
-You can also install 3.3.0 yourself under `~/xerces/xerces-c-3.3.0` (see `setup.sh`).
-
-`libpcap` is what reads packet capture files, so it is needed for the
-`-pcap` input mode and for the capture-file tests. Build without it using
-`-DQUICKFAST_USE_LIBPCAP=OFF`; `PCapReader` then refuses to open a file and
-says why. pcapng support arrived in libpcap 1.1.0, so any current
-distribution package is new enough.
-
-Optional compilers / libc++ / coverage (examples below use the packaged names on this tree):
+Optional compilers / libc++ / coverage:
 
 ```bash
 sudo apt-get install -y g++-16 clang++-22 libc++-dev libc++abi-dev gcovr
 ```
 
-With the default FetchContent fallback, CMake may download standalone
+**Xerces-C++ must be ≥ 3.2.5** (CVE-2024-23807); Conan and vcpkg pin **3.3.0**.
+Also required (defaults ON unless noted): standalone
 [Asio](https://github.com/chriskohlhoff/asio),
-[GoogleTest](https://github.com/google/googletest), [spdlog](https://github.com/gabime/spdlog),
-and Xerces-C 3.3.0 when they are not already on the CMake prefix path.
-spdlog is **on by default** (`QUICKFAST_USE_SPDLOG=ON`; needs zlib and tzdata).
-With Conan or vcpkg, zlib is installed from those managers (`zlib/1.3.2` /
-vcpkg `zlib`); otherwise CMake uses a system zlib or FetchContent 1.3.2.
+[GoogleTest](https://github.com/google/googletest) (tests),
+[spdlog](https://github.com/gabime/spdlog) + zlib, and
+[libpcap](https://www.tcpdump.org/) (optional via `-DQUICKFAST_USE_LIBPCAP=OFF`).
+spdlog needs host **tzdata** for IANA zones.
 
 | CMake option | Default | Meaning |
 | --- | --- | --- |
 | `QUICKFAST_BUILD_TESTS` | `ON` | Build `QuickFASTTest` and register ctest |
 | `QUICKFAST_BUILD_EXAMPLES` | `ON` | Build example applications |
-| `QUICKFAST_FETCH_DEPS` | `ON` | Fetch missing deps with FetchContent; set `OFF` with Conan/vcpkg |
 | `BUILD_SHARED_LIBS` | `OFF` | Static `libQuickFAST.a` by default; set `ON` for a shared library |
 | `QUICKFAST_USE_LIBCXX` | `OFF` | Use LLVM libc++ (`-stdlib=libc++`); **Clang/AppleClang only** |
 | `QUICKFAST_ENABLE_COVERAGE` | `OFF` | Instrument library + tests with `--coverage`; add `coverage` target if `gcovr` is installed |
 | `QUICKFAST_SANITIZE_ADDRESS` | `OFF` | AddressSanitizer (`-fsanitize=address`) |
 | `QUICKFAST_SANITIZE_UNDEFINED` | `OFF` | UndefinedBehaviorSanitizer (`-fsanitize=undefined`) |
 | `QUICKFAST_SANITIZE_THREAD` | `OFF` | ThreadSanitizer (`-fsanitize=thread`; incompatible with ASan/UBSan) |
-| `QUICKFAST_USE_SPDLOG` | `ON` | Build `SpdlogLogger` + `managed_file_sink_mt` (find/FetchContent spdlog; requires zlib, tzdata) |
-| `QUICKFAST_USE_LIBPCAP` | `ON` | Read capture files through libpcap (adds pcapng and nanosecond pcap); requires `libpcap-dev` |
+| `QUICKFAST_USE_SPDLOG` | `ON` | Build `SpdlogLogger` + `managed_file_sink_mt` (spdlog + zlib; tzdata) |
+| `QUICKFAST_USE_LIBPCAP` | `ON` | Read capture files through libpcap (pcapng / nanosecond pcap) |
 | `QUICKFAST_ENABLE_TEST_HOOKS` | follows `QUICKFAST_BUILD_TESTS` | Compile test-only hooks (`managed_file_sink_mt`, `PCapReader::dissectFrameForTest`); keep `OFF` for shipping builds |
 | `QUICKFAST_BUILD_FUZZERS` | `OFF` | Build libFuzzer harnesses under `tests/fuzz/` (**Clang only**; implies test hooks) |
 | `QUICKFAST_ENABLE_PVS_STUDIO` | `ON` | Create `pvs-studio` target if `pvs-studio-analyzer` is installed |
@@ -69,11 +55,10 @@ export QUICKFAST_ROOT="$(pwd)"
 
 ---
 
-## Dependency managers (optional)
+## Dependency managers
 
-Use **either** Conan 2 **or** vcpkg for a reproducible prefix; do not pass both
-toolchains into the same build directory. Set `-DQUICKFAST_FETCH_DEPS=OFF` so
-CMake does not also download overlapping sources.
+Use **either** Conan 2 **or** vcpkg; do not pass both toolchains into the same
+build directory.
 
 ### Conan 2
 
@@ -93,8 +78,7 @@ conan install . -of build/conan -s build_type=Release --build=missing \
 
 cmake -S . -B build-conan \
   -DCMAKE_TOOLCHAIN_FILE="$(pwd)/build/conan/conan_toolchain.cmake" \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DQUICKFAST_FETCH_DEPS=OFF
+  -DCMAKE_BUILD_TYPE=Release
 cmake --build build-conan -j
 ctest --test-dir build-conan --output-on-failure
 ```
@@ -132,7 +116,6 @@ cmake -S . -B build-vcpkg \
   -DVCPKG_OVERLAY_TRIPLETS="$(pwd)/triplets" \
   -DVCPKG_TARGET_TRIPLET="${TRIPLET}" \
   -DCMAKE_BUILD_TYPE=Release \
-  -DQUICKFAST_FETCH_DEPS=OFF \
   -DQUICKFAST_USE_LIBPCAP=ON \
   -DQUICKFAST_BUILD_TESTS=ON
 cmake --build build-vcpkg -j
@@ -149,22 +132,21 @@ cmake -S . -B build-vcpkg-nospdlog \
   -DVCPKG_MANIFEST_NO_DEFAULT_FEATURES=ON \
   -DVCPKG_MANIFEST_FEATURES="pcap;tests" \
   -DCMAKE_BUILD_TYPE=Release \
-  -DQUICKFAST_FETCH_DEPS=OFF \
   -DQUICKFAST_USE_SPDLOG=OFF
 ```
 
-For a shared QuickFAST (any dependency path):
-
-```bash
-cmake -S . -B build-shared -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release
-```
+For a shared QuickFAST, pass `-DBUILD_SHARED_LIBS=ON` together with your Conan
+or vcpkg toolchain file.
 
 ---
 
 ## Default compiler (system `c++`)
 
+Install deps with Conan (or vcpkg) first, then:
+
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+conan install . -of build/conan -s build_type=Release --build=missing
+cmake -S . -B build   -DCMAKE_TOOLCHAIN_FILE="$(pwd)/build/conan/conan_toolchain.cmake"   -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ctest --test-dir build --output-on-failure
 ```
@@ -175,6 +157,10 @@ tests/examples under `build/bin/`.
 ---
 
 ## g++
+
+Every configure below needs a Conan or vcpkg toolchain, for example
+`-DCMAKE_TOOLCHAIN_FILE="$(pwd)/build/conan/conan_toolchain.cmake"` after
+`conan install` (omitted from the snippets for brevity).
 
 ### Release (tests + examples)
 
@@ -312,7 +298,7 @@ It is compile-only. Linking QuickFAST for Windows also needs Xerces-C, zlib, fmt
 and spdlog cross-built for the target, which the script does not attempt; it
 borrows the host's portable third-party headers for the compile. Override
 `MINGW_CXX`, `ASIO_INCLUDE_DIR` or `HOST_INCLUDE_DIR` if autodetection is wrong
-(FetchContent under `build*/_deps`, Conan/vcpkg include trees, or system Asio).
+(Conan/vcpkg include trees, or set `ASIO_INCLUDE_DIR`).
 
 A narrow-string path passed to a `...W` API, for example, fails the gate while
 building cleanly on POSIX.
@@ -346,7 +332,7 @@ rm -rf build-gcc16
 
 If [PVS-Studio](https://pvs-studio.com/) is installed (`pvs-studio-analyzer` and
 `plog-converter` on `PATH`), configure creates an optional target that analyzes
-the `QuickFAST` library (FetchContent deps and `src/DotNet` are excluded):
+the `QuickFAST` library (packaged deps under the build prefix and `src/DotNet` are excluded):
 
 ```bash
 cmake -S . -B build-gcc16 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++-16
@@ -495,7 +481,7 @@ cmake --build build-cov -j --target coverage
 ```
 
 The `coverage` target builds `QuickFASTTest`, runs `ctest`, then generates a
-gcovr summary for first-party `src/` (deps under `_deps` are excluded).
+gcovr summary for first-party `src/` (third-party prefixes are excluded).
 
 ---
 
@@ -641,4 +627,4 @@ valgrind --tool=cachegrind --cachegrind-out-file=cachegrind.out \
 # optional: cg_annotate cachegrind.out | less
 ```
 
-Legacy MPC / `setup.sh` remains available for older toolchains; prefer CMake on modern Linux.
+Legacy MPC / `setup.sh` remain for older toolchains; prefer CMake + Conan/vcpkg.

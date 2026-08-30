@@ -9,7 +9,7 @@
 #   conan install . -of build/conan -s build_type=Release --build=missing \
 #     -o '&:with_spdlog=False' -o '&:with_pcap=True' -o '&:build_tests=True'
 #   cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=build/conan/conan_toolchain.cmake \
-#     -DCMAKE_BUILD_TYPE=Release -DQUICKFAST_FETCH_DEPS=OFF
+#     -DCMAKE_BUILD_TYPE=Release
 #   cmake --build build -j
 #   ctest --test-dir build --output-on-failure
 
@@ -58,7 +58,7 @@ class QuickFASTConan(ConanFile):
             self.options["libpcap"].shared = False
         if self.options.build_tests:
             self.options["gtest"].shared = False
-        # Match FetchContent defaults: gnuiconv, no ICU.
+        # Prefer gnuiconv so Xerces does not pull ICU.
         self.options["xerces-c"].transcoder = "gnuiconv"
         self.options["xerces-c"].network = False
 
@@ -66,7 +66,6 @@ class QuickFASTConan(ConanFile):
         deps = CMakeDeps(self)
         deps.generate()
         tc = CMakeToolchain(self)
-        tc.variables["QUICKFAST_FETCH_DEPS"] = False
         tc.variables["QUICKFAST_USE_SPDLOG"] = bool(self.options.with_spdlog)
         tc.variables["QUICKFAST_USE_LIBPCAP"] = bool(self.options.with_pcap)
         tc.variables["QUICKFAST_BUILD_TESTS"] = bool(self.options.build_tests)
