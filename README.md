@@ -18,7 +18,8 @@ Native library, examples, and tests no longer depend on Boost. Dependencies:
 - C++23 compiler (verified with g++ 16 and clang++ 22; GCC 13+ / Clang 16+ expected to work)
 - [Xerces-C++](https://xerces.apache.org/xerces-c/) ≥ 3.2.5 (CVE-2024-23807; CMake fetches 3.3.0 if needed)
 - Standalone [Asio](https://github.com/chriskohlhoff/asio) and [GoogleTest](https://github.com/google/googletest) / GoogleMock
-- Optional: [libpcap](https://www.tcpdump.org/), [spdlog](https://github.com/gabime/spdlog) + zlib
+- [spdlog](https://github.com/gabime/spdlog) + zlib (default ON; `-DQUICKFAST_USE_SPDLOG=OFF` to disable)
+- Optional: [libpcap](https://www.tcpdump.org/) (default ON)
 
 Resolve deps via **apt** (default FetchContent fallback), **Conan 2** (`conanfile.py`),
 or **vcpkg** (`vcpkg.json`) — one manager per build directory; see BUILD.md.

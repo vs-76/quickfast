@@ -7,7 +7,7 @@
 # Dependencies and QuickFAST itself are built as static libraries by default.
 #
 #   conan install . -of build/conan -s build_type=Release --build=missing \
-#     -o '&:with_spdlog=True' -o '&:with_pcap=True' -o '&:build_tests=True'
+#     -o '&:with_spdlog=False' -o '&:with_pcap=True' -o '&:build_tests=True'
 #   cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=build/conan/conan_toolchain.cmake \
 #     -DCMAKE_BUILD_TYPE=Release -DQUICKFAST_FETCH_DEPS=OFF
 #   cmake --build build -j
@@ -28,7 +28,7 @@ class QuickFASTConan(ConanFile):
         "build_tests": [True, False],
     }
     default_options = {
-        "with_spdlog": False,
+        "with_spdlog": True,
         "with_pcap": True,
         "build_tests": True,
         "*:shared": False,
@@ -39,7 +39,8 @@ class QuickFASTConan(ConanFile):
         self.requires("asio/1.30.2")
         if self.options.with_spdlog:
             self.requires("spdlog/1.15.1")
-            self.requires("zlib/[>=1.2.11 <2]")
+            # Direct dep for managed_file_sink_mt gzip; also satisfies spdlog consumers.
+            self.requires("zlib/1.3.1")
         if self.options.with_pcap:
             self.requires("libpcap/1.10.4")
 
