@@ -1,4 +1,5 @@
 // Copyright (c) 2011, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -112,6 +113,7 @@ namespace QuickFAST
       /// input-type services which should always have an outstanding read or an active handler
       /// callback.
       typedef asio::executor_work_guard<asio::io_context::executor_type> WorkGuard;
+      /// @brief the work guard that implements the keep-alive described above
       std::unique_ptr<WorkGuard> keepAlive_;
     };
   }

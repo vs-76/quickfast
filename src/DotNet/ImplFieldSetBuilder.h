@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010 Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #pragma once

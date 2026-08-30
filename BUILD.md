@@ -188,6 +188,31 @@ Outputs land under `build-msvc-conan/bin/<Config>/` (DLL + example exes).
 
 ---
 
+## API docs (Doxygen)
+
+`src/Doxyfile` is maintained for **Doxygen 1.15+**. From `src/`:
+
+```bash
+doxygen Doxyfile
+# HTML → Doc/html/index.html  (gitignored)
+```
+
+Header-only (`*.h`) under `Codecs`, `Common`, `Communication`, `Messages`,
+`Application`, `Examples`, and `DotNet`. LaTeX output is off by default.
+
+The generated docs are **warning-free**; treat a new Doxygen warning as a
+failure. `WARN_IF_UNDOCUMENTED` is on, so a new public member needs a `///`
+comment with `@param` / `@returns` where they apply.
+
+The landing page and the quick-start examples come from the `\mainpage` comment
+in `src/Common/QuickFASTPch.h`. Per-class usage examples live in `@par Example`
+`@code` blocks on the type they document — `Codecs::Decoder`, `Codecs::Encoder`,
+`Application::DecoderConnection`, `Messages::MessageToJson`, and
+`Common::managed_file_sink_mt` among others. Keep those blocks compiling: they
+are copied into real code.
+
+---
+
 ## Default compiler (system `c++`)
 
 Install deps with Conan (or vcpkg) first, then:

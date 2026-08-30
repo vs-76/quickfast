@@ -1,3 +1,7 @@
+# Copyright (c) 2026, QuickFAST contributors.
+# All rights reserved.
+# See the file license.txt for licensing information.
+
 # Locate libpcap within CMAKE_PREFIX_PATH only (Conan / vcpkg).
 # System prefixes are disabled by QuickFASTPackageManager before this runs.
 #

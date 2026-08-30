@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -524,7 +525,7 @@ namespace QuickFAST{
       /// @param[in] allowOversize ignores one bit of overflow to cope
       ///            with out-of-range deltas (see section 6.3.7.1 of the Fast Specification v1x1)
       /// @param[in] ignoreOverflow ignores overflows completely to cope with funky ARCA encoding.
-      /// @returns true if successful; false if EOF
+      /// @throws EncodingError if the data source runs dry mid-value
       /// @throws OverflowError if the decoded value doesn't fit the supplied type
       template<typename IntType>
       static void decodeSignedInteger(
@@ -546,7 +547,7 @@ namespace QuickFAST{
       /// @param[out] value returns the result
       /// @param[in] name of this field to be used in error messages
       /// @param[in] ignoreOverflow ignores overflows completely to cope with funky ARCA encoding.
-      /// @returns true if successful; false if EOF
+      /// @throws EncodingError if the data source runs dry mid-value
       /// @throws OverflowError if the decoded value doesn't fit the supplied type
       template<typename UnsignedIntType>
       static void decodeUnsignedInteger(

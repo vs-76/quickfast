@@ -1,3 +1,7 @@
+# Copyright (c) 2026, QuickFAST contributors.
+# All rights reserved.
+# See the file license.txt for licensing information.
+
 cmake_minimum_required(VERSION 3.16)
 project(QuickFAST VERSION 1.5.0 LANGUAGES CXX)
 

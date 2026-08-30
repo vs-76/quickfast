@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -57,6 +58,9 @@ namespace QuickFAST{
       {
       }
 
+      /// @brief Assign the FieldIdentity
+      /// @param rhs is the FieldIdentity from which to copy
+      /// @returns *this
       FieldIdentity & operator=(const FieldIdentity & rhs)
       {
         if(this != &rhs)
