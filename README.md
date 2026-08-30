@@ -22,6 +22,8 @@ Native library, examples, and tests no longer depend on Boost. Dependencies:
 
 Resolve deps via **apt** (default FetchContent fallback), **Conan 2** (`conanfile.py`),
 or **vcpkg** (`vcpkg.json`) — one manager per build directory; see BUILD.md.
+Conan and vcpkg flows install **static** third-party libraries. QuickFAST itself
+defaults to a static archive (`BUILD_SHARED_LIBS=OFF`; pass `ON` for shared).
 
 Ubuntu/Debian packages:
 

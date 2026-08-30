@@ -4,13 +4,13 @@
 #
 # Conan 2 consumer recipe for QuickFAST third-party dependencies.
 # CMake remains the build system; this file only installs packages and a toolchain.
+# Dependencies and QuickFAST itself are built as static libraries by default.
 #
 #   conan install . -of build/conan -s build_type=Release --build=missing \
 #     -o '&:with_spdlog=True' -o '&:with_pcap=True' -o '&:build_tests=True'
 #   cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=build/conan/conan_toolchain.cmake \
 #     -DCMAKE_BUILD_TYPE=Release -DQUICKFAST_FETCH_DEPS=OFF
 #   cmake --build build -j
-#   set -a && source build/conan/conanrun.sh && set +a
 #   ctest --test-dir build --output-on-failure
 
 from conan import ConanFile
@@ -26,13 +26,12 @@ class QuickFASTConan(ConanFile):
         "with_spdlog": [True, False],
         "with_pcap": [True, False],
         "build_tests": [True, False],
-        "shared_xerces": [True, False],
     }
     default_options = {
         "with_spdlog": False,
         "with_pcap": True,
         "build_tests": True,
-        "shared_xerces": True,
+        "*:shared": False,
     }
 
     def requirements(self):
@@ -49,7 +48,15 @@ class QuickFASTConan(ConanFile):
             self.test_requires("gtest/1.16.0")
 
     def configure(self):
-        self.options["xerces-c"].shared = self.options.shared_xerces
+        # Prefer static archives for every dependency that offers a shared option.
+        self.options["xerces-c"].shared = False
+        if self.options.with_spdlog:
+            self.options["spdlog"].shared = False
+            self.options["zlib"].shared = False
+        if self.options.with_pcap:
+            self.options["libpcap"].shared = False
+        if self.options.build_tests:
+            self.options["gtest"].shared = False
         # Match FetchContent defaults: gnuiconv, no ICU.
         self.options["xerces-c"].transcoder = "gnuiconv"
         self.options["xerces-c"].network = False
@@ -62,4 +69,5 @@ class QuickFASTConan(ConanFile):
         tc.variables["QUICKFAST_USE_SPDLOG"] = bool(self.options.with_spdlog)
         tc.variables["QUICKFAST_USE_LIBPCAP"] = bool(self.options.with_pcap)
         tc.variables["QUICKFAST_BUILD_TESTS"] = bool(self.options.build_tests)
+        tc.variables["BUILD_SHARED_LIBS"] = False
         tc.generate()
