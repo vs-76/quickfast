@@ -35,9 +35,11 @@ sudo apt-get install -y g++-16 clang++-22 libc++-dev libc++abi-dev gcovr
 
 With the default FetchContent fallback, CMake may download standalone
 [Asio](https://github.com/chriskohlhoff/asio),
-[GoogleTest](https://github.com/google/googletest), and Xerces-C 3.3.0 when
-they are not already on the CMake prefix path. With `-DQUICKFAST_USE_SPDLOG=ON`
-it also finds or fetches [spdlog](https://github.com/gabime/spdlog).
+[GoogleTest](https://github.com/google/googletest), [spdlog](https://github.com/gabime/spdlog),
+and Xerces-C 3.3.0 when they are not already on the CMake prefix path.
+spdlog is **on by default** (`QUICKFAST_USE_SPDLOG=ON`; needs zlib and tzdata).
+With Conan or vcpkg, zlib is installed from those managers (`zlib/1.3.1` /
+vcpkg `zlib`); otherwise CMake uses a system zlib or FetchContent 1.3.1.
 
 | CMake option | Default | Meaning |
 | --- | --- | --- |
@@ -50,7 +52,7 @@ it also finds or fetches [spdlog](https://github.com/gabime/spdlog).
 | `QUICKFAST_SANITIZE_ADDRESS` | `OFF` | AddressSanitizer (`-fsanitize=address`) |
 | `QUICKFAST_SANITIZE_UNDEFINED` | `OFF` | UndefinedBehaviorSanitizer (`-fsanitize=undefined`) |
 | `QUICKFAST_SANITIZE_THREAD` | `OFF` | ThreadSanitizer (`-fsanitize=thread`; incompatible with ASan/UBSan) |
-| `QUICKFAST_USE_SPDLOG` | `OFF` | Build `SpdlogLogger` + `managed_file_sink_mt` (find/FetchContent spdlog; requires zlib, tzdata) |
+| `QUICKFAST_USE_SPDLOG` | `ON` | Build `SpdlogLogger` + `managed_file_sink_mt` (find/FetchContent spdlog; requires zlib, tzdata) |
 | `QUICKFAST_USE_LIBPCAP` | `ON` | Read capture files through libpcap (adds pcapng and nanosecond pcap); requires `libpcap-dev` |
 | `QUICKFAST_ENABLE_TEST_HOOKS` | follows `QUICKFAST_BUILD_TESTS` | Compile test-only hooks (`managed_file_sink_mt`, `PCapReader::dissectFrameForTest`); keep `OFF` for shipping builds |
 | `QUICKFAST_BUILD_FUZZERS` | `OFF` | Build libFuzzer harnesses under `tests/fuzz/` (**Clang only**; implies test hooks) |
@@ -82,12 +84,12 @@ Conan installs **static** dependency archives (`*:shared=False`) and leaves
 QuickFAST static as well (`BUILD_SHARED_LIBS` defaults to `OFF`).
 
 ```bash
-# defaults: libpcap + tests; spdlog off; all deps static
+# defaults: libpcap + tests + spdlog; all deps static
 conan install . -of build/conan -s build_type=Release --build=missing
 
-# optional spdlog adapter
+# disable spdlog adapter
 conan install . -of build/conan -s build_type=Release --build=missing \
-  -o '&:with_spdlog=True'
+  -o '&:with_spdlog=False'
 
 cmake -S . -B build-conan \
   -DCMAKE_TOOLCHAIN_FILE="$(pwd)/build/conan/conan_toolchain.cmake" \
@@ -98,14 +100,14 @@ ctest --test-dir build-conan --output-on-failure
 ```
 
 `conanfile.py` options: `with_spdlog`, `with_pcap`, `build_tests`.
-The recipe pins `xerces-c/3.3.0`, `asio/1.30.2`, optional `spdlog/1.15.1` + `zlib`,
-`libpcap/1.10.4`, and `gtest/1.16.0` as a test requirement. It also writes the
+The recipe pins `xerces-c/3.3.0`, `asio/1.30.2`, `spdlog/1.15.1` + `zlib/1.3.1`
+(default), `libpcap/1.10.4`, and `gtest/1.16.0` as a test requirement. It also writes the
 matching `QUICKFAST_*` / `BUILD_SHARED_LIBS` CMake cache values into the toolchain.
 
 ### vcpkg (manifest mode)
 
 Requires a [vcpkg](https://vcpkg.io/) clone and `VCPKG_ROOT` pointing at it.
-Manifest: `vcpkg.json` (features `pcap`, `tests`, `spdlog`; defaults enable pcap + tests).
+Manifest: `vcpkg.json` (features `pcap`, `tests`, `spdlog`; all three are default).
 
 Use the repo overlay triplets under `triplets/` so ports build as **static**
 libraries. QuickFAST is static by default (`BUILD_SHARED_LIBS` defaults to `OFF`).
@@ -134,17 +136,18 @@ cmake --build build-vcpkg -j
 ctest --test-dir build-vcpkg --output-on-failure
 ```
 
-Enable the spdlog feature and CMake option together:
+Enable spdlog is the default. To turn the feature off with vcpkg:
 
 ```bash
-cmake -S . -B build-vcpkg-spdlog \
+cmake -S . -B build-vcpkg-nospdlog \
   -DCMAKE_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
   -DVCPKG_OVERLAY_TRIPLETS="$(pwd)/triplets" \
   -DVCPKG_TARGET_TRIPLET=x64-linux-static \
-  -DVCPKG_MANIFEST_FEATURES=spdlog \
+  -DVCPKG_MANIFEST_NO_DEFAULT_FEATURES=ON \
+  -DVCPKG_MANIFEST_FEATURES="pcap;tests" \
   -DCMAKE_BUILD_TYPE=Release \
   -DQUICKFAST_FETCH_DEPS=OFF \
-  -DQUICKFAST_USE_SPDLOG=ON
+  -DQUICKFAST_USE_SPDLOG=OFF
 ```
 
 For a shared QuickFAST (any dependency path):
@@ -359,9 +362,9 @@ A license file is typically expected at `~/.config/PVS-Studio/PVS-Studio.lic`.
 
 ---
 
-## Optional spdlog logger adapter
+## spdlog logger adapter (default ON)
 
-When `-DQUICKFAST_USE_SPDLOG=ON`, QuickFAST builds:
+With `QUICKFAST_USE_SPDLOG=ON` (the default), QuickFAST builds:
 - `Common::SpdlogLogger` — `Common::Logger` → application `spdlog::logger`
 - `Common::managed_file_sink_mt` — rotating/compressing file sink on a shared
   `asio::io_context` (zlib required)
@@ -370,10 +373,11 @@ Core codecs/communication stay on the `Logger` interface; inject the adapter via
 your message consumer and/or `Communication::AsioService::setLogger`.
 
 Requires system **tzdata** for IANA zones (`std::chrono` tzdb).
+Disable with `-DQUICKFAST_USE_SPDLOG=OFF`.
 
 ```bash
 cmake -S . -B build-spdlog -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=g++-16 \
-  -DQUICKFAST_USE_SPDLOG=ON -DQUICKFAST_BUILD_EXAMPLES=OFF
+  -DQUICKFAST_BUILD_EXAMPLES=OFF
 cmake --build build-spdlog -j --target QuickFASTTest
 ctest --test-dir build-spdlog --output-on-failure
 ```

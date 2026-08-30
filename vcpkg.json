@@ -11,7 +11,8 @@
   ],
   "default-features": [
     "pcap",
-    "tests"
+    "tests",
+    "spdlog"
   ],
   "features": {
     "pcap": {
@@ -21,7 +22,7 @@
       ]
     },
     "spdlog": {
-      "description": "SpdlogLogger + managed_file_sink_mt (QUICKFAST_USE_SPDLOG)",
+      "description": "SpdlogLogger + managed_file_sink_mt (QUICKFAST_USE_SPDLOG); pulls zlib",
       "dependencies": [
         "spdlog",
         "zlib"

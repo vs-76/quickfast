@@ -19,7 +19,7 @@ option(QUICKFAST_SANITIZE_UNDEFINED "Build with UndefinedBehaviorSanitizer (-fsa
 option(QUICKFAST_SANITIZE_THREAD "Build with ThreadSanitizer (-fsanitize=thread)" OFF)
 option(QUICKFAST_USE_SPDLOG
   "Build SpdlogLogger + managed_file_sink_mt (spdlog + zlib)"
-  OFF)
+  ON)
 option(QUICKFAST_USE_LIBPCAP
   "Read capture files via libpcap (adds pcapng and nanosecond pcap support)"
   ON)
@@ -403,7 +403,7 @@ endif()
 if(QUICKFAST_USE_SPDLOG)
   message(STATUS "spdlog: SpdlogLogger adapter enabled (QUICKFAST_HAS_SPDLOG)")
 else()
-  message(STATUS "spdlog: OFF (set -DQUICKFAST_USE_SPDLOG=ON for Common::SpdlogLogger)")
+  message(STATUS "spdlog: OFF (default is ON; pass -DQUICKFAST_USE_SPDLOG=ON to re-enable)")
 endif()
 if(QUICKFAST_USE_LIBPCAP)
   message(STATUS "libpcap: ${PCAP_LIBRARY} (pcap and pcapng capture files)")
