@@ -15,7 +15,7 @@ See **[BUILD.md](BUILD.md)** for g++ / clang++ command recipes (Release/Debug, t
 Native library, examples, and tests no longer depend on Boost. Dependencies:
 
 - C++23 compiler (verified with g++ 16 and clang++ 22; GCC 13+ / Clang 16+ expected to work)
-- [Xerces-C++](https://xerces.apache.org/xerces-c/)
+- [Xerces-C++](https://xerces.apache.org/xerces-c/) ≥ 3.2.5 (CVE-2024-23807; CMake fetches 3.3.0 if the system package is older)
 - Standalone [Asio](https://github.com/chriskohlhoff/asio) and [GoogleTest](https://github.com/google/googletest) / GoogleMock (fetched by CMake)
 
 Ubuntu/Debian packages:
@@ -23,6 +23,9 @@ Ubuntu/Debian packages:
 ```bash
 sudo apt-get install -y cmake build-essential libxerces-c-dev
 ```
+
+If the distro Xerces is still 3.2.4 or older, the first CMake configure
+downloads and builds 3.3.0 (needs network once).
 
 Configure and build (first-party code is compiled with `-Wall -Werror -pedantic`):
 

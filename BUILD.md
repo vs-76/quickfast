@@ -11,6 +11,12 @@ sudo apt-get install -y cmake build-essential libxerces-c-dev libpcap-dev
 
 On Fedora/RHEL the last two are `xerces-c-devel` and `libpcap-devel`.
 
+**Xerces-C++ must be ≥ 3.2.5** (fixes [CVE-2024-23807](https://nvd.nist.gov/vuln/detail/CVE-2024-23807)).
+Many distros still ship 3.2.4; if `find_package` does not find a new enough
+system library, CMake FetchContent downloads and builds **3.3.0** automatically
+(first configure needs network). You can also install 3.3.0 yourself under
+`~/xerces/xerces-c-3.3.0` (see `setup.sh`).
+
 `libpcap` is what reads packet capture files, so it is needed for the
 `-pcap` input mode and for the capture-file tests. Build without it using
 `-DQUICKFAST_USE_LIBPCAP=OFF`; `PCapReader` then refuses to open a file and
@@ -24,7 +30,8 @@ sudo apt-get install -y g++-16 clang++-22 libc++-dev libc++abi-dev gcovr
 ```
 
 CMake fetches standalone [Asio](https://github.com/chriskohlhoff/asio) and
-[GoogleTest](https://github.com/google/googletest) on first configure.
+[GoogleTest](https://github.com/google/googletest) on first configure, and
+Xerces-C 3.3.0 when the system package is older than 3.2.5.
 With `-DQUICKFAST_USE_SPDLOG=ON` it also finds or fetches
 [spdlog](https://github.com/gabime/spdlog).
 

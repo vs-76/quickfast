@@ -86,7 +86,7 @@ endif()
 
 include(FetchContent)
 find_package(Threads REQUIRED)
-find_package(XercesC REQUIRED)
+include(QuickFASTXerces)
 
 # Standalone Asio (header-only)
 FetchContent_Declare(
