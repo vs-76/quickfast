@@ -184,9 +184,7 @@ cmake --build build-msvc-conan --config Release \
   --target InterpretFASTDotNet --target PerformanceTestDotNet
 ```
 
-Outputs land under `build-msvc-conan/bin/<Config>/` (DLL + example exes). Legacy
-MPC `dotnet=1` / `dotnetapp=1` in `QuickFAST.features` is superseded by these
-CMake options.
+Outputs land under `build-msvc-conan/bin/<Config>/` (DLL + example exes).
 
 ---
 
@@ -676,5 +674,3 @@ valgrind --tool=cachegrind --cachegrind-out-file=cachegrind.out \
   "$TEST"
 # optional: cg_annotate cachegrind.out | less
 ```
-
-Legacy MPC / `setup.sh` remain for older toolchains; prefer CMake + Conan/vcpkg.
