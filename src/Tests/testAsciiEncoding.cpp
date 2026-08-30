@@ -100,7 +100,7 @@ namespace
   /// in a name or symbol field, which used to arrive as "hiC".
   const char * const theEightBitValues[] =
   {
-    "\x80", "\xff", "A\x80", "\x80" "A", "hi\xc3\xa9"
+    "\x80", "\xff", "A\x80", ("\x80" "A"), "hi\xc3\xa9"
   };
 }
 
