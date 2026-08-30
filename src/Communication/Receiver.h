@@ -357,7 +357,8 @@ namespace QuickFAST
             // add any idle buffers to pool
             idleBufferPool_.push(idleBuffers_);
             startReceive(lock);
-            queue_.refresh(lock, wait && !inputComplete_);
+            // wait is already true in this branch (guard above).
+            queue_.refresh(lock, !inputComplete_);
             available = 0;
           }
           else

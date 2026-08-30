@@ -425,7 +425,9 @@ managed_file_sink_mt::arm_rotation_timer_unlocked_()
     return;
   }
   rotation_timer_.expires_at(next_rotation_tp_(std::chrono::system_clock::now()));
-  async_wait_rotation_unlocked_();
+  // PVS-Studio models the throwing overload of the preceding Asio call as
+  // never returning, so it treats the rest of the function as unreachable.
+  async_wait_rotation_unlocked_(); //-V779
 }
 
 void
@@ -580,7 +582,9 @@ managed_file_sink_mt::request_shutdown()
     {
       shutting_down_ = true;
       rotation_timer_.cancel();
-      if(file_ != nullptr)
+      // PVS-Studio models the throwing overload of the preceding Asio call as
+      // never returning, so it treats the rest of the block as unreachable.
+      if(file_ != nullptr) //-V779
       {
         std::fflush(file_);
         std::fclose(file_);

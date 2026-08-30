@@ -429,7 +429,7 @@ Decimal::operator==(const Decimal & rhs) const
   }
   // See operator<: without a common exponent the truncated mantissas can be
   // equal while the values are not, which reported 1e20 == 1e18.
-  return double(*this) == double(rhs);
+  return double(*this) == double(rhs); //-V550
 }
 
 Decimal::operator double()const

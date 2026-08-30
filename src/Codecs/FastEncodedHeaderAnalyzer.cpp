@@ -49,8 +49,8 @@ FastEncodedHeaderAnalyzer::analyzeHeader(DataSource & source, size_t & blockSize
         source.beginField("FAST_ENCODED_HEADER");
         state_ = ParsingPrefix;
         fieldCount_ = 0;
-//        break;
       }
+      [[fallthrough]];
     case ParsingPrefix:
       {
         while(fieldCount_ < prefixCount_)
@@ -67,8 +67,8 @@ FastEncodedHeaderAnalyzer::analyzeHeader(DataSource & source, size_t & blockSize
         }
         state_ = ParsingBlockSize;
         blockSize_ = 0;
-//        break;
       }
+      [[fallthrough]];
     case ParsingBlockSize:
       {
         if(!hasBlockSize_)
@@ -103,8 +103,8 @@ FastEncodedHeaderAnalyzer::analyzeHeader(DataSource & source, size_t & blockSize
             fieldCount_ = 0;
           }
         }
-//        break;
       }
+      [[fallthrough]];
     case ParsingSuffix:
       {
         while(fieldCount_ < suffixCount_)
