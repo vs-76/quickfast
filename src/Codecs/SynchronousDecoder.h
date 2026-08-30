@@ -18,6 +18,25 @@
 namespace QuickFAST{
   namespace Codecs{
     /// @brief Support Synchronous (blocking) decoding of a FAST data stream
+    ///
+    /// Wraps a Decoder in a loop that runs until the DataSource is exhausted, the
+    /// builder asks it to stop, or setLimit() is reached. Useful for files and
+    /// tests; live feeds are better served by
+    /// QuickFAST::Application::DecoderConnection.
+    ///
+    /// @par Example
+    /// @code
+    /// std::ifstream fast("data.fast", std::ios::binary);
+    /// QuickFAST::Codecs::DataSourceStream source(fast);
+    ///
+    /// QuickFAST::Examples::JsonMessageConsumer handler(std::cout);
+    /// QuickFAST::Codecs::GenericMessageBuilder builder(handler);
+    ///
+    /// QuickFAST::Codecs::SynchronousDecoder decoder(registry);
+    /// decoder.setResetOnMessage(true);   // match a sender that resets per message
+    /// decoder.decode(source, builder);
+    /// std::cerr << decoder.messageCount() << " messages" << std::endl;
+    /// @endcode
     class SynchronousDecoder
     {
     public:

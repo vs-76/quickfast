@@ -30,10 +30,12 @@ namespace QuickFAST{
         Hex
       };
 
+      /// @brief Which FieldIdentity attribute names each JSON member.
       KeyMode keyMode = KeyMode::Name;
       /// When true, emit applicationType / applicationTypeNs at the object root
       /// when the FieldSet carries a typeRef.
       bool includeApplicationType = true;
+      /// @brief Text encoding applied to BYTEVECTOR values.
       ByteVectorEncoding byteVectors = ByteVectorEncoding::Base64;
     };
   }

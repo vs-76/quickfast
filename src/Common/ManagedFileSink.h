@@ -47,6 +47,11 @@ namespace QuickFAST
     /// Configuration for @c managed_file_sink_mt.
     struct ManagedFileSinkConfig
     {
+      /// @brief Path of the active log file; rotated names derive from it.
+      ///
+      /// The parent directory is created if it does not exist. The stem and
+      /// extension are reused for rotated files, so @c app.log rotates to names
+      /// of the form @c app-20260830-120000.log.gz.
       std::filesystem::path base_path;
 
       /// @brief Rotate the active file once it exceeds this size.
@@ -56,18 +61,25 @@ namespace QuickFAST
       /// active file alone overrun the whole budget with nothing to reclaim.
       std::size_t max_file_bytes = 8ull << 20; // 8 MiB default
 
+      /// @brief Which resource retention watches when evicting old files.
       RetentionMode retention = RetentionMode::ManagedBytes;
       /// Budget for active + rotated + compressed files. Fits four default files.
       std::size_t max_managed_bytes = 32ull << 20; // 32 MiB default
+      /// @brief Free space floor, in percent, for @c RetentionMode::FilesystemFreePercent.
       unsigned free_percent_min = 10;
 
       /// IANA zone id (e.g. "Europe/Moscow"). Empty / nullopt = system zone.
       std::optional<std::string> time_zone;
+      /// @brief Local hour (0-23) of the scheduled daily rotation.
       int rotation_hour = 0;
+      /// @brief Local minute (0-59) of the scheduled daily rotation.
       int rotation_minute = 0;
 
+      /// @brief When true, gzip each rotated file on a background worker.
       bool compress = true;
+      /// @brief zlib compression level, 0 (store) .. 9 (smallest).
       int gzip_level = 6;
+      /// @brief When true, gzip rotated files left uncompressed by an earlier run.
       bool recover_uncompressed_on_start = true;
 
       /// spdlog pattern applied to this sink (see spdlog pattern flags).
@@ -75,20 +87,71 @@ namespace QuickFAST
     };
 
     /// Fluent builder for @c ManagedFileSinkConfig.
+    ///
+    /// Every setter returns @c *this, so a whole configuration reads as one
+    /// expression ending in build().
+    ///
+    /// @par Example
+    /// @code
+    /// const auto cfg = QuickFAST::Common::ManagedFileSinkConfigBuilder()
+    ///   .base_path("/var/log/quickfast/feed.log")
+    ///   .max_file_bytes(64ull << 20)                 // rotate at 64 MiB
+    ///   .max_managed_bytes(1ull << 30)               // keep at most 1 GiB
+    ///   .time_zone("Europe/Moscow")
+    ///   .rotation_time(0, 0)                         // and daily at midnight
+    ///   .compress(true)
+    ///   .build();
+    /// @endcode
     class QuickFAST_Export ManagedFileSinkConfigBuilder
     {
     public:
+      /// @brief Set ManagedFileSinkConfig::base_path.
+      /// @param path active log file path
+      /// @returns *this
       ManagedFileSinkConfigBuilder & base_path(std::filesystem::path path);
+      /// @brief Set ManagedFileSinkConfig::max_file_bytes.
+      /// @param bytes size at which the active file rotates
+      /// @returns *this
       ManagedFileSinkConfigBuilder & max_file_bytes(std::size_t bytes);
+      /// @brief Set ManagedFileSinkConfig::retention.
+      /// @param mode resource retention watches
+      /// @returns *this
       ManagedFileSinkConfigBuilder & retention(RetentionMode mode);
+      /// @brief Set ManagedFileSinkConfig::max_managed_bytes.
+      /// @param bytes budget for active + rotated + compressed files
+      /// @returns *this
       ManagedFileSinkConfigBuilder & max_managed_bytes(std::size_t bytes);
+      /// @brief Set ManagedFileSinkConfig::free_percent_min.
+      /// @param percent free space floor for FilesystemFreePercent retention
+      /// @returns *this
       ManagedFileSinkConfigBuilder & free_percent_min(unsigned percent);
+      /// @brief Schedule rotation in a named IANA zone.
+      /// @param zone zone id, e.g. "Europe/Moscow"
+      /// @returns *this
       ManagedFileSinkConfigBuilder & time_zone(std::string zone);
+      /// @brief Schedule rotation in the host's local zone.
+      /// @returns *this
       ManagedFileSinkConfigBuilder & system_time_zone();
+      /// @brief Set the daily rotation wall-clock time.
+      /// @param hour local hour, 0-23
+      /// @param minute local minute, 0-59
+      /// @returns *this
       ManagedFileSinkConfigBuilder & rotation_time(int hour, int minute);
+      /// @brief Enable or disable gzip of rotated files.
+      /// @param enabled true to compress
+      /// @returns *this
       ManagedFileSinkConfigBuilder & compress(bool enabled);
+      /// @brief Set the zlib compression level.
+      /// @param level 0 (store) .. 9 (smallest)
+      /// @returns *this
       ManagedFileSinkConfigBuilder & gzip_level(int level);
+      /// @brief Compress rotated files a previous run left behind.
+      /// @param enabled true to sweep at construction
+      /// @returns *this
       ManagedFileSinkConfigBuilder & recover_uncompressed_on_start(bool enabled);
+      /// @brief Set the spdlog formatting pattern for this sink.
+      /// @param spdlog_pattern pattern string (see spdlog pattern flags)
+      /// @returns *this
       ManagedFileSinkConfigBuilder & pattern(std::string spdlog_pattern);
 
       /// @returns a config copy. Does not validate paths/zones (sink ctor does).
@@ -105,10 +168,38 @@ namespace QuickFAST
     /// Shares an application @c asio::io_context (e.g. @c AsioService::ioService()) for
     /// hard time-based rotation without requiring log traffic. Does not install its own
     /// @c signal_set; call @c request_shutdown() from the app's signal handler.
+    ///
+    /// @par Example
+    /// @code
+    /// QuickFAST::Communication::AsioService service;
+    ///
+    /// auto sink = std::make_shared<QuickFAST::Common::managed_file_sink_mt>(
+    ///   service.ioService(),
+    ///   QuickFAST::Common::ManagedFileSinkConfigBuilder()
+    ///     .base_path("/var/log/quickfast/feed.log")
+    ///     .max_file_bytes(64ull << 20)
+    ///     .max_managed_bytes(1ull << 30)
+    ///     .build());
+    ///
+    /// auto logger = std::make_shared<spdlog::logger>("feed", sink);
+    /// QuickFAST::Common::SpdlogLogger adapter(logger);
+    ///
+    /// // ... run the decoder, sharing service.ioService() ...
+    ///
+    /// sink->request_shutdown();  // from the app's signal handler or at exit
+    /// @endcode
+    ///
+    /// @see SpdlogLogger to route QuickFAST log output into the same logger.
     class QuickFAST_Export managed_file_sink_mt
       : public spdlog::sinks::base_sink<std::mutex>
     {
     public:
+      /// @brief Open (or append to) the active file and arm the rotation timer.
+      /// @param io shared io_context used for scheduled rotation; must outlive the sink
+      /// @param cfg validated configuration; see ManagedFileSinkConfigBuilder
+      /// @throws std::invalid_argument if @c cfg is inconsistent (for example
+      ///         @c max_file_bytes above @c max_managed_bytes) or its directory
+      ///         or time zone cannot be resolved
       managed_file_sink_mt(asio::io_context & io, ManagedFileSinkConfig cfg);
       ~managed_file_sink_mt() override;
 
@@ -176,7 +267,10 @@ namespace QuickFAST
 #endif
 
     protected:
+      /// @brief Format and append one record, rotating first if it would overflow.
+      /// @param msg the record spdlog is delivering
       void sink_it_(const spdlog::details::log_msg & msg) override;
+      /// @brief Flush the active file to the operating system.
       void flush_() override;
 
     private:

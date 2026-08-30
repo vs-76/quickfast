@@ -99,6 +99,9 @@ namespace QuickFAST{
 
         /// @brief copy a multicast feed
         MulticastFeed(const MulticastFeed & rhs) = default;
+        /// @brief assign a multicast feed
+        /// @param rhs the feed to copy
+        /// @returns *this
         MulticastFeed & operator=(const MulticastFeed & rhs) = default;
 
       };

@@ -24,6 +24,38 @@ namespace QuickFAST{
     /// Create an instance of the Decoder providing a registry of the templates
     /// to be used to decode the message, then call decodeMessage to decode
     /// each message from a DataSource.
+    ///
+    /// A Decoder carries the FAST dictionary state that field operators
+    /// (copy, delta, increment, tail) build up across messages, so a stream must
+    /// be decoded by one Decoder in message order. Use reset() where the sender
+    /// resets its own context -- typically once per datagram for UDP and
+    /// multicast feeds.
+    ///
+    /// @par Example
+    /// Decode a single message held in a buffer of FAST bytes:
+    /// @code
+    /// // Templates are parsed once at startup; the registry is shareable.
+    /// std::ifstream templateFile("templates.xml");
+    /// QuickFAST::Codecs::XMLTemplateParser parser;
+    /// QuickFAST::Codecs::TemplateRegistryPtr registry = parser.parse(templateFile);
+    ///
+    /// QuickFAST::Codecs::Decoder decoder(registry);
+    /// QuickFAST::Codecs::DataSourceString source(fastBytes);
+    ///
+    /// // GenericMessageBuilder assembles a Messages::Message and hands it to a
+    /// // MessageConsumer. Implement ValueMessageBuilder directly to skip that
+    /// // intermediate representation in latency-sensitive code.
+    /// QuickFAST::Codecs::SingleMessageConsumer consumer;
+    /// QuickFAST::Codecs::GenericMessageBuilder builder(consumer);
+    ///
+    /// decoder.decodeMessage(source, builder);
+    /// QuickFAST::Messages::Message & message = consumer.message();
+    /// @endcode
+    ///
+    /// @see QuickFAST::Codecs::SynchronousDecoder to loop over every message in
+    ///      a DataSource.
+    /// @see QuickFAST::Application::DecoderConnection for a configuration-driven
+    ///      decoder wired to a live receiver.
     class QuickFAST_Export Decoder : public Context
     {
     public:

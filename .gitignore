@@ -65,6 +65,13 @@ doc/NotGitWorthy/
 # Local agent implementation prompts (never push to GitHub)
 doc/agent-prompts/
 
+# Doxygen output (generated under Doc/ from src/Doxyfile)
+Doc/html/
+Doc/latex/
+Doc/xml/
+Doc/rtf/
+Doc/man/
+
 # Conan / vcpkg generated (do not commit)
 CMakeUserPresets.json
 conan/

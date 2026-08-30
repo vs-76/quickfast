@@ -112,6 +112,7 @@ namespace QuickFAST
       /// input-type services which should always have an outstanding read or an active handler
       /// callback.
       typedef asio::executor_work_guard<asio::io_context::executor_type> WorkGuard;
+      /// @brief the work guard that implements the keep-alive described above
       std::unique_ptr<WorkGuard> keepAlive_;
     };
   }

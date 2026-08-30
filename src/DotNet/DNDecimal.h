@@ -35,12 +35,14 @@ namespace QuickFAST
         return System::String::Format("{0}E{1}", this->Mantissa, this->Exponent);
       }
 
+    /// @cond INTERNAL
     internal:
       DNDecimal(const QuickFAST::Decimal& decimal):
         Mantissa(decimal.getMantissa()),
         Exponent(decimal.getExponent())
       {
       }
+    /// @endcond
     };
   }
 }

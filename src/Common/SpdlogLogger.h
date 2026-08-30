@@ -29,6 +29,18 @@ namespace QuickFAST
     /// Construct with a @c std::shared_ptr<spdlog::logger> from the application.
     /// Inject the same instance via message consumers and/or
     /// @c Communication::AsioService::setLogger.
+    ///
+    /// @par Example
+    /// @code
+    /// auto logger = spdlog::basic_logger_mt("quickfast", "quickfast.log");
+    /// logger->set_level(spdlog::level::info);
+    ///
+    /// // continueOnDecodingError = false: stop the run on the first bad message.
+    /// QuickFAST::Common::SpdlogLogger adapter(logger, false);
+    /// service.setLogger(adapter);
+    /// @endcode
+    ///
+    /// @see managed_file_sink_mt for a sink with rotation, gzip, and retention.
     class QuickFAST_Export SpdlogLogger : public Logger
     {
     public:

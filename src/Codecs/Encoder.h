@@ -24,6 +24,38 @@ namespace QuickFAST{
     /// Create an instance of the Encoder providing a registry of the templates
     /// to be used to encode the message, then call encodeMessage to encode
     /// each message from a DataDestination.
+    ///
+    /// Like the Decoder, an Encoder holds dictionary state across messages, and
+    /// the receiving decoder must see the same reset points. Encoding throws on
+    /// data a template cannot express (a missing mandatory field, for example);
+    /// tell the destination to discard the partial message when that happens.
+    ///
+    /// @par Example
+    /// Encode one message and collect the FAST bytes:
+    /// @code
+    /// const QuickFAST::Messages::FieldIdentity quantity("quantity");
+    ///
+    /// QuickFAST::Messages::Message message(registry->maxFieldCount());
+    /// message.addField(quantity, QuickFAST::Messages::FieldUInt32::create(100));
+    ///
+    /// QuickFAST::Codecs::Encoder encoder(registry);
+    /// QuickFAST::Codecs::DataDestination destination;
+    /// try
+    /// {
+    ///   encoder.encodeMessage(destination, 1, message); // 1 == template id
+    /// }
+    /// catch(const std::exception &)
+    /// {
+    ///   destination.clear();   // do not transmit a half-encoded message
+    ///   throw;
+    /// }
+    ///
+    /// std::string fast;
+    /// destination.toString(fast);
+    /// @endcode
+    ///
+    /// @see QuickFAST::Codecs::DataDestination for higher performance
+    ///      alternatives to toString(), such as scatter/gather writes.
     class QuickFAST_Export Encoder : public Context
     {
     public:

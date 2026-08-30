@@ -25,6 +25,48 @@ namespace QuickFAST{
     ///
     /// Each source of FAST encoded data should be supported by a separate instance of DecoderConnection.
     /// Examples of sources include a single multicast group; a FAST encoded data file; etc.
+    ///
+    /// This is the recommended entry point for applications: a
+    /// DecoderConfiguration selects the receiver, the header handling, and the
+    /// packet assembler, and configure() builds and wires the pieces.
+    ///
+    /// @par Example
+    /// Decode a raw FAST file to standard out:
+    /// @code
+    /// QuickFAST::Application::DecoderConfiguration configuration;
+    /// configuration.setTemplateFileName("templates.xml");
+    /// configuration.setFastFileName("data.fast");
+    /// configuration.setReceiverType(
+    ///   QuickFAST::Application::DecoderConfiguration::RAWFILE_RECEIVER);
+    /// configuration.setAssemblerType(
+    ///   QuickFAST::Application::DecoderConfiguration::STREAMING_ASSEMBLER);
+    /// configuration.setMessageHeaderType(
+    ///   QuickFAST::Application::DecoderConfiguration::NO_HEADER);
+    /// configuration.setPacketHeaderType(
+    ///   QuickFAST::Application::DecoderConfiguration::NO_HEADER);
+    ///
+    /// // The handler and builder must outlive the decoding run.
+    /// QuickFAST::Examples::JsonMessageConsumer handler(std::cout);
+    /// QuickFAST::Codecs::GenericMessageBuilder builder(handler);
+    ///
+    /// QuickFAST::Application::DecoderConnection connection;
+    /// connection.configure(builder, configuration);
+    /// connection.run();   // returns when the receiver stops
+    /// @endcode
+    ///
+    /// For a multicast feed, set @c MULTICAST_RECEIVER plus the group address and
+    /// prefer runThreads() / stop() / joinThreads() over run() so the calling
+    /// thread stays free:
+    /// @code
+    /// connection.configure(builder, configuration);
+    /// connection.runThreads(2, false);   // 2 worker threads, do not block here
+    /// // ... application work, until shutdown ...
+    /// connection.receiver().stop();
+    /// connection.joinThreads();
+    /// @endcode
+    ///
+    /// @see QuickFAST::Application::DecoderConfiguration for every option,
+    ///      including command line parsing.
     class QuickFAST_Export DecoderConnection
     {
     public:

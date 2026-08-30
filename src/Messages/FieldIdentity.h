@@ -57,6 +57,9 @@ namespace QuickFAST{
       {
       }
 
+      /// @brief Assign the FieldIdentity
+      /// @param rhs is the FieldIdentity from which to copy
+      /// @returns *this
       FieldIdentity & operator=(const FieldIdentity & rhs)
       {
         if(this != &rhs)

@@ -25,6 +25,30 @@ namespace QuickFAST{
     ///
     /// This class cannot handle messages split across packet boundararies.  These should neever appear in a
     /// multicast feed anyway because delivery of multicast packets is unreliable.
+    ///
+    /// This is a self-contained shortcut for the common multicast case. Use
+    /// QuickFAST::Application::DecoderConnection instead when the receiver,
+    /// header handling, or assembler needs to be configurable.
+    ///
+    /// @par Example
+    /// @code
+    /// QuickFAST::Examples::JsonMessageConsumer consumer(std::cout);
+    /// QuickFAST::Codecs::GenericMessageBuilder builder(consumer);
+    ///
+    /// QuickFAST::Codecs::MulticastDecoder decoder(
+    ///   registry,
+    ///   "224.1.2.133",   // multicast group
+    ///   "0.0.0.0",       // listen interface
+    ///   "0.0.0.0",       // bind address
+    ///   13014);          // port
+    ///
+    /// decoder.start(builder);          // returns immediately
+    /// decoder.run(2, false);           // two service threads, do not block here
+    /// // ... application work, until shutdown ...
+    /// decoder.stop();
+    /// decoder.joinThreads();
+    /// @endcode
+    ///
     /// @see MulticastReceiver
 
     class QuickFAST_Export MulticastDecoder
