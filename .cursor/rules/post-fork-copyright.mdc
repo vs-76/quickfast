@@ -48,9 +48,8 @@ the holders read in chronological order. Everything else in the header stays put
 // See the file license.txt for licensing information.
 ```
 
-This holds for every OCI variant in the tree (`2009`, `2009, 2010`, `2009, 2010, 2011`, `2011`, and
-the upstream `C+opyright` typo in `src/Codecs/FieldInstructionSequence.cpp`). Match the comment
-prefix already on the OCI line. Add the line once — never a second copy.
+This holds for every OCI variant in the tree (`2009`, `2009, 2010`, `2009, 2010, 2011`, `2011`).
+Match the comment prefix already on the OCI line. Add the line once — never a second copy.
 
 A file relocated from upstream still counts as pre-fork content: if it carries an OCI header, treat
 it as a modified pre-fork file, whatever git reports about the rename.
@@ -68,8 +67,9 @@ Do **not** add one to generated or non-code files: `src/Doxyfile`, `*.md`, `.git
 - Do **not** write `Copyright (c) 2026, Object Computing, Inc.` or any other year paired with OCI on
   a file created after the fork.
 - Do **not** ship a bare `// Copyright (c) 2026` with no holder.
-- Do **not** edit, reword, reformat or remove an existing pre-fork OCI line — including its typo.
-  Adding the contributors line below it is the only change that header takes.
+- Do **not** reword, reformat, re-year or remove an existing pre-fork OCI line. Adding the
+  contributors line below it is the only change that header normally takes. Correcting an outright
+  spelling error in the word `Copyright` itself is the one exception, and the tree is clean of those.
 - Do **not** add our copyright to vendored third-party files. `cmake/PVS-Studio.cmake` is
   PVS-Studio LLC's; leave it alone. Anything else arriving with a foreign copyright is the same.
 - When you notice a post-fork file carrying only an OCI header, fix it to the contributors line.
