@@ -40,6 +40,7 @@ namespace QuickFAST{
       virtual void valueToStringBuffer()const;
       virtual bool isUnsignedInteger()const;
     private:
+      static FieldCPtr nullField_;
     };
   }
 }

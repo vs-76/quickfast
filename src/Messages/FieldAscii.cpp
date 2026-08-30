@@ -8,6 +8,9 @@
 using namespace ::QuickFAST;
 using namespace ::QuickFAST::Messages;
 
+FieldCPtr FieldAscii::nullField_ = FieldCPtr(new FieldAscii);
+FieldCPtr FieldAscii::emptyField_ = FieldCPtr(new FieldAscii(std::string()));
+
 FieldAscii::FieldAscii(const std::string & value)
   : Field(ValueType::ASCII, true)
 {
@@ -44,18 +47,31 @@ FieldAscii::toAscii() const
 FieldCPtr
 FieldAscii::create(const std::string & value)
 {
+  if(value.empty())
+  {
+    return emptyField_;
+  }
+#if defined(QUICKFAST_ENABLE_TEST_HOOKS)
+  Field::noteHeapCreate();
+#endif
   return FieldCPtr(new FieldAscii(value));
 }
 
 FieldCPtr
 FieldAscii::create(const uchar * buffer, size_t length)
 {
+  if(length == 0)
+  {
+    return emptyField_;
+  }
+#if defined(QUICKFAST_ENABLE_TEST_HOOKS)
+  Field::noteHeapCreate();
+#endif
   return FieldCPtr(new FieldAscii(buffer, length));
 }
 
 FieldCPtr
 FieldAscii::createNull()
 {
-  return FieldCPtr(new FieldAscii);
+  return nullField_;
 }
-

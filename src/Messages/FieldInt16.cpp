@@ -8,6 +8,8 @@
 using namespace ::QuickFAST;
 using namespace ::QuickFAST::Messages;
 
+FieldCPtr FieldInt16::nullField_ = FieldCPtr(new FieldInt16);
+
 FieldInt16::FieldInt16(int16 value)
   : Field(ValueType::INT16, true)
 {
@@ -42,7 +44,7 @@ FieldInt16::create(int16 value)
 FieldCPtr
 FieldInt16::createNull()
 {
-  return FieldCPtr(new FieldInt16);
+  return nullField_;
 }
 
 void

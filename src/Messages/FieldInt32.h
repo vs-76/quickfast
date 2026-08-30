@@ -42,6 +42,7 @@ namespace QuickFAST{
       virtual bool isSignedInteger()const;
 
     private:
+      static FieldCPtr nullField_;
     };
   }
 }

@@ -8,6 +8,13 @@
 using namespace ::QuickFAST;
 using namespace ::QuickFAST::Messages;
 
+namespace
+{
+  const size_t internCount = 256u;
+}
+
+FieldCPtr FieldInt8::nullField_ = FieldCPtr(new FieldInt8);
+
 FieldInt8::FieldInt8(int8 value)
   : Field(ValueType::INT8, true)
 {
@@ -36,13 +43,24 @@ FieldInt8::toInt8() const
 FieldCPtr
 FieldInt8::create(int8 value)
 {
-  return FieldCPtr(new FieldInt8(value));
+  static FieldCPtr entries[internCount];
+  static const bool initialized = []
+  {
+    for(int v = -128; v <= 127; ++v)
+    {
+      entries[static_cast<size_t>(v + 128)].reset(
+        new FieldInt8(static_cast<int8>(v)));
+    }
+    return true;
+  }();
+  (void)initialized;
+  return entries[static_cast<size_t>(static_cast<int>(value) + 128)];
 }
 
 FieldCPtr
 FieldInt8::createNull()
 {
-  return FieldCPtr(new FieldInt8);
+  return nullField_;
 }
 
 void

@@ -4,6 +4,7 @@
 #include <Common/QuickFASTPch.h>
 #include "Field.h"
 #include <Common/Exceptions.h>
+#include <atomic>
 
 using namespace ::QuickFAST;
 using namespace ::QuickFAST::Messages;
@@ -198,6 +199,31 @@ Field::displayStringMutex()
   static std::mutex mutex;
   return mutex;
 }
+
+#if defined(QUICKFAST_ENABLE_TEST_HOOKS)
+namespace
+{
+  std::atomic<uint64_t> fieldHeapCreateCount(0);
+}
+
+void
+Field::resetHeapCreateCount()
+{
+  fieldHeapCreateCount.store(0);
+}
+
+uint64_t
+Field::heapCreateCount()
+{
+  return fieldHeapCreateCount.load();
+}
+
+void
+Field::noteHeapCreate()
+{
+  fieldHeapCreateCount.fetch_add(1);
+}
+#endif
 
 void
 Field::valueToStringBuffer() const
