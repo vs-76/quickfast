@@ -37,7 +37,7 @@ namespace QuickFAST{
         // The hard ceiling that refuses oversized lengths lives on
         // Codecs::Context and is checked by FieldInstructionSequence before
         // this constructor runs for a live decode.
-        static const size_t maxSpeculativeReservation = 4096;
+        constexpr size_t maxSpeculativeReservation = 4096;
         this->entries_.reserve(
           sequenceLength < maxSpeculativeReservation
             ? sequenceLength

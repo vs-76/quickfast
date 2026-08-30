@@ -1109,8 +1109,11 @@ namespace QuickFAST{
           result = int64(-1);
         }
         size_t shift = sizeof(int64) * byteSize - (dataShift + 1);
-        int64 overflowMask(int64(-1) << shift);
-        int64 overflowCheck(result << shift);
+        // Build the overflow probe in unsigned space so every shift is defined
+        // for every C++ standard (analyzers that still apply the pre-C++20
+        // rule also stay quiet).
+        uint64 overflowMask = ~uint64(0) << shift;
+        uint64 overflowCheck = static_cast<uint64>(result) << shift;
         if(oversize)
         {
           overflowMask <<= 1;
@@ -1118,7 +1121,8 @@ namespace QuickFAST{
         }
         while((byte & stopBit) == 0)
         {
-          if(!ignoreOverflow && (result & overflowMask) != overflowCheck)
+          if(!ignoreOverflow &&
+            (static_cast<uint64>(result) & overflowMask) != overflowCheck)
           {
             context.reportError("[ERR D2]", "Integer Field overflow (signed).", name);
           }
@@ -1144,7 +1148,8 @@ namespace QuickFAST{
           }
           byte = *buffer++;
         }
-        if(!ignoreOverflow && (result & overflowMask) != overflowCheck)
+        if(!ignoreOverflow &&
+          (static_cast<uint64>(result) & overflowMask) != overflowCheck)
         {
           context.reportError("[ERR D2]", "Signed Integer Field overflow.", name);
         }
@@ -1167,8 +1172,11 @@ namespace QuickFAST{
         value = int64(-1);
       }
       size_t shift = sizeof(int64) * byteSize - (dataShift + 1);
-      int64 overflowMask(int64(-1) << shift);
-      int64 overflowCheck(value << shift);
+      // Build the overflow probe in unsigned space so every shift is defined
+      // for every C++ standard (analyzers that still apply the pre-C++20
+      // rule also stay quiet).
+      uint64 overflowMask = ~uint64(0) << shift;
+      uint64 overflowCheck = static_cast<uint64>(value) << shift;
       if(oversize)
       {
         overflowMask <<= 1;
@@ -1176,7 +1184,8 @@ namespace QuickFAST{
       }
       while((byte & stopBit) == 0)
       {
-        if(!ignoreOverflow && (value & overflowMask) != overflowCheck)
+        if(!ignoreOverflow &&
+          (static_cast<uint64>(value) & overflowMask) != overflowCheck)
         {
           context.reportError("[ERR D2]", "Integer Field overflow (signed).", name);
         }
@@ -1187,7 +1196,8 @@ namespace QuickFAST{
           context.reportFatal("[ERR D2]", "Unexpected EOF in signed integer field.", name);
         }
       }
-      if(!ignoreOverflow && (value & overflowMask) != overflowCheck)
+      if(!ignoreOverflow &&
+        (static_cast<uint64>(value) & overflowMask) != overflowCheck)
       {
         context.reportError("[ERR D2]", "Signed Integer Field overflow.", name);
       }

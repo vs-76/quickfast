@@ -124,7 +124,10 @@ namespace QuickFAST
       void initializeReceiver()
       {
         socket_.open(endpoint_.protocol());
-        socket_.set_option(asio::ip::udp::socket::reuse_address(true));
+        // PVS-Studio models the throwing overload of the preceding Asio call
+        // as never returning, so it treats the rest of the function as
+        // unreachable.
+        socket_.set_option(asio::ip::udp::socket::reuse_address(true)); //-V779
         asio::ip::udp::endpoint bindpoint(bindAddress_, portNumber_);
         socket_.bind(bindpoint);
 
