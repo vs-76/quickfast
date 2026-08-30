@@ -12,6 +12,7 @@
 //#include <Common/QuickFAST_Export.h>
 #include "LinkedBuffer_fwd.h"
 #include <Common/Types.h>
+#include <chrono>
 
 namespace QuickFAST
 {
@@ -40,6 +41,8 @@ namespace QuickFAST
         , used_(0)
         , extra_(0)
         , flags_(0)
+        , receiveTimeUs_(0)
+        , hasReceiveTime_(false)
       {
       }
 
@@ -54,6 +57,8 @@ namespace QuickFAST
         , used_(0)
         , extra_(0)
         , flags_(0)
+        , receiveTimeUs_(0)
+        , hasReceiveTime_(false)
       {
       }
 
@@ -68,6 +73,8 @@ namespace QuickFAST
         , used_(used)
         , extra_(extra)
         , flags_(0)
+        , receiveTimeUs_(0)
+        , hasReceiveTime_(false)
       {
       }
 
@@ -212,6 +219,47 @@ namespace QuickFAST
         return flags_;
       }
 
+      /// @brief Stamp UTC microseconds since the Unix epoch as the receive time.
+      ///
+      /// Call from the receive completion path (ASIO callback or synchronous
+      /// accept) so the time reflects buffer arrival, not decode latency.
+      void stampReceiveTime()
+      {
+        const auto now = std::chrono::system_clock::now().time_since_epoch();
+        receiveTimeUs_ = static_cast<uint64>(
+          std::chrono::duration_cast<std::chrono::microseconds>(now).count());
+        hasReceiveTime_ = true;
+      }
+
+      /// @brief Store a previously captured receive time.
+      /// @param receiveTimeUs UTC microseconds since the Unix epoch
+      void setReceiveTime(uint64 receiveTimeUs)
+      {
+        receiveTimeUs_ = receiveTimeUs;
+        hasReceiveTime_ = true;
+      }
+
+      /// @brief Clear any stored receive time.
+      void clearReceiveTime()
+      {
+        receiveTimeUs_ = 0;
+        hasReceiveTime_ = false;
+      }
+
+      /// @brief Whether stampReceiveTime() or setReceiveTime() has been called.
+      bool hasReceiveTime() const
+      {
+        return hasReceiveTime_;
+      }
+
+      /// @brief UTC microseconds since the Unix epoch when this buffer was received.
+      ///
+      /// Valid only when hasReceiveTime() is true.
+      uint64 receiveTime() const
+      {
+        return receiveTimeUs_;
+      }
+
     private:
       /// @brief How far operator[] may index.
       ///
@@ -230,6 +278,8 @@ namespace QuickFAST
       size_t used_;
       void * extra_;
       uint32 flags_ = 0;
+      uint64 receiveTimeUs_;
+      bool hasReceiveTime_;
     };
 
   }

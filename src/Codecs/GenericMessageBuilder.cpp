@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
@@ -8,6 +9,8 @@
 #include <Messages/Group.h>
 #include <Messages/FieldSequence.h>
 #include <Messages/FieldGroup.h>
+#include <Messages/FieldUInt64.h>
+#include <Messages/FieldIdentity.h>
 #include <Common/Exceptions.h>
 
 using namespace QuickFAST;
@@ -458,6 +461,32 @@ GenericMessageBuilder::~GenericMessageBuilder()
 {
 }
 
+void
+GenericMessageBuilder::setReceiveTime(uint64 receiveTimeUs)
+{
+  receiveTimeUs_ = receiveTimeUs;
+  hasReceiveTime_ = true;
+}
+
+void
+GenericMessageBuilder::clearReceiveTime()
+{
+  receiveTimeUs_ = 0;
+  hasReceiveTime_ = false;
+}
+
+bool
+GenericMessageBuilder::hasReceiveTime() const
+{
+  return hasReceiveTime_;
+}
+
+uint64
+GenericMessageBuilder::receiveTime() const
+{
+  return receiveTimeUs_;
+}
+
 const std::string &
 GenericMessageBuilder::getApplicationType()const
 {
@@ -494,7 +523,18 @@ GenericMessageBuilder::endMessage(Messages::ValueMessageBuilder &)
 {
   ///////////////////////////////
   // This is where the message is
-  // bassed to the MessageConsumer
+  // passed to the MessageConsumer
+  if(hasReceiveTime_)
+  {
+    static const Messages::FieldIdentity receiveTimeIdentity("ReceiveTime");
+    // Prefer the template field when the application already defined one.
+    if(!message()->isPresent(receiveTimeIdentity))
+    {
+      message()->addField(
+        receiveTimeIdentity,
+        Messages::FieldUInt64::create(receiveTimeUs_));
+    }
+  }
   bool more = consumer_.consumeMessage(*message());
 
   // Once it's consumed, the message is no longer needed.

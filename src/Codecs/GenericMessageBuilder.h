@@ -225,6 +225,22 @@ namespace QuickFAST{
       /// @brief Virtual destructor
       virtual ~GenericMessageBuilder();
 
+      /// @brief Supply the buffer receive time for the next decoded message.
+      ///
+      /// UTC microseconds since the Unix epoch. Injected as a synthetic
+      /// ReceiveTime uInt64 field when endMessage() delivers to the consumer,
+      /// unless the template already defined a field with that name.
+      virtual void setReceiveTime(uint64 receiveTimeUs);
+
+      /// @brief Clear any receive time previously set via setReceiveTime().
+      virtual void clearReceiveTime();
+
+      /// @brief Whether setReceiveTime() has supplied a time for this message.
+      virtual bool hasReceiveTime() const;
+
+      /// @brief UTC microseconds since the Unix epoch for the current buffer.
+      virtual uint64 receiveTime() const;
+
       //////////////////////////
       // Implement MessageBuilder
       virtual const std::string & getApplicationType()const;
@@ -282,6 +298,8 @@ namespace QuickFAST{
       Messages::MessagePtr message_;
       GenericSequenceBuilder sequenceBuilder_;
       GenericGroupBuilder groupBuilder_;
+      uint64 receiveTimeUs_ = 0;
+      bool hasReceiveTime_ = false;
     };
   }
 }

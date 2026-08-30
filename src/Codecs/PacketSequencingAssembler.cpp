@@ -238,6 +238,14 @@ PacketSequencingAssembler::capturePacket(Communication::LinkedBuffer * buffer)
 bool
 PacketSequencingAssembler::processPacket(Communication::LinkedBuffer * buffer)
 {
+  if(buffer->hasReceiveTime())
+  {
+    builder_.setReceiveTime(buffer->receiveTime());
+  }
+  else
+  {
+    builder_.clearReceiveTime();
+  }
   const bool more = decodeBuffer(buffer->get(), buffer->used());
   releasePacket(buffer);
   ++nextSequenceNumber_;

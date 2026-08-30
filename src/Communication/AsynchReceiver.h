@@ -181,6 +181,7 @@ namespace QuickFAST
               bytesReceived_ += bytesReceived;
               largestPacket_ = std::max<size_t>(largestPacket_, bytesReceived);
               buffer->setUsed(bytesReceived);
+              buffer->stampReceiveTime();
               if(queue_.push(buffer, lock))
               {
                 // A true return from push means that no one is servicing the queue
