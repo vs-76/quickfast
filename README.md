@@ -53,7 +53,7 @@ cmake --build build-clang22 -j && ctest --test-dir build-clang22 --output-on-fai
 Optional flags: `-DQUICKFAST_BUILD_TESTS=OFF`, `-DQUICKFAST_BUILD_EXAMPLES=OFF`,
 `-DQUICKFAST_USE_LIBCXX=ON` (Clang only), `-DQUICKFAST_ENABLE_PVS_STUDIO=OFF`.
 
-The legacy MPC/`setup.sh` flow remains for older toolchains; prefer CMake + Conan/vcpkg.
+Build and dependency install are **CMake + Conan 2 or vcpkg only**.
 
 Instructions for [getting started with QuickFAST are here](https://github.com/objectcomputing/quickfast/wiki/GettingStarted)
 
