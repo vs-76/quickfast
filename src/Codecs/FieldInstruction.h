@@ -1066,6 +1066,210 @@ namespace QuickFAST{
       value <<= dataShift;
       value |= (byte & dataBits);
     }
+
+    // Contiguous fast paths for 64-bit integers. (The older int32/uint32
+    // specializations remain behind INTEGER_SPECIALIZATION / never compiled.)
+    // Max stop-bit length is (64+6)/7 = 10 bytes.
+    template<>
+    inline
+    void
+    FieldInstruction::decodeSignedInteger(
+      Codecs::DataSource & source,
+      Codecs::Context & context,
+      int64 & value,
+      const std::string & name,
+      bool oversize,
+      bool ignoreOverflow)
+    {
+      const size_t maxBytes = (64 + 6) / 7;
+      const uchar * buffer = 0;
+      if(source.hasContiguous(maxBytes, buffer))
+      {
+        PROFILE_POINT("decodeSignedInteger64Contiguous");
+        const uchar * start = buffer;
+        int64 result = 0;
+        uchar byte = *buffer++;
+        if((byte & signBit) != 0)
+        {
+          result = int64(-1);
+        }
+        size_t shift = sizeof(int64) * byteSize - (dataShift + 1);
+        int64 overflowMask(int64(-1) << shift);
+        int64 overflowCheck(result << shift);
+        if(oversize)
+        {
+          overflowMask <<= 1;
+          overflowCheck <<= 1;
+        }
+        while((byte & stopBit) == 0)
+        {
+          if(!ignoreOverflow && (result & overflowMask) != overflowCheck)
+          {
+            context.reportError("[ERR D2]", "Integer Field overflow (signed).", name);
+          }
+          result <<= dataShift;
+          result |= byte;
+          if(static_cast<size_t>(buffer - start) >= maxBytes)
+          {
+            if(!ignoreOverflow)
+            {
+              context.reportFatal("[ERR D2]", "Overflow in signed 64 bit integer field.", name);
+            }
+            value = int64(-1);
+            source.skipContiguous(buffer - start);
+            unsigned char trash = 0;
+            while(0 == (trash & stopBit))
+            {
+              if(!source.getByte(trash))
+              {
+                context.reportFatal("[ERR D2]", "Unexpected EOF in signed 64 bit integer field.", name);
+              }
+            }
+            return;
+          }
+          byte = *buffer++;
+        }
+        if(!ignoreOverflow && (result & overflowMask) != overflowCheck)
+        {
+          context.reportError("[ERR D2]", "Signed Integer Field overflow.", name);
+        }
+        result <<= dataShift;
+        result |= (byte & dataBits);
+        value = result;
+        source.skipContiguous(buffer - start);
+        return;
+      }
+
+      PROFILE_POINT("decodeSignedInteger");
+      uchar byte = 0;
+      if(!source.getByte(byte))
+      {
+        context.reportFatal("[ERR U03]", "Unexpected end of data decoding signedinteger", name);
+      }
+      value = 0;
+      if((byte & signBit) != 0)
+      {
+        value = int64(-1);
+      }
+      size_t shift = sizeof(int64) * byteSize - (dataShift + 1);
+      int64 overflowMask(int64(-1) << shift);
+      int64 overflowCheck(value << shift);
+      if(oversize)
+      {
+        overflowMask <<= 1;
+        overflowCheck <<= 1;
+      }
+      while((byte & stopBit) == 0)
+      {
+        if(!ignoreOverflow && (value & overflowMask) != overflowCheck)
+        {
+          context.reportError("[ERR D2]", "Integer Field overflow (signed).", name);
+        }
+        value <<= dataShift;
+        value |= byte;
+        if(!source.getByte(byte))
+        {
+          context.reportFatal("[ERR D2]", "Unexpected EOF in signed integer field.", name);
+        }
+      }
+      if(!ignoreOverflow && (value & overflowMask) != overflowCheck)
+      {
+        context.reportError("[ERR D2]", "Signed Integer Field overflow.", name);
+      }
+      value <<= dataShift;
+      value |= (byte & dataBits);
+    }
+
+    template<>
+    inline
+    void
+    FieldInstruction::decodeUnsignedInteger(
+      Codecs::DataSource & source,
+      Codecs::Context & context,
+      uint64 & value,
+      const std::string & name,
+      bool ignoreOverflow)
+    {
+      const size_t maxBytes = (64 + 6) / 7;
+      const uchar * buffer = 0;
+      if(source.hasContiguous(maxBytes, buffer))
+      {
+        PROFILE_POINT("decodeUnsignedInteger64Contiguous");
+        const uchar * start = buffer;
+        uint64 result = 0;
+        uchar byte = *buffer++;
+        unsigned short shift = (sizeof(uint64) * byteSize) - dataShift;
+        uint64 overflowMask(uint64(-1) << shift);
+        uint64 overflowCheck(result << shift);
+        while((byte & stopBit) == 0)
+        {
+          if(!ignoreOverflow && (result & overflowMask) != overflowCheck)
+          {
+            context.reportError("[ERR D2]", "Unsigned Integer Field overflow...", name);
+          }
+          result <<= dataShift;
+          result |= byte;
+          if(static_cast<size_t>(buffer - start) >= maxBytes)
+          {
+            if(!ignoreOverflow)
+            {
+              context.reportFatal("[ERR D2]", "Overflow in unsigned 64 bit integer field.", name);
+            }
+            value = uint64(-1);
+            source.skipContiguous(buffer - start);
+            unsigned char trash = 0;
+            while(0 == (trash & stopBit))
+            {
+              if(!source.getByte(trash))
+              {
+                context.reportFatal("[ERR D2]", "Unexpected EOF in integer field.", name);
+              }
+            }
+            return;
+          }
+          byte = *buffer++;
+        }
+        if(!ignoreOverflow && (result & overflowMask) != overflowCheck)
+        {
+          context.reportError("[ERR D2]", "Unsigned Integer Field overflow..", name);
+        }
+        result <<= dataShift;
+        result |= (byte & dataBits);
+        value = result;
+        source.skipContiguous(buffer - start);
+        return;
+      }
+
+      PROFILE_POINT("decodeUnsignedInteger");
+      uchar byte = 0;
+      if(!source.getByte(byte))
+      {
+        context.reportFatal("[ERR U03]", "Unexpected end of data decoding unsigned integer", name);
+      }
+      value = 0;
+      unsigned short shift = (sizeof(uint64) * byteSize) - dataShift;
+      uint64 overflowMask(uint64(-1) << shift);
+      uint64 overflowCheck(value << shift);
+      while((byte & stopBit) == 0)
+      {
+        if(!ignoreOverflow && (value & overflowMask) != overflowCheck)
+        {
+          context.reportError("[ERR D2]", "Unsigned Integer Field overflow...", name);
+        }
+        value <<= dataShift;
+        value |= byte;
+        if(!source.getByte(byte))
+        {
+          context.reportFatal("[ERR U03]", "End of file without stop bit decoding unsigned integer.", name);
+        }
+      }
+      if(!ignoreOverflow && (value & overflowMask) != overflowCheck)
+      {
+        context.reportError("[ERR D2]", "Unsigned Integer Field overflow..", name);
+      }
+      value <<= dataShift;
+      value |= (byte & dataBits);
+    }
   }
 }
 #endif // FIELDINSTRUCTION_H
