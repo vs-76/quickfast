@@ -1,0 +1,26 @@
+var classQuickFAST_1_1DotNet_1_1DNField =
+[
+    [ "DNField", "classQuickFAST_1_1DotNet_1_1DNField.html#ab1b17668a2a9e36c195e23c0b4d50dad", null ],
+    [ "Ascii", "classQuickFAST_1_1DotNet_1_1DNField.html#a59964979fd5b965a0786b65b88328d52", null ],
+    [ "ByteVector", "classQuickFAST_1_1DotNet_1_1DNField.html#ada81999b95d7bd12b8981ea2c403b4e5", null ],
+    [ "Decimal", "classQuickFAST_1_1DotNet_1_1DNField.html#ab307b1ab98adc65c2f50cade761ea909", null ],
+    [ "DisplayString", "classQuickFAST_1_1DotNet_1_1DNField.html#ae0994641058b3310f0c1b2a4680fa67f", null ],
+    [ "Exponent", "classQuickFAST_1_1DotNet_1_1DNField.html#aeb23ca933c301e6db1d5a9d47d5880bc", null ],
+    [ "FieldNamespace", "classQuickFAST_1_1DotNet_1_1DNField.html#a4fdd595a9de0a9eedf7c7a7073e9988f", null ],
+    [ "Group", "classQuickFAST_1_1DotNet_1_1DNField.html#a5608b6b2daefab5c4896a7ca7fbf1973", null ],
+    [ "Id", "classQuickFAST_1_1DotNet_1_1DNField.html#a3c83293f398d744499659f925c604844", null ],
+    [ "Int16", "classQuickFAST_1_1DotNet_1_1DNField.html#a45b274a83feb34272d9cd98a214acaaa", null ],
+    [ "Int32", "classQuickFAST_1_1DotNet_1_1DNField.html#a6f14278c00135ff66d2cd2dab3334226", null ],
+    [ "Int64", "classQuickFAST_1_1DotNet_1_1DNField.html#aed8ba96355f8d3ae5be3994e2d0e3fa4", null ],
+    [ "Int8", "classQuickFAST_1_1DotNet_1_1DNField.html#a72ea0a8709fad1e6240c2e8e1f811fea", null ],
+    [ "IsDefined", "classQuickFAST_1_1DotNet_1_1DNField.html#af8e25761f2f6aed1b19a8e1ad6a64541", null ],
+    [ "LocalName", "classQuickFAST_1_1DotNet_1_1DNField.html#ac2941c7bc7006bc3b4457dedb6385d07", null ],
+    [ "Mantissa", "classQuickFAST_1_1DotNet_1_1DNField.html#abe29875d20cebd40c45207a0aa1d956b", null ],
+    [ "Sequence", "classQuickFAST_1_1DotNet_1_1DNField.html#a4c4cb8c4b6be678107a595c39be4bad1", null ],
+    [ "Type", "classQuickFAST_1_1DotNet_1_1DNField.html#a0f5db63c989a093685c6ce6539c034bc", null ],
+    [ "UInt16", "classQuickFAST_1_1DotNet_1_1DNField.html#a909848f38db11bc5cb3caa1954cf2842", null ],
+    [ "UInt32", "classQuickFAST_1_1DotNet_1_1DNField.html#a954fad7004292ad57a87a95300e16a4d", null ],
+    [ "UInt64", "classQuickFAST_1_1DotNet_1_1DNField.html#ab10d0d257781590f8e8d4515e7130f99", null ],
+    [ "UInt8", "classQuickFAST_1_1DotNet_1_1DNField.html#a58e496b8bd7c68b656111d142d1b4157", null ],
+    [ "Utf8", "classQuickFAST_1_1DotNet_1_1DNField.html#a6de7562eae64e1ae8612ffb76db65b4f", null ]
+];

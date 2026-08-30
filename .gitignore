@@ -62,9 +62,6 @@ oom-*
 #a place to hide documents that should not go into the repo:
 doc/NotGitWorthy/
 
-# Doxygen output (regenerate with: cd doc && doxygen Doxyfile)
-doc/html/
-
 # Local agent implementation prompts (never push to GitHub)
 doc/agent-prompts/
 # Conan / vcpkg generated (do not commit)
