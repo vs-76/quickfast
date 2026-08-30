@@ -58,9 +58,10 @@ class QuickFASTConan(ConanFile):
             self.options["libpcap"].shared = False
         if self.options.build_tests:
             self.options["gtest"].shared = False
-        # Prefer gnuiconv so Xerces does not pull ICU.
-        self.options["xerces-c"].transcoder = "gnuiconv"
+        # ICU transcoder (pulls icu via the xerces-c recipe); keep network off.
+        self.options["xerces-c"].transcoder = "icu"
         self.options["xerces-c"].network = False
+        self.options["icu"].shared = False
 
     def generate(self):
         deps = CMakeDeps(self)
