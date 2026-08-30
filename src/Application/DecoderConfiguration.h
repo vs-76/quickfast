@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010, 2011, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -99,6 +100,9 @@ namespace QuickFAST{
 
         /// @brief copy a multicast feed
         MulticastFeed(const MulticastFeed & rhs) = default;
+        /// @brief assign a multicast feed
+        /// @param rhs the feed to copy
+        /// @returns *this
         MulticastFeed & operator=(const MulticastFeed & rhs) = default;
 
       };

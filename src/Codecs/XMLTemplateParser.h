@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 
@@ -119,6 +120,26 @@ namespace QuickFAST
     ///   initialization.  There are no guarantees that template parsing is thread-safe.
     ///   The resulting template repository, however, can be safely shared between
     ///   threads.
+    ///
+    /// @par Example
+    /// Parse a template file once at startup and share the result:
+    /// @code
+    /// std::ifstream templateFile("templates.xml");
+    /// if(!templateFile.good())
+    /// {
+    ///   throw std::runtime_error("Cannot open templates.xml");
+    /// }
+    ///
+    /// QuickFAST::Codecs::XMLTemplateParser parser;
+    /// QuickFAST::Codecs::TemplateRegistryPtr registry = parser.parse(templateFile);
+    ///
+    /// // One registry may back any number of Decoder / Encoder objects, including
+    /// // ones running on different threads.
+    /// QuickFAST::Codecs::Decoder decoder(registry);
+    /// @endcode
+    ///
+    /// Both counterparties must use the same templates; the template file itself
+    /// is exchanged out of band.
 
     class QuickFAST_Export XMLTemplateParser
     {

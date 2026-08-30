@@ -14,6 +14,15 @@ namespace QuickFAST{
   namespace Examples{
 
     /// @brief MessageConsumer that writes each decoded message as one JSON line.
+    ///
+    /// @par Example
+    /// @code
+    /// QuickFAST::Examples::JsonMessageConsumer handler(std::cout);
+    /// QuickFAST::Codecs::GenericMessageBuilder builder(handler);
+    /// connection.configure(builder, configuration);
+    /// connection.run();
+    /// std::cerr << handler.recordCount() << " messages" << std::endl;
+    /// @endcode
     class JsonMessageConsumer : public Codecs::MessageConsumer
     {
     public:
@@ -26,6 +35,8 @@ namespace QuickFAST{
         bool silent = false);
       virtual ~JsonMessageConsumer();
 
+      /// @brief Set the lowest level this consumer will accept via wantLog().
+      /// @param level the threshold level
       void setLogLevel(Common::Logger::LogLevel level);
 
       virtual bool consumeMessage(Messages::Message & message);
@@ -36,6 +47,7 @@ namespace QuickFAST{
       virtual void decodingStarted();
       virtual void decodingStopped();
 
+      /// @returns how many messages have been consumed so far
       size_t recordCount() const
       {
         return recordCount_;

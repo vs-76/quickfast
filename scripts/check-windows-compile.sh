@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026, QuickFAST contributors.
+# All rights reserved.
+# See the file license.txt for licensing information.
+
 #
 # Windows portability gate for the platform-sensitive sources.
 #

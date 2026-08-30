@@ -67,10 +67,12 @@ doc/html/
 
 # Local agent implementation prompts (never push to GitHub)
 doc/agent-prompts/
-
 # Conan / vcpkg generated (do not commit)
 CMakeUserPresets.json
 conan/
 !conanfile.py
 vcpkg_installed/
+
+# .NET SDK intermediates (C# examples)
+**/obj/
 

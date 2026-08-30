@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010 Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include "QuickFASTDotNetPch.h"
@@ -7,7 +8,6 @@ using namespace System;
 using namespace System::Reflection;
 using namespace System::Runtime::CompilerServices;
 using namespace System::Runtime::InteropServices;
-using namespace System::Security::Permissions;
 
 //
 // General Information about an assembly is controlled through the following
@@ -39,5 +39,3 @@ using namespace System::Security::Permissions;
 [assembly:ComVisible(false)];
 
 [assembly:CLSCompliantAttribute(true)];
-
-[assembly:SecurityPermission(SecurityAction::RequestMinimum, UnmanagedCode = true)];

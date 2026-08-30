@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010 Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #pragma once
@@ -127,6 +128,7 @@ namespace QuickFAST
         ECHO_NONE = Application::DecoderConfigurationEnums::NONE
       };
 
+      /// @brief How echoed data should be formatted.
       property
       EchoTypes EchoType
       {
@@ -160,6 +162,7 @@ namespace QuickFAST
         FIXED_HEADER = Application::DecoderConfigurationEnums::FIXED_HEADER,
         FAST_HEADER = Application::DecoderConfigurationEnums::FAST_HEADER};
 
+      /// @brief What type of header (if any) precedes each message.
       property
       HeaderTypes HeaderType
       {
@@ -201,6 +204,7 @@ namespace QuickFAST
         UNSPECIFIED_ASSEMBLER = Application::DecoderConfigurationEnums::UNSPECIFIED_ASSEMBLER
       };
 
+      /// @brief How incoming packets should be assembled into messages.
       property
       DNAssemblerType AssemblerType
       {
@@ -225,6 +229,7 @@ namespace QuickFAST
         UNSPECIFIED_RECEIVER = Application::DecoderConfigurationEnums::UNSPECIFIED_RECEIVER
       };
 
+      /// @brief Where the FAST data comes from.
       property
       ReceiverTypes ReceiverType
       {

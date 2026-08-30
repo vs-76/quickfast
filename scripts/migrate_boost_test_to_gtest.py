@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026, QuickFAST contributors.
+# All rights reserved.
+# See the file license.txt for licensing information.
+
 """Migrate tests/ from Boost.Test to GoogleTest.
 
 Preserves per-file newline style (CRLF vs LF). Deletes tests/main.cpp.

@@ -24,9 +24,28 @@ namespace QuickFAST{
     ///   scalars                    → JSON number or string (see JsonOptions)
     ///
     /// Absent / undefined fields are omitted.
+    ///
+    /// @par Example
+    /// Write one decoded message per line (NDJSON), keyed by field id and with
+    /// byte vectors in hex:
+    /// @code
+    /// QuickFAST::Messages::JsonOptions options;
+    /// options.keyMode = QuickFAST::Messages::JsonOptions::KeyMode::Id;
+    /// options.byteVectors =
+    ///   QuickFAST::Messages::JsonOptions::ByteVectorEncoding::Hex;
+    ///
+    /// QuickFAST::Messages::MessageToJson formatter(options);
+    /// formatter.formatMessage(message, std::cout);
+    /// std::cout << std::endl;
+    /// @endcode
+    ///
+    /// @see QuickFAST::Examples::JsonMessageConsumer for a MessageConsumer that
+    ///      does exactly this for every decoded message.
     class QuickFAST_Export MessageToJson
     {
     public:
+      /// @brief Construct a formatter.
+      /// @param options controls key naming, byte vector encoding, and typeRef output
       explicit MessageToJson(const JsonOptions & options = JsonOptions());
       ~MessageToJson();
 

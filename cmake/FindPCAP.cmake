@@ -1,3 +1,7 @@
+# Copyright (c) 2026, QuickFAST contributors.
+# All rights reserved.
+# See the file license.txt for licensing information.
+
 # Locate libpcap within CMAKE_PREFIX_PATH only (Conan / vcpkg).
 # System prefixes are disabled by QuickFASTPackageManager before this runs.
 #
@@ -17,7 +21,7 @@ find_path(PCAP_INCLUDE_DIR
 )
 
 find_library(PCAP_LIBRARY
-  NAMES pcap wpcap
+  NAMES pcap pcap_static wpcap
   DOC "Path to the libpcap library"
 )
 

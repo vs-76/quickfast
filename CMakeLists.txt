@@ -1,3 +1,7 @@
+# Copyright (c) 2026, QuickFAST contributors.
+# All rights reserved.
+# See the file license.txt for licensing information.
+
 cmake_minimum_required(VERSION 3.16)
 project(QuickFAST VERSION 1.5.0 LANGUAGES CXX)
 
@@ -19,6 +23,12 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 option(QUICKFAST_BUILD_TESTS "Build QuickFAST unit tests" ON)
 option(QUICKFAST_BUILD_EXAMPLES "Build QuickFAST example applications" ON)
+option(QUICKFAST_BUILD_DOTNET
+  "Build C++/CLI QuickFASTDotNet (.NET Framework; MSVC Windows only)"
+  OFF)
+option(QUICKFAST_BUILD_DOTNET_EXAMPLES
+  "Build C# DotNet example apps (requires QUICKFAST_BUILD_DOTNET)"
+  OFF)
 option(QUICKFAST_USE_LIBCXX
   "Use LLVM libc++ instead of the default C++ standard library (Clang only)"
   OFF)
@@ -377,6 +387,14 @@ if(QUICKFAST_BUILD_EXAMPLES)
   quickfast_add_example(PCapToMulticast
     src/Examples/PCapToMulticast/PCapToMulticast.cpp
     src/Examples/PCapToMulticast/main.cpp)
+
+  # Lean microbench (no Examples common objects). Manual run only — not ctest.
+  add_executable(BufferQueueBench src/Examples/BufferQueueBench/main.cpp)
+  target_link_libraries(BufferQueueBench PRIVATE QuickFAST)
+  target_compile_options(BufferQueueBench PRIVATE ${QUICKFAST_WARNING_FLAGS})
+  set_target_properties(BufferQueueBench PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+  )
 endif()
 
 # Optional PVS-Studio static analysis target (created only when the tools exist).
@@ -443,6 +461,22 @@ else()
   message(STATUS
     "c-ares: OFF -- HostResolver uses Asio getaddrinfo "
     "(default is ON; pass -DQUICKFAST_USE_CARES=ON to re-enable)")
+endif()
+
+if(QUICKFAST_BUILD_DOTNET)
+  if(NOT WIN32 OR NOT MSVC OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    message(FATAL_ERROR
+      "QUICKFAST_BUILD_DOTNET requires MSVC cl.exe on Windows "
+      "(not clang-cl); C++/CLI /clr is unavailable otherwise")
+  endif()
+  add_subdirectory(src/DotNet)
+  message(STATUS "DotNet: QuickFASTDotNet C++/CLI (/clr, .NET Framework)")
+  if(QUICKFAST_BUILD_DOTNET_EXAMPLES)
+    message(STATUS "DotNet examples: InterpretFASTDotNet, PerformanceTestDotNet")
+  endif()
+elseif(QUICKFAST_BUILD_DOTNET_EXAMPLES)
+  message(FATAL_ERROR
+    "QUICKFAST_BUILD_DOTNET_EXAMPLES=ON requires QUICKFAST_BUILD_DOTNET=ON")
 endif()
 
 if(QUICKFAST_BUILD_FUZZERS)

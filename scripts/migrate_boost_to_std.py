@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026, QuickFAST contributors.
+# All rights reserved.
+# See the file license.txt for licensing information.
+
 """Mechanically migrate native C++ sources from Boost to std / standalone Asio.
 
 Skips src/DotNet/**. Preserves per-file newline style (CRLF vs LF).
