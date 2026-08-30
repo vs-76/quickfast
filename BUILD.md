@@ -1,6 +1,8 @@
 # Building QuickFAST (CMake)
 
-Native library, examples, and tests use **C++23** and do not depend on Boost.
+Native library, examples, and tests require **C++20 or later**
+(`CMAKE_CXX_STANDARD` defaults to 20 and cannot be set below that) and do not
+depend on Boost.
 First-party code is always compiled with `-Wall -Werror -pedantic`.
 
 Third-party libraries are resolved only with `find_package` from **Conan 2** or

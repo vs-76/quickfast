@@ -1,7 +1,18 @@
 cmake_minimum_required(VERSION 3.16)
 project(QuickFAST VERSION 1.5.0 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 23)
+# QuickFAST requires ISO C++20 or later. Honor a higher value from the CMake
+# cache (e.g. -DCMAKE_CXX_STANDARD=23); raise package-manager defaults below 20.
+get_property(_qf_cxx_std_cache CACHE CMAKE_CXX_STANDARD PROPERTY VALUE)
+if(_qf_cxx_std_cache MATCHES "^[0-9]+$" AND _qf_cxx_std_cache GREATER_EQUAL 20)
+  set(CMAKE_CXX_STANDARD "${_qf_cxx_std_cache}")
+elseif(NOT CMAKE_CXX_STANDARD MATCHES "^[0-9]+$" OR CMAKE_CXX_STANDARD LESS 20)
+  set(CMAKE_CXX_STANDARD 20)
+endif()
+if(CMAKE_CXX_STANDARD LESS 20)
+  message(FATAL_ERROR
+    "QuickFAST requires C++20 or later (CMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD})")
+endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -202,6 +213,7 @@ else()
   add_library(QuickFAST STATIC ${QUICKFAST_LIB_SOURCES})
 endif()
 add_library(QuickFAST::QuickFAST ALIAS QuickFAST)
+target_compile_features(QuickFAST PUBLIC cxx_std_20)
 
 if(BUILD_SHARED_LIBS)
   target_compile_definitions(QuickFAST
