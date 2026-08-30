@@ -44,6 +44,7 @@ it also finds or fetches [spdlog](https://github.com/gabime/spdlog).
 | `QUICKFAST_BUILD_TESTS` | `ON` | Build `QuickFASTTest` and register ctest |
 | `QUICKFAST_BUILD_EXAMPLES` | `ON` | Build example applications |
 | `QUICKFAST_FETCH_DEPS` | `ON` | Fetch missing deps with FetchContent; set `OFF` with Conan/vcpkg |
+| `BUILD_SHARED_LIBS` | `OFF` | Static `libQuickFAST.a` by default; set `ON` for a shared library |
 | `QUICKFAST_USE_LIBCXX` | `OFF` | Use LLVM libc++ (`-stdlib=libc++`); **Clang/AppleClang only** |
 | `QUICKFAST_ENABLE_COVERAGE` | `OFF` | Instrument library + tests with `--coverage`; add `coverage` target if `gcovr` is installed |
 | `QUICKFAST_SANITIZE_ADDRESS` | `OFF` | AddressSanitizer (`-fsanitize=address`) |
@@ -77,8 +78,11 @@ CMake does not also download overlapping sources.
 Requires [Conan 2](https://docs.conan.io/2/) (`pip install conan` or your OS package)
 and a default profile (`conan profile detect`).
 
+Conan installs **static** dependency archives (`*:shared=False`) and leaves
+QuickFAST static as well (`BUILD_SHARED_LIBS` defaults to `OFF`).
+
 ```bash
-# defaults: libpcap + tests; spdlog off
+# defaults: libpcap + tests; spdlog off; all deps static
 conan install . -of build/conan -s build_type=Release --build=missing
 
 # optional spdlog adapter
@@ -90,26 +94,38 @@ cmake -S . -B build-conan \
   -DCMAKE_BUILD_TYPE=Release \
   -DQUICKFAST_FETCH_DEPS=OFF
 cmake --build build-conan -j
-# Shared Xerces from Conan needs the generated run env on the library path:
-set -a && source build/conan/conanrun.sh && set +a
 ctest --test-dir build-conan --output-on-failure
 ```
 
-`conanfile.py` options: `with_spdlog`, `with_pcap`, `build_tests`, `shared_xerces`.
+`conanfile.py` options: `with_spdlog`, `with_pcap`, `build_tests`.
 The recipe pins `xerces-c/3.3.0`, `asio/1.30.2`, optional `spdlog/1.15.1` + `zlib`,
 `libpcap/1.10.4`, and `gtest/1.16.0` as a test requirement. It also writes the
-matching `QUICKFAST_*` CMake cache values into the toolchain.
+matching `QUICKFAST_*` / `BUILD_SHARED_LIBS` CMake cache values into the toolchain.
 
 ### vcpkg (manifest mode)
 
 Requires a [vcpkg](https://vcpkg.io/) clone and `VCPKG_ROOT` pointing at it.
 Manifest: `vcpkg.json` (features `pcap`, `tests`, `spdlog`; defaults enable pcap + tests).
 
+Use the repo overlay triplets under `triplets/` so ports build as **static**
+libraries. QuickFAST is static by default (`BUILD_SHARED_LIBS` defaults to `OFF`).
+
+| Host | `VCPKG_TARGET_TRIPLET` |
+| --- | --- |
+| Linux x86_64 | `x64-linux-static` |
+| Linux aarch64 | `arm64-linux-static` |
+| Windows MSVC | `x64-windows-static-md` |
+| macOS Intel | `x64-osx-static` |
+| macOS Apple Silicon | `arm64-osx-static` |
+
 ```bash
 export VCPKG_ROOT=/path/to/vcpkg   # once
+TRIPLET=x64-linux-static           # see table above
 
 cmake -S . -B build-vcpkg \
   -DCMAKE_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
+  -DVCPKG_OVERLAY_TRIPLETS="$(pwd)/triplets" \
+  -DVCPKG_TARGET_TRIPLET="${TRIPLET}" \
   -DCMAKE_BUILD_TYPE=Release \
   -DQUICKFAST_FETCH_DEPS=OFF \
   -DQUICKFAST_USE_LIBPCAP=ON \
@@ -123,10 +139,18 @@ Enable the spdlog feature and CMake option together:
 ```bash
 cmake -S . -B build-vcpkg-spdlog \
   -DCMAKE_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
+  -DVCPKG_OVERLAY_TRIPLETS="$(pwd)/triplets" \
+  -DVCPKG_TARGET_TRIPLET=x64-linux-static \
   -DVCPKG_MANIFEST_FEATURES=spdlog \
   -DCMAKE_BUILD_TYPE=Release \
   -DQUICKFAST_FETCH_DEPS=OFF \
   -DQUICKFAST_USE_SPDLOG=ON
+```
+
+For a shared QuickFAST (any dependency path):
+
+```bash
+cmake -S . -B build-shared -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release
 ```
 
 ---
@@ -139,7 +163,8 @@ cmake --build build -j
 ctest --test-dir build --output-on-failure
 ```
 
-Outputs: `build/lib/libQuickFAST.so`, tests/examples under `build/bin/`.
+Outputs: `build/lib/libQuickFAST.a` (or `.so` with `-DBUILD_SHARED_LIBS=ON`),
+tests/examples under `build/bin/`.
 
 ---
 

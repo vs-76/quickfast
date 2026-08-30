@@ -26,6 +26,11 @@ option(QUICKFAST_USE_LIBPCAP
 option(QUICKFAST_FETCH_DEPS
   "Fetch missing third-party deps with FetchContent (set OFF when using Conan or vcpkg)"
   ON)
+# BUILD_SHARED_LIBS is the standard CMake switch. Default OFF (static libQuickFAST.a).
+# Pass -DBUILD_SHARED_LIBS=ON for a shared library.
+if(NOT DEFINED BUILD_SHARED_LIBS)
+  set(BUILD_SHARED_LIBS OFF)
+endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 # The test-only sink hook is compiled into the shared library, so a shipping build
@@ -181,7 +186,7 @@ set(QUICKFAST_LIB_SOURCES
   src/Messages/MessageToJson.cpp
 )
 
-if(WIN32)
+if(WIN32 AND BUILD_SHARED_LIBS)
   list(APPEND QUICKFAST_LIB_SOURCES src/Common/dllmain.cpp)
 endif()
 
@@ -191,13 +196,21 @@ if(QUICKFAST_USE_SPDLOG)
     src/Common/ManagedFileSink.cpp)
 endif()
 
-add_library(QuickFAST SHARED ${QUICKFAST_LIB_SOURCES})
+if(BUILD_SHARED_LIBS)
+  add_library(QuickFAST SHARED ${QUICKFAST_LIB_SOURCES})
+else()
+  add_library(QuickFAST STATIC ${QUICKFAST_LIB_SOURCES})
+endif()
 add_library(QuickFAST::QuickFAST ALIAS QuickFAST)
 
-target_compile_definitions(QuickFAST
-  PRIVATE
-    QUICKFAST_BUILD_DLL
-)
+if(BUILD_SHARED_LIBS)
+  target_compile_definitions(QuickFAST
+    PRIVATE QUICKFAST_BUILD_DLL
+    PUBLIC QUICKFAST_HAS_DLL=1
+  )
+else()
+  target_compile_definitions(QuickFAST PUBLIC QUICKFAST_HAS_DLL=0)
+endif()
 
 target_include_directories(QuickFAST
   PUBLIC
@@ -369,6 +382,11 @@ if(QUICKFAST_ENABLE_PVS_STUDIO)
 endif()
 
 message(STATUS "QuickFAST ${PROJECT_VERSION}: C++${CMAKE_CXX_STANDARD}, XercesC ${XercesC_VERSION} (no Boost)")
+if(BUILD_SHARED_LIBS)
+  message(STATUS "Library type: SHARED")
+else()
+  message(STATUS "Library type: STATIC")
+endif()
 message(STATUS "Deps: fetch=${QUICKFAST_FETCH_DEPS} asio=${QUICKFAST_ASIO_TARGET}")
 message(STATUS "Warning flags: ${QUICKFAST_WARNING_FLAGS}")
 if(QUICKFAST_USE_LIBCXX)
