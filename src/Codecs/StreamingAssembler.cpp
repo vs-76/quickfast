@@ -137,7 +137,7 @@ StreamingAssembler::serviceQueue(
             decoder_.reset();
           }
           // Prefer the buffer that currently holds the message start; messages
-          // that later span buffers keep this first arrival time.
+          // that later span buffers keep this first arrival time and size.
           if(currentBuffer_ != 0 && currentBuffer_->hasReceiveTime())
           {
             builder_.setReceiveTime(currentBuffer_->receiveTime());
@@ -145,6 +145,14 @@ StreamingAssembler::serviceQueue(
           else
           {
             builder_.clearReceiveTime();
+          }
+          if(currentBuffer_ != 0)
+          {
+            builder_.setPacketSize(static_cast<uint64>(currentBuffer_->used()));
+          }
+          else
+          {
+            builder_.clearPacketSize();
           }
           decoder_.decodeMessage(*this, builder_);
         }

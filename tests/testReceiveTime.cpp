@@ -2,8 +2,8 @@
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
-// ReceiveTime is stamped when a buffer is accepted by the receiver and injected
-// as a synthetic uInt64 (UTC µs since epoch) after FAST decode.
+// ReceiveTime and PktSize are taken from the accepted buffer and injected as
+// synthetic uInt64 fields after FAST decode (UTC µs since epoch, and byte size).
 #include <Common/QuickFASTPch.h>
 
 #include <gtest/gtest.h>
@@ -66,7 +66,7 @@ TEST(QuickFAST, testLinkedBufferStampsReceiveTime)
   EXPECT_EQ(123456789012345ull, buffer.receiveTime());
 }
 
-/// @brief Synch accept stamps the buffer; GenericMessageBuilder adds ReceiveTime.
+/// @brief Synch accept stamps the buffer; GenericMessageBuilder adds ReceiveTime and PktSize.
 TEST(QuickFAST, testReceiveTimeReachesMessageConsumer)
 {
   Codecs::NoHeaderAnalyzer packetHeader;
@@ -91,6 +91,11 @@ TEST(QuickFAST, testReceiveTimeReachesMessageConsumer)
   const uint64 receiveTime = field->toUInt64();
   EXPECT_GE(receiveTime, before);
   EXPECT_LE(receiveTime, after);
+
+  Messages::FieldCPtr pktSize;
+  ASSERT_TRUE(message.getField("PktSize", pktSize));
+  ASSERT_TRUE(pktSize->isUnsignedInteger());
+  EXPECT_EQ(sizeof(packet), pktSize->toUInt64());
 
   // Template field is still present.
   Messages::FieldCPtr value;
@@ -126,5 +131,39 @@ TEST(QuickFAST, testReceiveTimeDoesNotOverwriteTemplateField)
   Messages::Message & message = consumer.message();
   Messages::FieldCPtr field;
   ASSERT_TRUE(message.getField("ReceiveTime", field));
+  EXPECT_EQ(7u, field->toUInt64());
+
+  Messages::FieldCPtr pktSize;
+  ASSERT_TRUE(message.getField("PktSize", pktSize));
+  EXPECT_EQ(sizeof(packet), pktSize->toUInt64());
+}
+
+/// @brief A template field named PktSize is left alone.
+TEST(QuickFAST, testPktSizeDoesNotOverwriteTemplateField)
+{
+  std::stringstream templates(
+    "<templates>"
+    "  <template name=\"t\" id=\"1\">"
+    "    <uInt64 name=\"PktSize\"/>"
+    "  </template>"
+    "</templates>");
+  Codecs::XMLTemplateParser parser;
+  Codecs::TemplateRegistryPtr registry = parser.parse(templates);
+
+  Codecs::NoHeaderAnalyzer packetHeader;
+  Codecs::NoHeaderAnalyzer messageHeader;
+  Codecs::SingleMessageConsumer consumer;
+  Codecs::GenericMessageBuilder builder(consumer);
+  Codecs::MessagePerPacketAssembler assembler(
+    registry, packetHeader, messageHeader, builder);
+
+  Communication::BufferReceiver receiver;
+  receiver.start(assembler, 1500, 1);
+  const unsigned char packet[] = {0xC0, 0x81, 0x87};
+  receiver.receiveBuffer(packet, sizeof(packet));
+
+  Messages::Message & message = consumer.message();
+  Messages::FieldCPtr field;
+  ASSERT_TRUE(message.getField("PktSize", field));
   EXPECT_EQ(7u, field->toUInt64());
 }

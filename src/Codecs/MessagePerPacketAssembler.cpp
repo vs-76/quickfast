@@ -45,6 +45,7 @@ MessagePerPacketAssembler::serviceQueue(Communication::Receiver & receiver)
       {
         builder_.clearReceiveTime();
       }
+      builder_.setPacketSize(static_cast<uint64>(buffer->used()));
       result = decodeBuffer(buffer->get(), buffer->used());
     }
     catch(const std::exception &ex)

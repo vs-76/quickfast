@@ -231,6 +231,36 @@ namespace QuickFAST{
         return 0;
       }
 
+      /// @brief Supply the received buffer/packet size for the message about to be decoded.
+      ///
+      /// Bytes accepted into the LinkedBuffer (UDP payload for datagram feeds).
+      /// Default ignores the value; GenericMessageBuilder injects a synthetic
+      /// PktSize field.
+      ///
+      /// @param packetSize bytes in the received buffer
+      virtual void setPacketSize([[maybe_unused]] uint64 packetSize)
+      {
+      }
+
+      /// @brief Clear any packet size previously set via setPacketSize().
+      virtual void clearPacketSize()
+      {
+      }
+
+      /// @brief Whether setPacketSize() has supplied a size for this message.
+      virtual bool hasPacketSize() const
+      {
+        return false;
+      }
+
+      /// @brief Byte length of the current received buffer.
+      ///
+      /// Valid only when hasPacketSize() is true.
+      virtual uint64 packetSize() const
+      {
+        return 0;
+      }
+
     };
   }
 }
