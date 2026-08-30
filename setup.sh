@@ -1,6 +1,7 @@
 # Command file to set QuickFAST environment
 # Preferred Linux build: CMake + C++23 (see README.md).
-# Runtime deps: Xerces-C++. Asio and GoogleTest are pulled by CMake FetchContent.
+# Runtime deps: Xerces-C++ (>= 3.2.5; CMake may FetchContent 3.3.0).
+# Asio and GoogleTest are pulled by CMake FetchContent.
 # Customize this file by setting variables to suit your environment
 SOURCE="${BASH_SOURCE[0]}"
 SOURCE_DIR=`dirname $SOURCE`
@@ -21,7 +22,8 @@ then
   then
     export XERCES_ROOT=/usr
   else
-    export XERCES_ROOT=~/xerces/xerces-c-3.2.4
+    # Prefer >= 3.2.5 (CVE-2024-23807); 3.3.0 is the FetchContent fallback.
+    export XERCES_ROOT=~/xerces/xerces-c-3.3.0
   fi
 fi
 
