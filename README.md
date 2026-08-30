@@ -22,6 +22,7 @@ Native library, examples, and tests no longer depend on Boost. Dependencies
 - Standalone [Asio](https://github.com/chriskohlhoff/asio) and [GoogleTest](https://github.com/google/googletest) / GoogleMock
 - [spdlog](https://github.com/gabime/spdlog) + zlib (default ON; `-DQUICKFAST_USE_SPDLOG=OFF` to disable)
 - [libpcap](https://www.tcpdump.org/) (default ON)
+- [c-ares](https://c-ares.org/) (default ON; `-DQUICKFAST_USE_CARES=OFF` / Conan `with_cares=False` / omit vcpkg feature `cares`)
 
 QuickFAST defaults to a static archive (`BUILD_SHARED_LIBS=OFF`).
 

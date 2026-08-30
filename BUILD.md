@@ -28,6 +28,7 @@ Also required (defaults ON unless noted): standalone
 [GoogleTest](https://github.com/google/googletest) (tests),
 [spdlog](https://github.com/gabime/spdlog) + zlib, and
 [libpcap](https://www.tcpdump.org/) (optional via `-DQUICKFAST_USE_LIBPCAP=OFF`).
+[c-ares](https://c-ares.org/) hostname resolve (optional via `-DQUICKFAST_USE_CARES=OFF`).
 spdlog needs host **tzdata** for IANA zones.
 
 | CMake option | Default | Meaning |
@@ -42,6 +43,7 @@ spdlog needs host **tzdata** for IANA zones.
 | `QUICKFAST_SANITIZE_THREAD` | `OFF` | ThreadSanitizer (`-fsanitize=thread`; incompatible with ASan/UBSan) |
 | `QUICKFAST_USE_SPDLOG` | `ON` | Build `SpdlogLogger` + `managed_file_sink_mt` (spdlog + zlib; tzdata) |
 | `QUICKFAST_USE_LIBPCAP` | `ON` | Read capture files through libpcap (pcapng / nanosecond pcap) |
+| `QUICKFAST_USE_CARES` | `ON` | Resolve hostnames with c-ares (hosts file + DNS; no glibc NSS) |
 | `QUICKFAST_ENABLE_TEST_HOOKS` | follows `QUICKFAST_BUILD_TESTS` | Compile test-only hooks (`managed_file_sink_mt`, `PCapReader::dissectFrameForTest`); keep `OFF` for shipping builds |
 | `QUICKFAST_BUILD_FUZZERS` | `OFF` | Build libFuzzer harnesses under `tests/fuzz/` (**Clang only**; implies test hooks) |
 | `QUICKFAST_ENABLE_PVS_STUDIO` | `ON` | Create `pvs-studio` target if `pvs-studio-analyzer` is installed |
@@ -71,12 +73,16 @@ Conan installs **static** dependency archives (`*:shared=False`) and leaves
 QuickFAST static as well (`BUILD_SHARED_LIBS` defaults to `OFF`).
 
 ```bash
-# defaults: libpcap + tests + spdlog; all deps static
+# defaults: libpcap + c-ares + tests + spdlog; all deps static
 conan install . -of build/conan -s build_type=Release --build=missing
 
 # disable spdlog adapter
 conan install . -of build/conan -s build_type=Release --build=missing \
   -o '&:with_spdlog=False'
+
+# disable c-ares (fall back to Asio getaddrinfo)
+conan install . -of build/conan -s build_type=Release --build=missing \
+  -o '&:with_cares=False'
 
 cmake -S . -B build-conan \
   -DCMAKE_TOOLCHAIN_FILE="$(pwd)/build/conan/conan_toolchain.cmake" \
@@ -85,21 +91,22 @@ cmake --build build-conan -j
 ctest --test-dir build-conan --output-on-failure
 ```
 
-`conanfile.py` options: `with_spdlog`, `with_pcap`, `build_tests`.
+`conanfile.py` options: `with_spdlog`, `with_pcap`, `with_cares`, `build_tests`.
 The recipe pins current Conan Center releases: `xerces-c/3.3.0` (ICU transcoder;
 `icu/78.2` override), `asio/1.38.2`,
-`spdlog/1.17.0` + `zlib/1.3.2` (default), `libpcap/1.10.6`, and `gtest/1.18.0` as a
+`spdlog/1.17.0` + `zlib/1.3.2` (default), `libpcap/1.10.6`,
+`c-ares/1.34.8` (default), and `gtest/1.18.0` as a
 test requirement. It also writes the matching `QUICKFAST_*` / `BUILD_SHARED_LIBS`
 CMake cache values into the toolchain.
 
 ### vcpkg (manifest mode)
 
 Requires a [vcpkg](https://vcpkg.io/) clone and `VCPKG_ROOT` pointing at it.
-Manifest: `vcpkg.json` (features `pcap`, `tests`, `spdlog`; all three are default).
+Manifest: `vcpkg.json` (features `pcap`, `tests`, `spdlog`, `cares` by default).
 `xerces-c` is installed with the `icu` feature (network feature off); ICU is pinned
 to `78.3#2` (Conan uses `icu/78.2`).
 Pins latest registry versions via `builtin-baseline` + `overrides` (asio on vcpkg
-is currently 1.32.0 while Conan has 1.38.2).
+is currently 1.32.0 while Conan has 1.38.2; c-ares pinned to **1.34.8**).
 
 Use the repo overlay triplets under `triplets/` so ports build as **static**
 libraries. QuickFAST is static by default (`BUILD_SHARED_LIBS` defaults to `OFF`).
@@ -125,6 +132,18 @@ cmake -S . -B build-vcpkg \
   -DQUICKFAST_BUILD_TESTS=ON
 cmake --build build-vcpkg -j
 ctest --test-dir build-vcpkg --output-on-failure
+```
+
+c-ares is on by default with the manifest. To turn it off with vcpkg:
+
+```bash
+cmake -S . -B build-vcpkg-nocares \
+  -DCMAKE_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
+  -DVCPKG_OVERLAY_TRIPLETS="$(pwd)/triplets" \
+  -DVCPKG_TARGET_TRIPLET="${TRIPLET}" \
+  -DVCPKG_MANIFEST_FEATURES="pcap;tests;spdlog" \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DQUICKFAST_USE_CARES=OFF
 ```
 
 Enable spdlog is the default. To turn the feature off with vcpkg:
