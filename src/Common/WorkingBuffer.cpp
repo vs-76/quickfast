@@ -119,6 +119,37 @@ WorkingBuffer::push(uchar byte)
 }
 
 void
+WorkingBuffer::push(const uchar * bytes, size_t count)
+{
+  if(count == 0)
+  {
+    return;
+  }
+  if(reverse_)
+  {
+    if(startPos_ < count)
+    {
+      grow(capacity_ + (count - startPos_));
+    }
+    // Match sequential push(bytes[i]): live bytes read as bytes[n-1]..bytes[0].
+    startPos_ -= count;
+    for(size_t i = 0; i < count; ++i)
+    {
+      buffer_[startPos_ + i] = bytes[count - 1 - i];
+    }
+  }
+  else
+  {
+    if(endPos_ + count > capacity_)
+    {
+      grow(endPos_ + count);
+    }
+    std::memcpy(buffer_.get() + endPos_, bytes, count);
+    endPos_ += count;
+  }
+}
+
+void
 WorkingBuffer::grow()
 {
   grow(capacity_ * 3 / 2); // todo: parameterize growth rate?
