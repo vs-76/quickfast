@@ -23,6 +23,9 @@ option(QUICKFAST_USE_SPDLOG
 option(QUICKFAST_USE_LIBPCAP
   "Read capture files via libpcap (adds pcapng and nanosecond pcap support)"
   ON)
+option(QUICKFAST_FETCH_DEPS
+  "Fetch missing third-party deps with FetchContent (set OFF when using Conan or vcpkg)"
+  ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 # The test-only sink hook is compiled into the shared library, so a shipping build
@@ -84,42 +87,11 @@ if(QUICKFAST_USE_LIBCXX)
   endif()
 endif()
 
-include(FetchContent)
 find_package(Threads REQUIRED)
 include(QuickFASTXerces)
-
-# Standalone Asio (header-only)
-FetchContent_Declare(
-  asio
-  GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git
-  GIT_TAG        asio-1-30-2
-  GIT_SHALLOW    TRUE
-)
-FetchContent_MakeAvailable(asio)
-add_library(asio INTERFACE)
-add_library(asio::asio ALIAS asio)
-target_include_directories(asio SYSTEM INTERFACE ${asio_SOURCE_DIR}/asio/include)
-target_compile_definitions(asio INTERFACE ASIO_STANDALONE ASIO_NO_DEPRECATED)
-
+include(QuickFASTAsio)
 if(QUICKFAST_USE_SPDLOG)
-  find_package(spdlog 1.12 QUIET CONFIG)
-  if(NOT spdlog_FOUND)
-    set(SPDLOG_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
-    set(SPDLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(SPDLOG_BUILD_BENCH OFF CACHE BOOL "" FORCE)
-    set(SPDLOG_INSTALL OFF CACHE BOOL "" FORCE)
-    FetchContent_Declare(
-      spdlog
-      GIT_REPOSITORY https://github.com/gabime/spdlog.git
-      GIT_TAG        v1.15.1
-      GIT_SHALLOW    TRUE
-    )
-    FetchContent_MakeAvailable(spdlog)
-    if(TARGET spdlog)
-      target_compile_options(spdlog PRIVATE -w)
-    endif()
-  endif()
-  find_package(ZLIB REQUIRED)
+  include(QuickFASTSpdlog)
 endif()
 
 # Strict warnings for first-party code (deps use SYSTEM includes / silenced below).
@@ -235,13 +207,15 @@ target_include_directories(QuickFAST
 
 target_link_libraries(QuickFAST
   PUBLIC
-    asio
+    ${QUICKFAST_ASIO_TARGET}
     Threads::Threads
     XercesC::XercesC
 )
+# Ensure standalone Asio semantics even when the package only set ASIO_STANDALONE.
+target_compile_definitions(QuickFAST PUBLIC ASIO_STANDALONE ASIO_NO_DEPRECATED)
 
 if(QUICKFAST_USE_LIBPCAP)
-  find_package(PCAP REQUIRED)
+  include(QuickFASTPcap)
   target_link_libraries(QuickFAST PRIVATE PCAP::PCAP)
   target_compile_definitions(QuickFAST PUBLIC QUICKFAST_HAVE_LIBPCAP=1)
 endif()
@@ -273,21 +247,7 @@ set_target_properties(QuickFAST PROPERTIES
 )
 
 if(QUICKFAST_BUILD_TESTS)
-  set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
-  set(BUILD_GMOCK ON CACHE BOOL "" FORCE)
-  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-  FetchContent_Declare(
-    googletest
-    GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG        v1.15.2
-    GIT_SHALLOW    TRUE
-  )
-  FetchContent_MakeAvailable(googletest)
-  foreach(_gtest_target gtest gtest_main gmock gmock_main)
-    if(TARGET ${_gtest_target})
-      target_compile_options(${_gtest_target} PRIVATE -w)
-    endif()
-  endforeach()
+  include(QuickFASTGTest)
 
   enable_testing()
   include(GoogleTest)
@@ -409,6 +369,7 @@ if(QUICKFAST_ENABLE_PVS_STUDIO)
 endif()
 
 message(STATUS "QuickFAST ${PROJECT_VERSION}: C++${CMAKE_CXX_STANDARD}, XercesC ${XercesC_VERSION} (no Boost)")
+message(STATUS "Deps: fetch=${QUICKFAST_FETCH_DEPS} asio=${QUICKFAST_ASIO_TARGET}")
 message(STATUS "Warning flags: ${QUICKFAST_WARNING_FLAGS}")
 if(QUICKFAST_USE_LIBCXX)
   message(STATUS "C++ standard library: libc++ (-stdlib=libc++)")

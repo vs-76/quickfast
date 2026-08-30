@@ -64,3 +64,10 @@ doc/NotGitWorthy/
 
 # Local agent implementation prompts (never push to GitHub)
 doc/agent-prompts/
+
+# Conan / vcpkg generated (do not commit)
+CMakeUserPresets.json
+conan/
+!conanfile.py
+vcpkg_installed/
+
