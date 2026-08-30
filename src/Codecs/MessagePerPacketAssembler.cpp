@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -36,6 +37,14 @@ MessagePerPacketAssembler::serviceQueue(Communication::Receiver & receiver)
   {
     try
     {
+      if(buffer->hasReceiveTime())
+      {
+        builder_.setReceiveTime(buffer->receiveTime());
+      }
+      else
+      {
+        builder_.clearReceiveTime();
+      }
       result = decodeBuffer(buffer->get(), buffer->used());
     }
     catch(const std::exception &ex)

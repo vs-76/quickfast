@@ -136,6 +136,16 @@ StreamingAssembler::serviceQueue(
           {
             decoder_.reset();
           }
+          // Prefer the buffer that currently holds the message start; messages
+          // that later span buffers keep this first arrival time.
+          if(currentBuffer_ != 0 && currentBuffer_->hasReceiveTime())
+          {
+            builder_.setReceiveTime(currentBuffer_->receiveTime());
+          }
+          else
+          {
+            builder_.clearReceiveTime();
+          }
           decoder_.decodeMessage(*this, builder_);
         }
         catch(std::exception & ex)

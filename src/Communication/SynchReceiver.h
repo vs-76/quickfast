@@ -68,6 +68,7 @@ namespace QuickFAST
           ++packetsQueued_;
           largestPacket_ = std::max<size_t>(largestPacket_, bytesReceived);
           buffer->setUsed(bytesReceived);
+          buffer->stampReceiveTime();
           needService = queue_.push(buffer, lock);
         }
         else
