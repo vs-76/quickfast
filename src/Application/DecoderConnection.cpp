@@ -24,6 +24,11 @@
 #include <Communication/BufferReceiver.h>
 #include <Communication/AsioService.h>
 
+#ifdef _WIN32
+# include <fcntl.h>
+# include <io.h>
+#endif
+
 using namespace QuickFAST;
 using namespace Application;
 
@@ -127,14 +132,18 @@ DecoderConnection::configure(
 
   if(!configuration.asynchReads() && !configuration.fastFileName().empty())
   {
-#ifndef _WIN32
-    // on Windows cin is opened in ascii mode which garbles FAST data
     if(configuration.fastFileName() == "cin")
     {
+#ifdef _WIN32
+      // stdin defaults to text mode on Windows, which would garble FAST.
+      if(_setmode(_fileno(stdin), _O_BINARY) == -1)
+      {
+        throw std::runtime_error("Can't set stdin to binary mode for -file cin");
+      }
+#endif
       fastFile_ = &std::cin;
     }
     else
-#endif
     {
       ownedFastFile_ = std::make_unique<std::ifstream>(
         configuration.fastFileName().c_str(), binaryMode);

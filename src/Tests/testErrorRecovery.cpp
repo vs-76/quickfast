@@ -38,9 +38,9 @@ namespace
 
     Packet(uchar value)
       : sequenceNumber(value)
-      , pmap('\xC0')
-      , tid('\x81')
-      , data('\x80' | value)
+      , pmap(static_cast<uchar>(0xC0))
+      , tid(static_cast<uchar>(0x81))
+      , data(static_cast<uchar>(0x80 | value))
     {
     }
   };

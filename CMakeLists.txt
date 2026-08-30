@@ -111,8 +111,12 @@ if(QUICKFAST_USE_SPDLOG)
 endif()
 
 # Strict warnings for first-party code (deps use SYSTEM includes / silenced below).
-# Exact set required for dual-compiler CI: -Werror -Wall -pedantic
-set(QUICKFAST_WARNING_FLAGS -Wall -Werror -pedantic)
+# GCC/Clang CI uses -Werror -Wall -pedantic; MSVC maps to /W4 /WX.
+if(MSVC)
+  set(QUICKFAST_WARNING_FLAGS /W4 /WX)
+else()
+  set(QUICKFAST_WARNING_FLAGS -Wall -Werror -pedantic)
+endif()
 
 
 set(QUICKFAST_LIB_SOURCES
