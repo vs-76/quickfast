@@ -36,17 +36,17 @@ class QuickFASTConan(ConanFile):
 
     def requirements(self):
         self.requires("xerces-c/3.3.0")
-        self.requires("asio/1.30.2")
+        self.requires("asio/1.38.2")
         if self.options.with_spdlog:
-            self.requires("spdlog/1.15.1")
+            self.requires("spdlog/1.17.0")
             # Direct dep for managed_file_sink_mt gzip; also satisfies spdlog consumers.
-            self.requires("zlib/1.3.1")
+            self.requires("zlib/1.3.2")
         if self.options.with_pcap:
-            self.requires("libpcap/1.10.4")
+            self.requires("libpcap/1.10.6")
 
     def build_requirements(self):
         if self.options.build_tests:
-            self.test_requires("gtest/1.16.0")
+            self.test_requires("gtest/1.18.0")
 
     def configure(self):
         # Prefer static archives for every dependency that offers a shared option.

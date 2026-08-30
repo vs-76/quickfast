@@ -4,7 +4,7 @@
 #
 # Resolve GoogleTest / GoogleMock: find_package then optional FetchContent.
 
-set(QUICKFAST_GTEST_FETCH_TAG v1.15.2)
+set(QUICKFAST_GTEST_FETCH_TAG v1.18.0)
 
 find_package(GTest QUIET CONFIG)
 if(NOT GTest_FOUND)

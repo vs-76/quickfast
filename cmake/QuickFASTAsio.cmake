@@ -5,7 +5,7 @@
 # Resolve standalone Asio: find_package (Conan / vcpkg / system) then optional FetchContent.
 # Sets QUICKFAST_ASIO_TARGET to the INTERFACE/IMPORTED library to link.
 
-set(QUICKFAST_ASIO_FETCH_TAG asio-1-30-2)
+set(QUICKFAST_ASIO_FETCH_TAG asio-1-38-2)
 
 find_package(asio QUIET CONFIG)
 if(asio_FOUND)
