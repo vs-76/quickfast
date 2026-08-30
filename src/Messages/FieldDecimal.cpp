@@ -9,6 +9,8 @@
 using namespace ::QuickFAST;
 using namespace ::QuickFAST::Messages;
 
+FieldCPtr FieldDecimal::nullField_ = FieldCPtr(new FieldDecimal);
+
 FieldDecimal::FieldDecimal()
   : Field(ValueType::DECIMAL, false)
 {
@@ -57,7 +59,7 @@ FieldDecimal::create(mantissa_t mantissa, exponent_t exponent)
 FieldCPtr
 FieldDecimal::createNull()
 {
-  return FieldCPtr(new FieldDecimal);
+  return nullField_;
 }
 
 void

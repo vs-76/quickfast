@@ -52,6 +52,7 @@ namespace QuickFAST{
       virtual const Decimal toDecimal() const;
       virtual void valueToStringBuffer()const;
     private:
+      static FieldCPtr nullField_;
     };
   }
 }

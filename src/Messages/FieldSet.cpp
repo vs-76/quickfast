@@ -9,6 +9,10 @@
 #include <Common/Exceptions.h>
 #include <Common/Profiler.h>
 
+#include <algorithm>
+#include <functional>
+#include <vector>
+
 using namespace ::QuickFAST;
 using namespace ::QuickFAST::Messages;
 
@@ -30,7 +34,112 @@ FieldSet::FieldSet(size_t res)
 : fields_(reinterpret_cast<MessageField *>(new unsigned char[sizeof(MessageField) * res]))
 , capacity_(res)
 , used_(0)
+, lookupCursor_(0)
+, mayHaveDuplicateIdentities_(false)
+, duplicatesKnown_(true)
 {
+}
+
+#if defined(QUICKFAST_ENABLE_TEST_HOOKS)
+uint64_t FieldSet::identityCompareCount_ = 0;
+
+void
+FieldSet::resetIdentityCompareCount()
+{
+  identityCompareCount_ = 0;
+}
+
+uint64_t
+FieldSet::identityCompareCount()
+{
+  return identityCompareCount_;
+}
+
+void
+FieldSet::bumpIdentityCompareCount()
+{
+  ++identityCompareCount_;
+}
+#endif
+
+void
+FieldSet::detectDuplicateIdentities() const
+{
+  duplicatesKnown_ = true;
+  mayHaveDuplicateIdentities_ = false;
+  if(used_ < 2)
+  {
+    return;
+  }
+  // matches() cannot be true unless the qualified names are equal, so equal
+  // names are a superset of the pairs first-match has to worry about. Sorting
+  // hashes answers "any duplicates?" in O(F log F) cheap integer compares
+  // instead of O(F^2) three-way string compares.
+  static thread_local std::vector<size_t> nameHashes;
+  nameHashes.clear();
+  nameHashes.reserve(used_);
+  std::hash<std::string> hasher;
+  for(size_t i = 0; i < used_; ++i)
+  {
+    nameHashes.push_back(hasher(fields_[i].getIdentity().name()));
+  }
+  std::sort(nameHashes.begin(), nameHashes.end());
+  mayHaveDuplicateIdentities_ =
+    std::adjacent_find(nameHashes.begin(), nameHashes.end()) != nameHashes.end();
+}
+
+size_t
+FieldSet::findIndex(const FieldIdentity & identity) const
+{
+  if(used_ == 0)
+  {
+    return 0;
+  }
+  if(!duplicatesKnown_)
+  {
+    detectDuplicateIdentities();
+  }
+
+  const size_t cursor = lookupCursor_;
+  if(cursor < used_)
+  {
+#if defined(QUICKFAST_ENABLE_TEST_HOOKS)
+    bumpIdentityCompareCount();
+#endif
+    if(identity.matches(fields_[cursor].getIdentity()))
+    {
+      // Only pay for an earlier-duplicate scan when addField has seen one.
+      if(mayHaveDuplicateIdentities_)
+      {
+        for(size_t i = 0; i < cursor; ++i)
+        {
+#if defined(QUICKFAST_ENABLE_TEST_HOOKS)
+          bumpIdentityCompareCount();
+#endif
+          if(identity.matches(fields_[i].getIdentity()))
+          {
+            lookupCursor_ = i + 1;
+            return i;
+          }
+        }
+      }
+      lookupCursor_ = cursor + 1;
+      return cursor;
+    }
+  }
+
+  for(size_t i = 0; i < used_; ++i)
+  {
+#if defined(QUICKFAST_ENABLE_TEST_HOOKS)
+    bumpIdentityCompareCount();
+#endif
+    if(identity.matches(fields_[i].getIdentity()))
+    {
+      lookupCursor_ = i + 1;
+      return i;
+    }
+  }
+  return used_;
 }
 
 FieldSet::~FieldSet()
@@ -75,6 +184,9 @@ FieldSet::clear(size_t capacity)
     --used_;
     fields_[used_].~MessageField();
   }
+  lookupCursor_ = 0;
+  mayHaveDuplicateIdentities_ = false;
+  duplicatesKnown_ = true;
   if(capacity > capacity_)
   {
     reserve(capacity);
@@ -94,20 +206,19 @@ FieldSet::operator[](size_t index)const
 bool
 FieldSet::isPresent(const FieldIdentity & identity) const
 {
-  for(size_t index = 0; index < used_; ++index)
+  const size_t index = findIndex(identity);
+  if(index >= used_)
   {
-    if(identity.matches(fields_[index].getIdentity()))
-    {
-      return fields_[index].getField()->isDefined();
-    }
+    return false;
   }
-  return false;
+  return fields_[index].getField()->isDefined();
 }
 
 void
 FieldSet::addField(const FieldIdentity & identity, const FieldCPtr & value)
 {
   PROFILE_POINT("FieldSet::addField");
+  duplicatesKnown_ = false;
   if(used_ >= capacity_)
   {
     PROFILE_POINT("FieldSet::grow");
@@ -121,40 +232,35 @@ bool
 FieldSet::replaceField(const FieldIdentity & identity,
                        const FieldCPtr & value)
 {
-  for(size_t index = 0; index < used_; ++index)
+  const size_t index = findIndex(identity);
+  if(index >= used_)
   {
-    if(identity.matches(fields_[index].getIdentity()))
-    {
-      // Falling through to the next iteration on an undefined field meant
-      // that, with a duplicate identity in the set, a later entry was replaced
-      // instead -- the opposite of the first-match rule getField and isPresent
-      // implement over this same array. The answer to "the field is here but
-      // absent" is still false; it just no longer keeps looking.
-      if(!fields_[index].getField()->isDefined())
-      {
-        return false;
-      }
-      (fields_ + index)->~MessageField();  // Explicit destroy
-      new (fields_ + index) MessageField(identity, value);
-      return true;
-    }
+    return false;
   }
-  return false;
+  // Falling through on an undefined field used to keep scanning for a later
+  // duplicate. First-match says: the field is here but absent → false.
+  if(!fields_[index].getField()->isDefined())
+  {
+    return false;
+  }
+  (fields_ + index)->~MessageField();  // Explicit destroy
+  new (fields_ + index) MessageField(identity, value);
+  // The stored identity may differ from the one it replaced.
+  duplicatesKnown_ = false;
+  return true;
 }
 
 bool
 FieldSet::getField(const Messages::FieldIdentity & identity, FieldCPtr & value) const
 {
   PROFILE_POINT("FieldSet::getField");
-  for(size_t index = 0; index < used_; ++index)
+  const size_t index = findIndex(identity);
+  if(index >= used_)
   {
-    if(identity.matches(fields_[index].getIdentity()))
-    {
-      value = fields_[index].getField();
-      return value->isDefined();
-    }
+    return false;
   }
-  return false;
+  value = fields_[index].getField();
+  return value->isDefined();
 }
 
 void

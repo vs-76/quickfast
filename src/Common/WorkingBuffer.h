@@ -60,6 +60,14 @@ namespace QuickFAST{
     /// @param byte is the data to be added.
     void push(uchar byte);
 
+    /// @brief add a contiguous run of bytes
+    ///
+    /// Honors reverse mode: equivalent to push(bytes[i]) for i in [0, count).
+    /// Forward mode uses a single memcpy after one grow. Zero count is a no-op.
+    /// @param bytes pointer to count bytes (ignored when count is 0)
+    /// @param count number of bytes to append
+    void push(const uchar * bytes, size_t count);
+
     /// @brief Support forward iteration from the beginning of the buffer
     /// @returns a uchar* to be used as an iterator
     const uchar * begin()const

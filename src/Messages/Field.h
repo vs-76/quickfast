@@ -30,6 +30,15 @@ namespace QuickFAST{
       /// @brief a typical virtual destructor.
       virtual ~Field() = 0;
 
+#if defined(QUICKFAST_ENABLE_TEST_HOOKS)
+      /// @brief Reset the process-wide heap Field::create allocation counter.
+      static void resetHeapCreateCount();
+      /// @brief How many non-interned Field instances create() has heap-allocated.
+      static uint64_t heapCreateCount();
+      /// @brief Record one heap allocation from a Field::create path.
+      static void noteHeapCreate();
+#endif
+
       /// @brief compare to field for type and value
       ///
       /// The default implementation handles all string, integer, and decimal types.

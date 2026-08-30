@@ -47,6 +47,8 @@ namespace QuickFAST{
       virtual bool isString() const;
       virtual const StringBuffer & toAscii() const;
     private:
+      static FieldCPtr nullField_;
+      static FieldCPtr emptyField_;
     };
   }
 }

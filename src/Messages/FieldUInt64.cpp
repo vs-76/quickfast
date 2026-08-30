@@ -9,6 +9,8 @@
 using namespace ::QuickFAST;
 using namespace ::QuickFAST::Messages;
 
+FieldCPtr FieldUInt64::nullField_ = FieldCPtr(new FieldUInt64);
+
 FieldUInt64::FieldUInt64(uint64 value)
   : Field(ValueType::UINT64, true)
 {
@@ -43,7 +45,7 @@ FieldUInt64::create(uint64 value)
 FieldCPtr
 FieldUInt64::createNull()
 {
-  return FieldCPtr(new FieldUInt64);
+  return nullField_;
 }
 
 void

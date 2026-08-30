@@ -100,6 +100,13 @@ namespace QuickFAST{
       /// @returns true if the field was found and has a value;
       bool getField(const Messages::FieldIdentity & identity, FieldCPtr & value) const;
 
+#if defined(QUICKFAST_ENABLE_TEST_HOOKS)
+      /// @brief Reset the process-wide identity-compare counter used by tests.
+      static void resetIdentityCompareCount();
+      /// @brief How many FieldIdentity::matches calls FieldSet lookup has made.
+      static uint64_t identityCompareCount();
+#endif
+
       /// @brief support iterating through Fields in this FieldSet.
       const_iterator begin() const
       {
@@ -143,6 +150,9 @@ namespace QuickFAST{
         swap_i(fields_, rhs.fields_);
         swap_i(capacity_, rhs.capacity_);
         swap_i(used_, rhs.used_);
+        swap_i(lookupCursor_, rhs.lookupCursor_);
+        swap_i(mayHaveDuplicateIdentities_, rhs.mayHaveDuplicateIdentities_);
+        swap_i(duplicatesKnown_, rhs.duplicatesKnown_);
       }
 
       ///// @brief access the field set
@@ -168,6 +178,27 @@ namespace QuickFAST{
       bool equals(const FieldSet & rhs, std::ostream & reason) const;
 
     private:
+      /// @brief Locate a field by identity; returns used_ if not found.
+      ///
+      /// Uses an insertion-order hint so encode-style in-order access is
+      /// amortized O(1) compares while preserving first-match semantics when
+      /// duplicate identities are present.
+      size_t findIndex(const FieldIdentity & identity) const;
+
+      /// @brief Work out, once per set of additions, whether any two entries
+      /// could match the same lookup.
+      ///
+      /// Deliberately not done in addField: building a set of F fields is on
+      /// the decode path and a per-add scan makes it O(F^2) identity compares.
+      /// Lookup is the only operation that needs the answer, so a set that is
+      /// built and iterated -- never looked up -- pays nothing.
+      void detectDuplicateIdentities() const;
+
+#if defined(QUICKFAST_ENABLE_TEST_HOOKS)
+      static void bumpIdentityCompareCount();
+      static uint64_t identityCompareCount_;
+#endif
+
       template<typename T>
       void swap_i(T & l, T & r)
       {
@@ -185,6 +216,12 @@ namespace QuickFAST{
       MessageField * fields_;
       size_t capacity_;
       size_t used_;
+      /// Hint for the next in-order lookup (mutable: getters are const).
+      mutable size_t lookupCursor_;
+      /// When true, cursor hits must still scan earlier slots for first-match.
+      mutable bool mayHaveDuplicateIdentities_;
+      /// False once a field is added; the next lookup recomputes the flag.
+      mutable bool duplicatesKnown_;
     };
   }
 }

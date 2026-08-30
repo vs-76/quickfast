@@ -9,6 +9,15 @@
 using namespace ::QuickFAST;
 using namespace ::QuickFAST::Messages;
 
+namespace
+{
+  const int32 internMin = -128;
+  const int32 internMax = 255;
+  const size_t internCount = static_cast<size_t>(internMax - internMin + 1);
+}
+
+FieldCPtr FieldInt32::nullField_ = FieldCPtr(new FieldInt32);
+
 FieldInt32::FieldInt32(int32 value)
   : Field(ValueType::INT32, true)
 {
@@ -37,13 +46,31 @@ FieldInt32::toInt32() const
 FieldCPtr
 FieldInt32::create(int32 value)
 {
+  static FieldCPtr entries[internCount];
+  static const bool initialized = []
+  {
+    for(int32 v = internMin; v <= internMax; ++v)
+    {
+      entries[static_cast<size_t>(v - internMin)].reset(new FieldInt32(v));
+    }
+    return true;
+  }();
+  (void)initialized;
+
+  if(value >= internMin && value <= internMax)
+  {
+    return entries[static_cast<size_t>(value - internMin)];
+  }
+#if defined(QUICKFAST_ENABLE_TEST_HOOKS)
+  Field::noteHeapCreate();
+#endif
   return FieldCPtr(new FieldInt32(value));
 }
 
 FieldCPtr
 FieldInt32::createNull()
 {
-  return FieldCPtr(new FieldInt32);
+  return nullField_;
 }
 
 void

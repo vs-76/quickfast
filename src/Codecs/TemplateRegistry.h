@@ -14,6 +14,8 @@
 #include <Common/Types.h>
 #include <Codecs/SchemaElement.h>
 #include <Codecs/Template_fwd.h>
+#include <unordered_map>
+#include <vector>
 
 namespace QuickFAST{
   namespace Codecs{
@@ -208,6 +210,14 @@ namespace QuickFAST{
       // forbid assignment
       TemplateRegistry & operator =(const TemplateRegistry &);
 
+      /// Rebuild the O(1) id index from templates_. Called by finalize and
+      /// lazily after addTemplate invalidates the index.
+      void rebuildIdIndex() const;
+
+      /// Prefer a dense vector when max id fits; otherwise unordered_map.
+      /// 64K entries of shared_ptr is ~0.5 MiB — fine for market-data schemas.
+      static const template_id_t denseIdLimit_ = 65536;
+
     private:
       TemplateIdMap templates_;
 
@@ -222,6 +232,12 @@ namespace QuickFAST{
       std::string namespace_;
       std::string templateNamespace_;
       std::string dictionaryName_;
+
+      /// Id → template fast path (mutable: rebuilt lazily from const getTemplate).
+      mutable bool idIndexValid_;
+      mutable bool idIndexDense_;
+      mutable std::vector<TemplateCPtr> idIndexDenseVec_;
+      mutable std::unordered_map<template_id_t, TemplateCPtr> idIndexHash_;
     };
   }
 }

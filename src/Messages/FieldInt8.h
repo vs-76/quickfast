@@ -43,7 +43,7 @@ namespace QuickFAST
       virtual void valueToStringBuffer()const;
       virtual bool isSignedInteger()const;
     private:
-
+      static FieldCPtr nullField_;
     };
   }
 }
