@@ -487,6 +487,32 @@ GenericMessageBuilder::receiveTime() const
   return receiveTimeUs_;
 }
 
+void
+GenericMessageBuilder::setPacketSize(uint64 packetSize)
+{
+  packetSize_ = packetSize;
+  hasPacketSize_ = true;
+}
+
+void
+GenericMessageBuilder::clearPacketSize()
+{
+  packetSize_ = 0;
+  hasPacketSize_ = false;
+}
+
+bool
+GenericMessageBuilder::hasPacketSize() const
+{
+  return hasPacketSize_;
+}
+
+uint64
+GenericMessageBuilder::packetSize() const
+{
+  return packetSize_;
+}
+
 const std::string &
 GenericMessageBuilder::getApplicationType()const
 {
@@ -533,6 +559,16 @@ GenericMessageBuilder::endMessage(Messages::ValueMessageBuilder &)
       message()->addField(
         receiveTimeIdentity,
         Messages::FieldUInt64::create(receiveTimeUs_));
+    }
+  }
+  if(hasPacketSize_)
+  {
+    static const Messages::FieldIdentity packetSizeIdentity("PktSize");
+    if(!message()->isPresent(packetSizeIdentity))
+    {
+      message()->addField(
+        packetSizeIdentity,
+        Messages::FieldUInt64::create(packetSize_));
     }
   }
   bool more = consumer_.consumeMessage(*message());

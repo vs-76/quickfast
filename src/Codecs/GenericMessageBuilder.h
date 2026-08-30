@@ -241,6 +241,21 @@ namespace QuickFAST{
       /// @brief UTC microseconds since the Unix epoch for the current buffer.
       virtual uint64 receiveTime() const;
 
+      /// @brief Supply the received buffer/packet size for the next decoded message.
+      ///
+      /// Injected as a synthetic PktSize uInt64 field when endMessage() delivers
+      /// to the consumer, unless the template already defined a field with that name.
+      virtual void setPacketSize(uint64 packetSize);
+
+      /// @brief Clear any packet size previously set via setPacketSize().
+      virtual void clearPacketSize();
+
+      /// @brief Whether setPacketSize() has supplied a size for this message.
+      virtual bool hasPacketSize() const;
+
+      /// @brief Byte length of the current received buffer.
+      virtual uint64 packetSize() const;
+
       //////////////////////////
       // Implement MessageBuilder
       virtual const std::string & getApplicationType()const;
@@ -300,6 +315,8 @@ namespace QuickFAST{
       GenericGroupBuilder groupBuilder_;
       uint64 receiveTimeUs_ = 0;
       bool hasReceiveTime_ = false;
+      uint64 packetSize_ = 0;
+      bool hasPacketSize_ = false;
     };
   }
 }

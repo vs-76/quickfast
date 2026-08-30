@@ -246,6 +246,7 @@ PacketSequencingAssembler::processPacket(Communication::LinkedBuffer * buffer)
   {
     builder_.clearReceiveTime();
   }
+  builder_.setPacketSize(static_cast<uint64>(buffer->used()));
   const bool more = decodeBuffer(buffer->get(), buffer->used());
   releasePacket(buffer);
   ++nextSequenceNumber_;
