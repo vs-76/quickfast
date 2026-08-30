@@ -126,16 +126,16 @@ Encoder::encodeSegmentBody(
   const Codecs::SegmentBodyCPtr & segment,
   const Messages::MessageAccessor & accessor)
 {
+  // Match Decoder::decodeSegmentBody: take a reference into the segment's
+  // instruction vector instead of copying FieldInstructionCPtr (atomic
+  // refcount bump) once per field per message. Index is always < size().
   size_t instructionCount = segment->size();
   for( size_t nField = 0; nField < instructionCount; ++nField)
   {
     PROFILE_POINT("encode field");
-    Codecs::FieldInstructionCPtr instruction;
-    if(segment->getInstruction(nField, instruction))
-    {
-      destination.startField(instruction->getIdentity());
-      instruction->encode(destination, pmap, *this, accessor);
-      destination.endField(instruction->getIdentity());
-    }
+    const Codecs::FieldInstructionCPtr & instruction = segment->getInstruction(nField);
+    destination.startField(instruction->getIdentity());
+    instruction->encode(destination, pmap, *this, accessor);
+    destination.endField(instruction->getIdentity());
   }
 }
