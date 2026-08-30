@@ -7,6 +7,12 @@
 using namespace ::QuickFAST;
 using namespace ::QuickFAST::Messages;
 
+namespace
+{
+  const uint32 internMax = 255u;
+  const size_t internCount = static_cast<size_t>(internMax) + 1u;
+}
+
 FieldCPtr FieldUInt32::nullField_ = FieldCPtr(new FieldUInt32);
 
 FieldUInt32::FieldUInt32(uint32 value)
@@ -37,6 +43,24 @@ FieldUInt32::toUInt32() const
 FieldCPtr
 FieldUInt32::create(uint32 value)
 {
+  static FieldCPtr entries[internCount];
+  static const bool initialized = []
+  {
+    for(uint32 v = 0; v <= internMax; ++v)
+    {
+      entries[v].reset(new FieldUInt32(v));
+    }
+    return true;
+  }();
+  (void)initialized;
+
+  if(value <= internMax)
+  {
+    return entries[value];
+  }
+#if defined(QUICKFAST_ENABLE_TEST_HOOKS)
+  Field::noteHeapCreate();
+#endif
   return FieldCPtr(new FieldUInt32(value));
 }
 
