@@ -10,22 +10,27 @@ which supports using QuickFAST in the .NET environment. Ask if you want support 
 
 ### Linux build (CMake + C++23)
 
-See **[BUILD.md](BUILD.md)** for g++ / clang++ command recipes (Release/Debug, tests, examples, libc++).
+See **[BUILD.md](BUILD.md)** for g++ / clang++ command recipes (Release/Debug, tests,
+examples, libc++), and for optional **Conan 2** / **vcpkg** dependency workflows.
 
 Native library, examples, and tests no longer depend on Boost. Dependencies:
 
 - C++23 compiler (verified with g++ 16 and clang++ 22; GCC 13+ / Clang 16+ expected to work)
-- [Xerces-C++](https://xerces.apache.org/xerces-c/) ≥ 3.2.5 (CVE-2024-23807; CMake fetches 3.3.0 if the system package is older)
-- Standalone [Asio](https://github.com/chriskohlhoff/asio) and [GoogleTest](https://github.com/google/googletest) / GoogleMock (fetched by CMake)
+- [Xerces-C++](https://xerces.apache.org/xerces-c/) ≥ 3.2.5 (CVE-2024-23807; CMake fetches 3.3.0 if needed)
+- Standalone [Asio](https://github.com/chriskohlhoff/asio) and [GoogleTest](https://github.com/google/googletest) / GoogleMock
+- Optional: [libpcap](https://www.tcpdump.org/), [spdlog](https://github.com/gabime/spdlog) + zlib
+
+Resolve deps via **apt** (default FetchContent fallback), **Conan 2** (`conanfile.py`),
+or **vcpkg** (`vcpkg.json`) — one manager per build directory; see BUILD.md.
 
 Ubuntu/Debian packages:
 
 ```bash
-sudo apt-get install -y cmake build-essential libxerces-c-dev
+sudo apt-get install -y cmake build-essential libxerces-c-dev libpcap-dev
 ```
 
 If the distro Xerces is still 3.2.4 or older, the first CMake configure
-downloads and builds 3.3.0 (needs network once).
+downloads and builds 3.3.0 (needs network once) unless you use Conan/vcpkg.
 
 Configure and build (first-party code is compiled with `-Wall -Werror -pedantic`):
 
@@ -53,7 +58,9 @@ cmake -S . -B build-clang22-libcxx -DCMAKE_BUILD_TYPE=Release \
 cmake --build build-clang22-libcxx -j && ctest --test-dir build-clang22-libcxx --output-on-failure
 ```
 
-Optional flags: `-DQUICKFAST_BUILD_TESTS=OFF`, `-DQUICKFAST_BUILD_EXAMPLES=OFF`, `-DQUICKFAST_USE_LIBCXX=ON` (Clang only), `-DQUICKFAST_ENABLE_PVS_STUDIO=OFF`.
+Optional flags: `-DQUICKFAST_BUILD_TESTS=OFF`, `-DQUICKFAST_BUILD_EXAMPLES=OFF`,
+`-DQUICKFAST_FETCH_DEPS=OFF` (with Conan/vcpkg), `-DQUICKFAST_USE_LIBCXX=ON` (Clang only),
+`-DQUICKFAST_ENABLE_PVS_STUDIO=OFF`.
 
 The legacy MPC/`setup.sh` flow remains available for older toolchains; prefer CMake on modern Linux.
 

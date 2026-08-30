@@ -1,0 +1,37 @@
+{
+  "name": "quickfast",
+  "version-string": "1.5.0",
+  "description": "FAST Protocol native C++ library (CMake consumer; deps via vcpkg)",
+  "homepage": "https://github.com/vs-76/quickfast",
+  "license": "BSD-3-Clause",
+  "supports": "!uwp",
+  "dependencies": [
+    "xerces-c",
+    "asio"
+  ],
+  "default-features": [
+    "pcap",
+    "tests"
+  ],
+  "features": {
+    "pcap": {
+      "description": "Read capture files through libpcap (QUICKFAST_USE_LIBPCAP)",
+      "dependencies": [
+        "libpcap"
+      ]
+    },
+    "spdlog": {
+      "description": "SpdlogLogger + managed_file_sink_mt (QUICKFAST_USE_SPDLOG)",
+      "dependencies": [
+        "spdlog",
+        "zlib"
+      ]
+    },
+    "tests": {
+      "description": "GoogleTest / GoogleMock for QuickFASTTest",
+      "dependencies": [
+        "gtest"
+      ]
+    }
+  }
+}

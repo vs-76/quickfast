@@ -3,16 +3,23 @@
 # See the file license.txt for licensing information.
 #
 # Resolve Xerces-C++ for QuickFAST.
-# Prefer a system install that is patched for CVE-2024-23807 (>= 3.2.5).
-# Otherwise FetchContent Apache Xerces-C 3.3.0 (API-compatible; rebuild required).
+# Prefer a system / Conan / vcpkg install patched for CVE-2024-23807 (>= 3.2.5).
+# Otherwise optionally FetchContent Apache Xerces-C 3.3.0.
 
 set(QUICKFAST_XERCES_MIN_VERSION 3.2.5)
 set(QUICKFAST_XERCES_FETCH_VERSION 3.3.0)
 
 find_package(XercesC ${QUICKFAST_XERCES_MIN_VERSION} QUIET)
 if(XercesC_FOUND)
-  message(STATUS "Using system Xerces-C ${XercesC_VERSION}")
+  message(STATUS "Using packaged Xerces-C ${XercesC_VERSION}")
   return()
+endif()
+
+if(NOT QUICKFAST_FETCH_DEPS)
+  message(FATAL_ERROR
+    "Xerces-C >= ${QUICKFAST_XERCES_MIN_VERSION} not found (CVE-2024-23807). "
+    "Install via Conan (xerces-c/3.3.0), vcpkg (xerces-c), or a system package, "
+    "or set -DQUICKFAST_FETCH_DEPS=ON to download ${QUICKFAST_XERCES_FETCH_VERSION}.")
 endif()
 
 message(STATUS

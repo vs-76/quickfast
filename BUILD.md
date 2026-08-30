@@ -3,6 +3,10 @@
 Native library, examples, and tests use **C++23** and do not depend on Boost.
 First-party code is always compiled with `-Wall -Werror -pedantic`.
 
+Dependencies can come from **system packages**, **Conan 2**, or **vcpkg** — pick one
+per build directory. CMake always uses `find_package`; FetchContent is only a
+fallback when `-DQUICKFAST_FETCH_DEPS=ON` (the default for the apt path).
+
 ## Prerequisites
 
 ```bash
@@ -13,9 +17,9 @@ On Fedora/RHEL the last two are `xerces-c-devel` and `libpcap-devel`.
 
 **Xerces-C++ must be ≥ 3.2.5** (fixes [CVE-2024-23807](https://nvd.nist.gov/vuln/detail/CVE-2024-23807)).
 Many distros still ship 3.2.4; if `find_package` does not find a new enough
-system library, CMake FetchContent downloads and builds **3.3.0** automatically
-(first configure needs network). You can also install 3.3.0 yourself under
-`~/xerces/xerces-c-3.3.0` (see `setup.sh`).
+system library and FetchContent is enabled, CMake downloads and builds **3.3.0**
+automatically (first configure needs network). Conan and vcpkg pin 3.3.0.
+You can also install 3.3.0 yourself under `~/xerces/xerces-c-3.3.0` (see `setup.sh`).
 
 `libpcap` is what reads packet capture files, so it is needed for the
 `-pcap` input mode and for the capture-file tests. Build without it using
@@ -29,16 +33,17 @@ Optional compilers / libc++ / coverage (examples below use the packaged names on
 sudo apt-get install -y g++-16 clang++-22 libc++-dev libc++abi-dev gcovr
 ```
 
-CMake fetches standalone [Asio](https://github.com/chriskohlhoff/asio) and
-[GoogleTest](https://github.com/google/googletest) on first configure, and
-Xerces-C 3.3.0 when the system package is older than 3.2.5.
-With `-DQUICKFAST_USE_SPDLOG=ON` it also finds or fetches
-[spdlog](https://github.com/gabime/spdlog).
+With the default FetchContent fallback, CMake may download standalone
+[Asio](https://github.com/chriskohlhoff/asio),
+[GoogleTest](https://github.com/google/googletest), and Xerces-C 3.3.0 when
+they are not already on the CMake prefix path. With `-DQUICKFAST_USE_SPDLOG=ON`
+it also finds or fetches [spdlog](https://github.com/gabime/spdlog).
 
 | CMake option | Default | Meaning |
 | --- | --- | --- |
 | `QUICKFAST_BUILD_TESTS` | `ON` | Build `QuickFASTTest` and register ctest |
 | `QUICKFAST_BUILD_EXAMPLES` | `ON` | Build example applications |
+| `QUICKFAST_FETCH_DEPS` | `ON` | Fetch missing deps with FetchContent; set `OFF` with Conan/vcpkg |
 | `QUICKFAST_USE_LIBCXX` | `OFF` | Use LLVM libc++ (`-stdlib=libc++`); **Clang/AppleClang only** |
 | `QUICKFAST_ENABLE_COVERAGE` | `OFF` | Instrument library + tests with `--coverage`; add `coverage` target if `gcovr` is installed |
 | `QUICKFAST_SANITIZE_ADDRESS` | `OFF` | AddressSanitizer (`-fsanitize=address`) |
@@ -57,6 +62,71 @@ discovered environment:
 
 ```bash
 export QUICKFAST_ROOT="$(pwd)"
+```
+
+---
+
+## Dependency managers (optional)
+
+Use **either** Conan 2 **or** vcpkg for a reproducible prefix; do not pass both
+toolchains into the same build directory. Set `-DQUICKFAST_FETCH_DEPS=OFF` so
+CMake does not also download overlapping sources.
+
+### Conan 2
+
+Requires [Conan 2](https://docs.conan.io/2/) (`pip install conan` or your OS package)
+and a default profile (`conan profile detect`).
+
+```bash
+# defaults: libpcap + tests; spdlog off
+conan install . -of build/conan -s build_type=Release --build=missing
+
+# optional spdlog adapter
+conan install . -of build/conan -s build_type=Release --build=missing \
+  -o '&:with_spdlog=True'
+
+cmake -S . -B build-conan \
+  -DCMAKE_TOOLCHAIN_FILE="$(pwd)/build/conan/conan_toolchain.cmake" \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DQUICKFAST_FETCH_DEPS=OFF
+cmake --build build-conan -j
+# Shared Xerces from Conan needs the generated run env on the library path:
+set -a && source build/conan/conanrun.sh && set +a
+ctest --test-dir build-conan --output-on-failure
+```
+
+`conanfile.py` options: `with_spdlog`, `with_pcap`, `build_tests`, `shared_xerces`.
+The recipe pins `xerces-c/3.3.0`, `asio/1.30.2`, optional `spdlog/1.15.1` + `zlib`,
+`libpcap/1.10.4`, and `gtest/1.16.0` as a test requirement. It also writes the
+matching `QUICKFAST_*` CMake cache values into the toolchain.
+
+### vcpkg (manifest mode)
+
+Requires a [vcpkg](https://vcpkg.io/) clone and `VCPKG_ROOT` pointing at it.
+Manifest: `vcpkg.json` (features `pcap`, `tests`, `spdlog`; defaults enable pcap + tests).
+
+```bash
+export VCPKG_ROOT=/path/to/vcpkg   # once
+
+cmake -S . -B build-vcpkg \
+  -DCMAKE_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DQUICKFAST_FETCH_DEPS=OFF \
+  -DQUICKFAST_USE_LIBPCAP=ON \
+  -DQUICKFAST_BUILD_TESTS=ON
+cmake --build build-vcpkg -j
+ctest --test-dir build-vcpkg --output-on-failure
+```
+
+Enable the spdlog feature and CMake option together:
+
+```bash
+cmake -S . -B build-vcpkg-spdlog \
+  -DCMAKE_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
+  -DVCPKG_MANIFEST_FEATURES=spdlog \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DQUICKFAST_FETCH_DEPS=OFF \
+  -DQUICKFAST_USE_SPDLOG=ON
 ```
 
 ---
@@ -210,7 +280,8 @@ scripts/check-windows-compile.sh src/Common/ManagedFileSink.cpp
 It is compile-only. Linking QuickFAST for Windows also needs Xerces-C, zlib, fmt
 and spdlog cross-built for the target, which the script does not attempt; it
 borrows the host's portable third-party headers for the compile. Override
-`MINGW_CXX`, `ASIO_INCLUDE_DIR` or `HOST_INCLUDE_DIR` if autodetection is wrong.
+`MINGW_CXX`, `ASIO_INCLUDE_DIR` or `HOST_INCLUDE_DIR` if autodetection is wrong
+(FetchContent under `build*/_deps`, Conan/vcpkg include trees, or system Asio).
 
 A narrow-string path passed to a `...W` API, for example, fails the gate while
 building cleanly on POSIX.
