@@ -523,11 +523,20 @@ namespace QuickFAST{
     }
 
   private:
-    /// @brief Drop on-demand string storage (value payload or display cache).
+    /// @brief Invalidate the string payload / display cache.
+    ///
+    /// Keeps any buffer already allocated. Context::reset() erases every
+    /// dictionary entry between messages, so freeing here would cost a
+    /// free/malloc pair per string-valued entry per message. Slots that never
+    /// hold a string still never allocate, which is where the density comes
+    /// from.
     void discardStringStorage() const
     {
       cachedString_ = false;
-      string_.reset();
+      if(string_)
+      {
+        string_->erase();
+      }
     }
 
     /// @brief Allocate string storage if needed and return it.

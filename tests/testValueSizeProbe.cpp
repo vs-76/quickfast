@@ -102,6 +102,27 @@ TEST(QuickFAST, testValueLongStringAndCopyAssign)
   EXPECT_FALSE(c.isString());
 }
 
+TEST(QuickFAST, testValueEraseKeepsStringCapacity)
+{
+  // Context::reset() erases every dictionary entry between messages. Freeing
+  // the buffer there would cost a free/malloc pair per string entry per
+  // message, so erase must clear the contents and keep the allocation.
+  Value v;
+  v.setValue(std::string(80, 'x'));
+  const size_t grownCapacity = v.displayString().capacity();
+  ASSERT_GT(grownCapacity, 48u) << "expected the long value to leave the inline buffer";
+
+  v.erase();
+  ASSERT_FALSE(v.isDefined());
+
+  // A short value after the erase: a retained buffer still reports the grown
+  // capacity, a freshly allocated one would be back to the inline size. Using
+  // a long value here would not distinguish the two -- both grow the same way.
+  v.setValue(std::string(5, 'y'));
+  EXPECT_EQ(grownCapacity, v.displayString().capacity())
+    << "erase must clear the buffer, not free it";
+}
+
 TEST(QuickFAST, testValueDictionaryStyleNumericArrayDensity)
 {
   // Simulate an integer-heavy dictionary: Values must be assignable in place
