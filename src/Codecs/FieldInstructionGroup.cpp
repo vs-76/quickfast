@@ -82,7 +82,7 @@ FieldInstructionGroup::decodeNop(
       // decorative. A group with no typeRef does not inherit its parent's
       // type, so adding one to either the group or the enclosing template
       // moves every field in the group one level deeper in the decoded
-      // message, with no diagnostic on either side. Doc/template-authoring.md
+      // message, with no diagnostic on either side. doc/template-authoring.md
       // has the full table; tests/testGroupTypeRef.cpp pins every row.
       // Because the application types match,
       // the group fields are decoded directly into to the current
