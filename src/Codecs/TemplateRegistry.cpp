@@ -13,6 +13,8 @@ TemplateRegistry::TemplateRegistry()
 : presenceMapBits_(1) // every template requires 1 bit for the template ID
 , dictionarySize_(0)
 , maxFieldCount_(0)
+, idIndexValid_(false)
+, idIndexDense_(false)
 {
 }
 
@@ -23,6 +25,8 @@ TemplateRegistry::TemplateRegistry(
 : presenceMapBits_(pmapBits)
 , dictionarySize_(dictionarySize)
 , maxFieldCount_(fieldCount)
+, idIndexValid_(false)
+, idIndexDense_(false)
 {
 
 }
@@ -69,6 +73,44 @@ TemplateRegistry::finalize()
       maxFieldCount_ = fieldCount;
     }
   }
+  rebuildIdIndex();
+}
+
+void
+TemplateRegistry::rebuildIdIndex() const
+{
+  idIndexDenseVec_.clear();
+  idIndexHash_.clear();
+  idIndexDense_ = false;
+  idIndexValid_ = false;
+  if(templates_.empty())
+  {
+    idIndexValid_ = true;
+    return;
+  }
+  const template_id_t maxId = templates_.rbegin()->first;
+  if(maxId <= denseIdLimit_)
+  {
+    idIndexDenseVec_.assign(static_cast<size_t>(maxId) + 1u, TemplateCPtr());
+    for(TemplateIdMap::const_iterator it = templates_.begin();
+      it != templates_.end();
+      ++it)
+    {
+      idIndexDenseVec_[it->first] = it->second;
+    }
+    idIndexDense_ = true;
+  }
+  else
+  {
+    idIndexHash_.reserve(templates_.size());
+    for(TemplateIdMap::const_iterator it = templates_.begin();
+      it != templates_.end();
+      ++it)
+    {
+      idIndexHash_[it->first] = it->second;
+    }
+  }
+  idIndexValid_ = true;
 }
 
 
@@ -95,6 +137,8 @@ TemplateRegistry::addTemplate(TemplatePtr value)
   {
     presenceMapBits_ = bits;
   }
+  // Stale after any add; getTemplate rebuilds lazily (or finalize rebuilds).
+  idIndexValid_ = false;
 }
 
 size_t
@@ -106,12 +150,26 @@ TemplateRegistry::size()const
 bool
 TemplateRegistry::getTemplate(template_id_t templateId, TemplateCPtr & valueFound)const
 {
-  TemplateIdMap::const_iterator it = templates_.find(templateId);
-  if(it == templates_.end())
+  if(!idIndexValid_)
+  {
+    rebuildIdIndex();
+  }
+  if(idIndexDense_)
+  {
+    if(templateId >= idIndexDenseVec_.size())
+    {
+      return false;
+    }
+    valueFound = idIndexDenseVec_[templateId];
+    return bool(valueFound);
+  }
+  std::unordered_map<template_id_t, TemplateCPtr>::const_iterator hit =
+    idIndexHash_.find(templateId);
+  if(hit == idIndexHash_.end())
   {
     return false;
   }
-  valueFound = it->second;
+  valueFound = hit->second;
   return bool(valueFound);
 }
 

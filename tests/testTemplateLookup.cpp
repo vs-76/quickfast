@@ -49,6 +49,57 @@ TEST(QuickFAST, testTemplateRegistryMissLookups)
   EXPECT_EQ(7u, byName->getId());
 }
 
+/// @brief After finalize, sparse/gappy ids still resolve; iteration and post-finalize add work.
+TEST(QuickFAST, testTemplateRegistryDenseIdLookup)
+{
+  std::stringstream xml(
+    "<templates>"
+    "  <template name=\"t1\" id=\"1\">"
+    "    <uInt32 name=\"a\"/>"
+    "  </template>"
+    "  <template name=\"t100\" id=\"100\">"
+    "    <uInt32 name=\"b\"/>"
+    "  </template>"
+    "  <template name=\"t1000\" id=\"1000\">"
+    "    <int32 name=\"c\"/>"
+    "  </template>"
+    "</templates>");
+  Codecs::XMLTemplateParser parser;
+  Codecs::TemplateRegistryPtr registry = parser.parse(xml);
+  ASSERT_TRUE(bool(registry));
+  registry->finalize();
+
+  Codecs::TemplateCPtr found;
+  EXPECT_TRUE(registry->getTemplate(1, found));
+  EXPECT_EQ("t1", found->getTemplateName());
+  EXPECT_TRUE(registry->getTemplate(100, found));
+  EXPECT_EQ("t100", found->getTemplateName());
+  EXPECT_TRUE(registry->getTemplate(1000, found));
+  EXPECT_EQ("t1000", found->getTemplateName());
+  EXPECT_FALSE(registry->getTemplate(2, found));
+  EXPECT_FALSE(registry->getTemplate(999, found));
+
+  size_t walked = 0;
+  for(Codecs::TemplateRegistry::const_iterator it = registry->begin();
+    it != registry->end(); ++it)
+  {
+    ++walked;
+  }
+  EXPECT_EQ(3u, walked);
+
+  EXPECT_TRUE(registry->findNamedTemplate("t100", "", found));
+  EXPECT_EQ(100u, found->getId());
+
+  // addTemplate after finalize must still be visible to getTemplate.
+  Codecs::TemplatePtr late(new Codecs::Template);
+  late->setId(50);
+  late->setTemplateName("late");
+  registry->addTemplate(late);
+  EXPECT_TRUE(registry->getTemplate(50, found));
+  EXPECT_EQ("late", found->getTemplateName());
+  EXPECT_TRUE(registry->getTemplate(1000, found));
+}
+
 /// @brief Template reset/ignore flags are readable after parse defaults.
 TEST(QuickFAST, testTemplateFlagsDefaultOff)
 {
