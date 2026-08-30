@@ -387,6 +387,14 @@ if(QUICKFAST_BUILD_EXAMPLES)
   quickfast_add_example(PCapToMulticast
     src/Examples/PCapToMulticast/PCapToMulticast.cpp
     src/Examples/PCapToMulticast/main.cpp)
+
+  # Lean microbench (no Examples common objects). Manual run only — not ctest.
+  add_executable(BufferQueueBench src/Examples/BufferQueueBench/main.cpp)
+  target_link_libraries(BufferQueueBench PRIVATE QuickFAST)
+  target_compile_options(BufferQueueBench PRIVATE ${QUICKFAST_WARNING_FLAGS})
+  set_target_properties(BufferQueueBench PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+  )
 endif()
 
 # Optional PVS-Studio static analysis target (created only when the tools exist).
