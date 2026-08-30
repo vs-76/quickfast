@@ -98,7 +98,7 @@ failed=0
 for source in "${sources[@]}"; do
   log="${staged}/$(basename "${source}").log"
   if "${CXX}" -fsyntax-only "${source}" \
-      -std=c++23 -Wall -Wextra -pedantic -Werror \
+      -std=c++20 -Wall -Wextra -pedantic -Werror \
       "${defines[@]}" \
       -I src -isystem "${asio_include}" -isystem "${staged}" \
       >"${log}" 2>&1; then

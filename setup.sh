@@ -1,5 +1,5 @@
 # Command file to set QuickFAST environment
-# Preferred Linux build: CMake + C++23 with Conan 2 or vcpkg (see README.md / BUILD.md).
+# Preferred Linux build: CMake + C++20 (or later) with Conan 2 or vcpkg (see README.md / BUILD.md).
 # Runtime deps come from those package managers (Xerces-C++ >= 3.2.5, Asio, etc.).
 # Customize this file by setting variables to suit your environment
 SOURCE="${BASH_SOURCE[0]}"

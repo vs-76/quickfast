@@ -8,7 +8,7 @@ Because FAST not specific to market data or the financial industry, there are op
 QuickFAST is written to be portable to many platforms. It is routinely tested on Windows and Linux. The project also includes a .NET wrapper 
 which supports using QuickFAST in the .NET environment. Ask if you want support for other platforms.
 
-### Linux build (CMake + C++23)
+### Linux build (CMake + C++20)
 
 See **[BUILD.md](BUILD.md)** for g++ / clang++ recipes and **Conan 2** / **vcpkg**
 dependency install (required — Conan 2 or vcpkg only; no system or FetchContent deps).
@@ -16,7 +16,7 @@ dependency install (required — Conan 2 or vcpkg only; no system or FetchConten
 Native library, examples, and tests no longer depend on Boost. Dependencies
 (installed via Conan or vcpkg):
 
-- C++23 compiler (verified with g++ 16 and clang++ 22; GCC 13+ / Clang 16+ expected to work)
+- C++20 or later (CMake enforces `CMAKE_CXX_STANDARD >= 20`; verified with g++ 15/16 and clang++ 22)
 - [Xerces-C++](https://xerces.apache.org/xerces-c/) ≥ 3.2.5 (pinned 3.3.0 in manifests)
 - Standalone [Asio](https://github.com/chriskohlhoff/asio) and [GoogleTest](https://github.com/google/googletest) / GoogleMock
 - [spdlog](https://github.com/gabime/spdlog) + zlib (default ON; `-DQUICKFAST_USE_SPDLOG=OFF` to disable)
