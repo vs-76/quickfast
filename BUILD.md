@@ -87,7 +87,7 @@ ctest --test-dir build-conan --output-on-failure
 
 `conanfile.py` options: `with_spdlog`, `with_pcap`, `build_tests`.
 The recipe pins current Conan Center releases: `xerces-c/3.3.0` (ICU transcoder;
-pulls `icu`), `asio/1.38.2`,
+`icu/78.2` override), `asio/1.38.2`,
 `spdlog/1.17.0` + `zlib/1.3.2` (default), `libpcap/1.10.6`, and `gtest/1.18.0` as a
 test requirement. It also writes the matching `QUICKFAST_*` / `BUILD_SHARED_LIBS`
 CMake cache values into the toolchain.
@@ -96,7 +96,8 @@ CMake cache values into the toolchain.
 
 Requires a [vcpkg](https://vcpkg.io/) clone and `VCPKG_ROOT` pointing at it.
 Manifest: `vcpkg.json` (features `pcap`, `tests`, `spdlog`; all three are default).
-`xerces-c` is installed with the `icu` feature (network feature off).
+`xerces-c` is installed with the `icu` feature (network feature off); ICU is pinned
+to `78.3#2` (Conan uses `icu/78.2`).
 Pins latest registry versions via `builtin-baseline` + `overrides` (asio on vcpkg
 is currently 1.32.0 while Conan has 1.38.2).
 
