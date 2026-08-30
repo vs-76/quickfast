@@ -194,7 +194,7 @@ Outputs land under `build-msvc-conan/bin/<Config>/` (DLL + example exes).
 
 ```bash
 doxygen Doxyfile
-# HTML → doc/html/index.html  (gitignored)
+# HTML → doc/html/index.html
 ```
 
 Header-only (`*.h`) under `Codecs`, `Common`, `Communication`, `Messages`,
