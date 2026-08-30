@@ -4,7 +4,7 @@
 #include <Common/QuickFASTPch.h>
 
 #include <gtest/gtest.h>
-#include <Tests/TestPaths.h>
+#include "TestPaths.h"
 #include <filesystem>
 
 #include <Codecs/XMLTemplateParser.h>
@@ -550,13 +550,13 @@ namespace{
 
 TEST(QuickFAST, TestRoundTripMandatory)
 {
-  std::string xml = QuickFAST::TestPaths::resource("/src/Tests/resources/unittest_mandatory.xml");
+  std::string xml = QuickFAST::TestPaths::resource("/tests/resources/unittest_mandatory.xml");
   test (xml);
 }
 
 TEST(QuickFAST, TestRoundTripOptional)
 {
-  std::string xml = QuickFAST::TestPaths::resource("/src/Tests/resources/unittest_optional.xml");
+  std::string xml = QuickFAST::TestPaths::resource("/tests/resources/unittest_optional.xml");
   test (xml);
 }
 

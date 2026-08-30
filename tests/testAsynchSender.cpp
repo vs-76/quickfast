@@ -5,7 +5,7 @@
 #ifdef _WIN32 // Asynchronous file writer only works on Win32 so disable this entire test on other platforms
 
 #include <gtest/gtest.h>
-#include <Tests/TestPaths.h>
+#include "TestPaths.h"
 #include <filesystem>
 
 #include <Communication/BufferRecycler.h>
@@ -124,7 +124,7 @@ namespace
 TEST(QuickFAST, TestAsynchFileWriter)
 {
   std::string root = QuickFAST::TestPaths::root();
-  std::string workingDirectory = root + "/src/Tests/resources/";
+  std::string workingDirectory = root + "/tests/resources/";
   std::string inputFile = workingDirectory + "fileCopyTest.dat";
   std::string outputFile = workingDirectory + "fileCopyTest.out";
   std::filesystem::remove(outputFile);

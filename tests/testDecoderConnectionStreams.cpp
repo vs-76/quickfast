@@ -124,7 +124,7 @@ TEST(QuickFAST, testNoVerboseFileDoesNotDereferenceNull)
   const std::string path = inputFile("testDecoderConnectionStreams.fast");
   Application::DecoderConfiguration configuration = fileConfiguration(path);
   configuration.setTemplateFileName(
-    QuickFAST::TestPaths::resource("/src/Tests/resources/unittest_mandatory.xml"));
+    QuickFAST::TestPaths::resource("/tests/resources/unittest_mandatory.xml"));
   ASSERT_TRUE(configuration.verboseFileName().empty());
 
   // No setTemplateRegistry, so configure() parses the template file itself,

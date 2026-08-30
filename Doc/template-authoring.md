@@ -49,4 +49,4 @@ group: build a `Messages::Group`, wrap it with `Messages::FieldGroup::create`,
 and add it to the message under the group's name regardless of which row above
 applies.
 
-All five rows are pinned by `src/Tests/testGroupTypeRef.cpp`.
+All five rows are pinned by `tests/testGroupTypeRef.cpp`.

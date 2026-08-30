@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Migrate src/Tests from Boost.Test to GoogleTest.
+"""Migrate tests/ from Boost.Test to GoogleTest.
 
-Preserves per-file newline style (CRLF vs LF). Deletes src/Tests/main.cpp.
+Preserves per-file newline style (CRLF vs LF). Deletes tests/main.cpp.
 Does not touch Catch2.
 """
 from __future__ import annotations
@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-TESTS = ROOT / "src" / "Tests"
+TESTS = ROOT / "tests"
 
 
 def detect_newline(raw: bytes) -> str:
