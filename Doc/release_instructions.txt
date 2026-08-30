@@ -8,9 +8,9 @@ Edit Common/Version.h
   -- check version number -- it should be set correctly already
   -- comment out the [prerelease] modifier in the version number.
   -- update copyright date if necessary
-Edit src/Doxyfile
-Run Doxygen
-check these files (src/Doxyfile and Version.h) into the repostory.
+Edit doc/Doxyfile
+Run Doxygen (cd doc && doxygen Doxyfile -- pages land in doc/html, not checked in)
+check these files (doc/Doxyfile and Version.h) into the repostory.
 
 Tag the repository and push to repo:
   hg tag Vn_n
