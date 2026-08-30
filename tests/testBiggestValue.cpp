@@ -4,7 +4,7 @@
 #include <Common/QuickFASTPch.h>
 
 #include <gtest/gtest.h>
-#include <Tests/TestPaths.h>
+#include "TestPaths.h"
 #include <filesystem>
 
 #include <Codecs/XMLTemplateParser.h>
@@ -565,7 +565,7 @@ TEST(QuickFAST, TestBiggestValue)
 //  std::string biggestUInt64 = "9223372036854775808";
 //  uint64 boostGenerated = boost::lexical_cast<unsigned long long>(biggestUInt64);
 
-  std::string xml = QuickFAST::TestPaths::resource("/src/Tests/resources/biggest_value.xml");
+  std::string xml = QuickFAST::TestPaths::resource("/tests/resources/biggest_value.xml");
 
   std::string str;
   string_generate (str, 1000);

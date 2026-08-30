@@ -4,7 +4,7 @@
 #include <Common/QuickFASTPch.h>
 
 #include <gtest/gtest.h>
-#include <Tests/TestPaths.h>
+#include "TestPaths.h"
 #include <filesystem>
 
 #include <Codecs/XMLTemplateParser.h>
@@ -572,7 +572,7 @@ TEST(QuickFAST, TestSmallestValue)
   const auto singularity_neg = static_cast<long long>(
     0ull - static_cast<unsigned long long>(INT64_SINGULARITY));
   EXPECT_EQ(INT64_SINGULARITY, singularity_neg);
-  std::string xml = QuickFAST::TestPaths::resource("/src/Tests/resources/smallest_value.xml");
+  std::string xml = QuickFAST::TestPaths::resource("/tests/resources/smallest_value.xml");
   smallest_value_test (xml);
 }
 

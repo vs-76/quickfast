@@ -36,7 +36,7 @@
 #include <Codecs/TemplateRegistry.h>
 #include <Messages/FieldSet.h>
 #include <Messages/FieldUInt32.h>
-#include <Tests/FieldInstructionMock.h>
+#include "FieldInstructionMock.h"
 
 using namespace QuickFAST;
 

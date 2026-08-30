@@ -23,12 +23,12 @@ namespace
 {
   std::string capture(const char * name)
   {
-    return TestPaths::resource((std::string("/src/Tests/resources/pcap/") + name).c_str());
+    return TestPaths::resource((std::string("/tests/resources/pcap/") + name).c_str());
   }
 
   std::string templateFile()
   {
-    return TestPaths::resource("/src/Tests/resources/unittest_mandatory.xml");
+    return TestPaths::resource("/tests/resources/unittest_mandatory.xml");
   }
 
   void configureFromCapture(const char * captureName)
@@ -234,7 +234,7 @@ TEST(QuickFAST, testPCapReaderRejectsAFileThatCannotBeSized)
   // whose contract is to report failure by returning false.
   Communication::PCapReader reader;
   EXPECT_NO_THROW({
-    EXPECT_FALSE(reader.open(TestPaths::resource("/src/Tests/resources").c_str()));
+    EXPECT_FALSE(reader.open(TestPaths::resource("/tests/resources").c_str()));
   });
   EXPECT_FALSE(reader.good());
 }

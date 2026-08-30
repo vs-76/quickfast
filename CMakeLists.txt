@@ -281,7 +281,7 @@ if(QUICKFAST_BUILD_TESTS)
   enable_testing()
   include(GoogleTest)
 
-  file(GLOB QUICKFAST_TEST_SOURCES CONFIGURE_DEPENDS src/Tests/*.cpp)
+  file(GLOB QUICKFAST_TEST_SOURCES CONFIGURE_DEPENDS tests/*.cpp)
   list(FILTER QUICKFAST_TEST_SOURCES EXCLUDE REGEX ".*/main\\.cpp$")
   if(NOT QUICKFAST_USE_SPDLOG)
     list(FILTER QUICKFAST_TEST_SOURCES EXCLUDE REGEX ".*/testSpdlogLogger\\.cpp$")
@@ -289,6 +289,7 @@ if(QUICKFAST_BUILD_TESTS)
   endif()
 
   add_executable(QuickFASTTest ${QUICKFAST_TEST_SOURCES})
+  target_include_directories(QuickFASTTest PRIVATE ${CMAKE_SOURCE_DIR}/tests)
   target_link_libraries(QuickFASTTest
     PRIVATE
       QuickFAST

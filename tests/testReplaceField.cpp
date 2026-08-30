@@ -4,7 +4,7 @@
 #include <Common/QuickFASTPch.h>
 
 #include <gtest/gtest.h>
-#include <Tests/TestPaths.h>
+#include "TestPaths.h"
 #include <filesystem>
 
 #include <Codecs/XMLTemplateParser.h>
@@ -36,7 +36,7 @@ using namespace QuickFAST;
 
 TEST(QuickFAST, TestReplaceField)
 {
-  std::string xml = QuickFAST::TestPaths::resource("/src/Tests/resources/unittest_optional.xml");
+  std::string xml = QuickFAST::TestPaths::resource("/tests/resources/unittest_optional.xml");
 
   std::ifstream templateStream(xml.c_str(), std::ifstream::binary);
 
