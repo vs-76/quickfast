@@ -17,7 +17,7 @@ find_path(PCAP_INCLUDE_DIR
 )
 
 find_library(PCAP_LIBRARY
-  NAMES pcap wpcap
+  NAMES pcap pcap_static wpcap
   DOC "Path to the libpcap library"
 )
 
