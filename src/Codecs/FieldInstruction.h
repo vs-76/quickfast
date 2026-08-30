@@ -1071,6 +1071,20 @@ namespace QuickFAST{
     // Contiguous fast paths for 64-bit integers. (The older int32/uint32
     // specializations remain behind INTEGER_SPECIALIZATION / never compiled.)
     // Max stop-bit length is (64+6)/7 = 10 bytes.
+
+    /// @brief decodeSignedInteger() specialized for int64.
+    ///
+    /// Scans for the stop bit in the source's own buffer when it can offer the
+    /// whole value -- at most (64+6)/7 = 10 bytes -- and falls back to the
+    /// generic byte-at-a-time loop when it cannot. Behaviour, including the
+    /// errors reported, is identical either way.
+    /// @param[in] source supplies the data
+    /// @param context in which the decoding occurs.
+    /// @param[out] value returns the result
+    /// @param[in] name of this field to be used in error messages
+    /// @param[in] oversize ignores one bit of overflow to cope with
+    ///            out-of-range deltas (see section 6.3.7.1 of the Fast Specification v1x1)
+    /// @param[in] ignoreOverflow ignores overflows completely to cope with funky ARCA encoding.
     template<>
     inline
     void
@@ -1181,6 +1195,17 @@ namespace QuickFAST{
       value |= (byte & dataBits);
     }
 
+    /// @brief decodeUnsignedInteger() specialized for uint64.
+    ///
+    /// Scans for the stop bit in the source's own buffer when it can offer the
+    /// whole value -- at most (64+6)/7 = 10 bytes -- and falls back to the
+    /// generic byte-at-a-time loop when it cannot. Behaviour, including the
+    /// errors reported, is identical either way.
+    /// @param[in] source supplies the data
+    /// @param context in which the decoding occurs.
+    /// @param[out] value returns the result
+    /// @param[in] name of this field to be used in error messages
+    /// @param[in] ignoreOverflow ignores overflows completely to cope with funky ARCA encoding.
     template<>
     inline
     void
