@@ -30,6 +30,7 @@ namespace QuickFAST{
       static FieldCPtr create(int16 value);
       /// @brief Construct a NULL field
       /// @returns a constant pointer to the immutable field
+      /// @note Returns a shared singleton; see Field.
       static FieldCPtr createNull();
 
       /// @brief a typical virtual destructor.

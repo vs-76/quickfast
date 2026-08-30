@@ -20,6 +20,11 @@ namespace QuickFAST{
   /// String payloads and displayString() caches allocate one on demand so
   /// dictionary arrays of integers stay dense.
   ///
+  /// Once allocated the buffer is kept: erase() and numeric assignment clear
+  /// it rather than release it. Context::reset() erases every dictionary entry
+  /// between messages, and freeing there would cost a free/malloc pair per
+  /// string entry per message.
+  ///
   class Value
   {
   public:
@@ -44,6 +49,8 @@ namespace QuickFAST{
     {
     }
 
+    /// @brief Copy construct, duplicating any string storage.
+    /// @param rhs is the value to copy
     Value(const Value & rhs)
       : class_(rhs.class_)
       , cachedString_(rhs.cachedString_)
@@ -54,10 +61,19 @@ namespace QuickFAST{
     {
     }
 
+    /// @brief Move construct, stealing any string storage.
+    ///
+    /// The moved-from value keeps its class but loses its string buffer, so
+    /// isString() may report true while getValue() returns false. Assign or
+    /// erase() it before reading it again.
     Value(Value &&) noexcept = default;
 
+    /// @brief a typical destructor.
     ~Value() = default;
 
+    /// @brief Copy assign, reusing this value's string buffer when it has one.
+    /// @param rhs is the value to copy
+    /// @returns a reference to this value
     Value & operator=(const Value & rhs)
     {
       if(this != &rhs)
@@ -86,6 +102,10 @@ namespace QuickFAST{
       return *this;
     }
 
+    /// @brief Move assign, stealing any string storage.
+    ///
+    /// Leaves the source in the state described by the move constructor.
+    /// @returns a reference to this value
     Value & operator=(Value &&) noexcept = default;
 
     /// @brief Set Compound type
