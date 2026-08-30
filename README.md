@@ -17,7 +17,8 @@ Native library, examples, and tests no longer depend on Boost. Dependencies
 (installed via Conan or vcpkg):
 
 - C++20 or later (CMake enforces `CMAKE_CXX_STANDARD >= 20`; verified with g++ 15/16 and clang++ 22)
-- [Xerces-C++](https://xerces.apache.org/xerces-c/) ≥ 3.2.5 (pinned 3.3.0; ICU transcoder via Conan/vcpkg)
+- [Xerces-C++](https://xerces.apache.org/xerces-c/) ≥ 3.2.5 (pinned 3.3.0; ICU transcoder — Conan `icu/78.2`, vcpkg `78.3#2`)
+
 - Standalone [Asio](https://github.com/chriskohlhoff/asio) and [GoogleTest](https://github.com/google/googletest) / GoogleMock
 - [spdlog](https://github.com/gabime/spdlog) + zlib (default ON; `-DQUICKFAST_USE_SPDLOG=OFF` to disable)
 - [libpcap](https://www.tcpdump.org/) (default ON)

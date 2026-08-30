@@ -36,6 +36,8 @@ class QuickFASTConan(ConanFile):
 
     def requirements(self):
         self.requires("xerces-c/3.3.0")
+        # Override xerces-c's icu/74.2 pin (vcpkg pins ICU separately at 78.3).
+        self.requires("icu/78.2", override=True)
         self.requires("asio/1.38.2")
         if self.options.with_spdlog:
             self.requires("spdlog/1.17.0")
@@ -58,7 +60,7 @@ class QuickFASTConan(ConanFile):
             self.options["libpcap"].shared = False
         if self.options.build_tests:
             self.options["gtest"].shared = False
-        # ICU transcoder (pulls icu via the xerces-c recipe); keep network off.
+        # ICU transcoder (icu/78.2 via requirements override); keep network off.
         self.options["xerces-c"].transcoder = "icu"
         self.options["xerces-c"].network = False
         self.options["icu"].shared = False
