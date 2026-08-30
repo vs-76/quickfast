@@ -4,6 +4,7 @@
 #pragma once
 
 #pragma unmanaged
+#include <memory>
 #include <Common/Value.h>
 #include <Common/Decimal.h>
 #include <Messages/FieldIdentity.h>
@@ -110,8 +111,8 @@ namespace QuickFAST{
       QuickFAST::exponent_t exponent_;
 
       std::string string_;
-      boost::scoped_ptr<ImplSequence> sequence_;
-      boost::scoped_ptr<ImplFieldSet> group_;
+      std::unique_ptr<ImplSequence> sequence_;
+      std::unique_ptr<ImplFieldSet> group_;
     };
 
   }

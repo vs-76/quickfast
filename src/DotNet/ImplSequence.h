@@ -3,6 +3,7 @@
 // See the file license.txt for licensing information.
 #pragma once
 #include <Messages/FieldIdentity_fwd.h>
+#include <memory>
 
 namespace QuickFAST
 {
@@ -45,7 +46,7 @@ namespace QuickFAST
       size_t used_;
       const Messages::FieldIdentity & lengthIdentity_;
       typedef ImplFieldSet * EntryPtr;
-      boost::scoped_array<EntryPtr> entries_;
+      std::unique_ptr<EntryPtr[]> entries_;
     };
   }
 }

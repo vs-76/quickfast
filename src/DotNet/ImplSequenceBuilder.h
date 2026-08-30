@@ -8,6 +8,7 @@
 #include <DotNet/ImplBuilderBase.h>
 #include <Messages/ValueMessageBuilder.h>
 #include <Messages/FieldIdentity_fwd.h>
+#include <memory>
 
 namespace QuickFAST
 {
@@ -42,7 +43,7 @@ namespace QuickFAST
 
     private:
       ImplSequence * sequence_;
-      boost::scoped_ptr<ImplFieldSetBuilder> sequenceEntryBuilder_;
+      std::unique_ptr<ImplFieldSetBuilder> sequenceEntryBuilder_;
     };
   }
 }
