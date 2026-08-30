@@ -242,22 +242,51 @@ FieldInstruction::decodeAscii(
   WorkingBuffer & workingBuffer)
 {
   workingBuffer.clear(false);
-  uchar byte = 0;
-  if(!source.getByte(byte))
+  // Prefer a contiguous scan for the stop bit, then one bulk copy for the
+  // payload bytes.  Fall back to getByte when the window ends mid-string or
+  // when the source has no buffered data yet.
+  for(;;)
   {
-    return false;
-  }
-  while((byte & stopBit) == 0)
-  {
-    workingBuffer.push(byte);
+    const size_t available = source.currentBytesAvailable();
+    if(available > 0)
+    {
+      const uchar * contiguous = 0;
+      if(source.hasContiguous(available, contiguous))
+      {
+        size_t run = 0;
+        while(run < available && (contiguous[run] & stopBit) == 0)
+        {
+          ++run;
+        }
+        if(run < available)
+        {
+          if(run > 0)
+          {
+            workingBuffer.push(contiguous, run);
+          }
+          workingBuffer.push(contiguous[run] & dataBits);
+          source.skipContiguous(run + 1);
+          return true;
+        }
+        workingBuffer.push(contiguous, available);
+        source.skipContiguous(available);
+        continue;
+      }
+    }
+
+    uchar byte = 0;
     if(!source.getByte(byte))
     {
       // todo: exception?
       return false;
     }
+    if((byte & stopBit) != 0)
+    {
+      workingBuffer.push(byte & dataBits);
+      return true;
+    }
+    workingBuffer.push(byte);
   }
-  workingBuffer.push(byte & dataBits);
-  return true;
 }
 
 bool
@@ -314,16 +343,30 @@ FieldInstruction::decodeByteVector(
   // input runs out of data and reports [ERR U03] before the memory is claimed.
   static const size_t maxSpeculativeReservation = 64 * 1024;
   buffer.clear(false, std::min(length, maxSpeculativeReservation));
-  for(size_t pos = 0;
-    pos < length;
-    ++pos)
+  size_t remaining = length;
+  while(remaining > 0)
   {
+    const size_t available = source.currentBytesAvailable();
+    if(available > 0)
+    {
+      const size_t chunk = std::min(remaining, available);
+      const uchar * contiguous = 0;
+      if(source.hasContiguous(chunk, contiguous))
+      {
+        buffer.push(contiguous, chunk);
+        source.skipContiguous(chunk);
+        remaining -= chunk;
+        continue;
+      }
+    }
+
     uchar byte = 0;
     if(!source.getByte(byte))
     {
       decoder.reportFatal("[ERR U03]", "End of file: Too few bytes in ByteVector.", name);
     }
     buffer.push(byte);
+    --remaining;
   }
 }
 
