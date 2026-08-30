@@ -15,7 +15,7 @@
 #
 # Environment overrides:
 #   MINGW_CXX          cross compiler          (default x86_64-w64-mingw32-g++)
-#   ASIO_INCLUDE_DIR   standalone Asio headers (FetchContent, Conan, vcpkg, or /usr/include)
+#   ASIO_INCLUDE_DIR   standalone Asio headers (Conan, vcpkg, or /usr/include)
 #   HOST_INCLUDE_DIR   spdlog/fmt/zlib headers (default /usr/include)
 
 set -euo pipefail
@@ -31,11 +31,7 @@ fi
 
 asio_include="${ASIO_INCLUDE_DIR:-}"
 if [[ -z "${asio_include}" ]]; then
-  # Prefer a configured build's FetchContent tree, then Conan/vcpkg staging, then system.
-  asio_include="$(find . -maxdepth 5 -type d -path './build*/_deps/asio-src/asio/include' \
-    -print -quit 2>/dev/null || true)"
-fi
-if [[ -z "${asio_include}" || ! -d "${asio_include}" ]]; then
+  # Prefer Conan/vcpkg staging, then system.
   for candidate in \
       ./build*/vcpkg_installed/*/include \
       ./build/conan \
@@ -58,8 +54,8 @@ if [[ -z "${asio_include}" || ! -d "${asio_include}" ]]; then
   fi
 fi
 if [[ -z "${asio_include}" || ! -d "${asio_include}" ]]; then
-  echo "error: standalone Asio headers not found; configure a build tree first" >&2
-  echo "       or set ASIO_INCLUDE_DIR (FetchContent, Conan, vcpkg, or system)" >&2
+  echo "error: standalone Asio headers not found; configure a Conan/vcpkg build first" >&2
+  echo "       or set ASIO_INCLUDE_DIR" >&2
   exit 1
 fi
 
