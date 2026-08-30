@@ -1,3 +1,7 @@
+# Copyright (c) 2026, QuickFAST contributors.
+# All rights reserved.
+# See the file license.txt for licensing information.
+
 # Coverage report target for QuickFAST (gcovr + gcov).
 # Included only when QUICKFAST_ENABLE_COVERAGE=ON and gcovr is available.
 
