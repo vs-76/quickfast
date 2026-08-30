@@ -4,6 +4,7 @@
 #pragma once
 #include <DotNet/ImplField.h>
 #pragma unmanaged
+#include <memory>
 //#include <Common/Value.h>
 
 
@@ -32,7 +33,7 @@ namespace QuickFAST
     private:
       size_t capacity_;
       size_t used_;
-      boost::shared_array<ImplField> fields_;
+      std::unique_ptr<ImplField[]> fields_;
     };
   }
 }

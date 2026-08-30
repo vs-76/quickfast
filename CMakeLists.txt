@@ -19,6 +19,12 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 option(QUICKFAST_BUILD_TESTS "Build QuickFAST unit tests" ON)
 option(QUICKFAST_BUILD_EXAMPLES "Build QuickFAST example applications" ON)
+option(QUICKFAST_BUILD_DOTNET
+  "Build C++/CLI QuickFASTDotNet (.NET Framework; MSVC Windows only)"
+  OFF)
+option(QUICKFAST_BUILD_DOTNET_EXAMPLES
+  "Build C# DotNet example apps (requires QUICKFAST_BUILD_DOTNET)"
+  OFF)
 option(QUICKFAST_USE_LIBCXX
   "Use LLVM libc++ instead of the default C++ standard library (Clang only)"
   OFF)
@@ -443,6 +449,22 @@ else()
   message(STATUS
     "c-ares: OFF -- HostResolver uses Asio getaddrinfo "
     "(default is ON; pass -DQUICKFAST_USE_CARES=ON to re-enable)")
+endif()
+
+if(QUICKFAST_BUILD_DOTNET)
+  if(NOT WIN32 OR NOT MSVC OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    message(FATAL_ERROR
+      "QUICKFAST_BUILD_DOTNET requires MSVC cl.exe on Windows "
+      "(not clang-cl); C++/CLI /clr is unavailable otherwise")
+  endif()
+  add_subdirectory(src/DotNet)
+  message(STATUS "DotNet: QuickFASTDotNet C++/CLI (/clr, .NET Framework)")
+  if(QUICKFAST_BUILD_DOTNET_EXAMPLES)
+    message(STATUS "DotNet examples: InterpretFASTDotNet, PerformanceTestDotNet")
+  endif()
+elseif(QUICKFAST_BUILD_DOTNET_EXAMPLES)
+  message(FATAL_ERROR
+    "QUICKFAST_BUILD_DOTNET_EXAMPLES=ON requires QUICKFAST_BUILD_DOTNET=ON")
 endif()
 
 if(QUICKFAST_BUILD_FUZZERS)

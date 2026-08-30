@@ -35,6 +35,8 @@ spdlog needs host **tzdata** for IANA zones.
 | --- | --- | --- |
 | `QUICKFAST_BUILD_TESTS` | `ON` | Build `QuickFASTTest` and register ctest |
 | `QUICKFAST_BUILD_EXAMPLES` | `ON` | Build example applications |
+| `QUICKFAST_BUILD_DOTNET` | `OFF` | Build C++/CLI `QuickFASTDotNet` (.NET Framework; **MSVC Windows only**) |
+| `QUICKFAST_BUILD_DOTNET_EXAMPLES` | `OFF` | Build C# examples (`InterpretFASTDotNet`, `PerformanceTestDotNet`; needs DotNet) |
 | `BUILD_SHARED_LIBS` | `OFF` | Static `libQuickFAST.a` by default; set `ON` for a shared library |
 | `QUICKFAST_USE_LIBCXX` | `OFF` | Use LLVM libc++ (`-stdlib=libc++`); **Clang/AppleClang only** |
 | `QUICKFAST_ENABLE_COVERAGE` | `OFF` | Instrument library + tests with `--coverage`; add `coverage` target if `gcovr` is installed |
@@ -161,6 +163,30 @@ cmake -S . -B build-vcpkg-nospdlog \
 
 For a shared QuickFAST, pass `-DBUILD_SHARED_LIBS=ON` together with your Conan
 or vcpkg toolchain file.
+
+---
+
+## .NET (C++/CLI) — Windows MSVC only
+
+`src/DotNet` is a mixed-mode assembly (`QuickFASTDotNet.dll`) built with MSVC
+`/clr` against **.NET Framework 4.x**. It is off by default and unavailable with
+clang-cl, Ninja+clang, or non-Windows hosts.
+
+```bash
+# after a normal MSVC Conan (or vcpkg) install into build/conan-msvc
+cmake -S . -B build-msvc-conan -G "Visual Studio 18 2026" -A x64 \
+  -DCMAKE_TOOLCHAIN_FILE="$(pwd)/build/conan-msvc/conan_toolchain.cmake" \
+  -DQUICKFAST_BUILD_DOTNET=ON \
+  -DQUICKFAST_BUILD_DOTNET_EXAMPLES=ON
+cmake --build build-msvc-conan --config Release --target QuickFASTDotNet
+# optional C# net48 examples:
+cmake --build build-msvc-conan --config Release \
+  --target InterpretFASTDotNet --target PerformanceTestDotNet
+```
+
+Outputs land under `build-msvc-conan/bin/<Config>/` (DLL + example exes). Legacy
+MPC `dotnet=1` / `dotnetapp=1` in `QuickFAST.features` is superseded by these
+CMake options.
 
 ---
 

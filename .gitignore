@@ -71,3 +71,6 @@ conan/
 !conanfile.py
 vcpkg_installed/
 
+# .NET SDK intermediates (C# examples)
+**/obj/
+
