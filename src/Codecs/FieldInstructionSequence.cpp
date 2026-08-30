@@ -153,13 +153,13 @@ FieldInstructionSequence::encodeNop(
     Codecs::FieldInstructionCPtr lengthInstruction;
     if(segment_->getLengthInstruction(lengthInstruction))
     {
-      Messages::SingleFieldAccessor accessor(lengthInstruction->getIdentity(), lengthField);
-      lengthInstruction->encode(destination, pmap, encoder, accessor);
+      Messages::SingleFieldAccessor lengthAccessor(lengthInstruction->getIdentity(), lengthField);
+      lengthInstruction->encode(destination, pmap, encoder, lengthAccessor);
     }
     else
     {
-       Messages::SingleFieldAccessor accessor(defaultLengthInstruction_->getIdentity(), lengthField);
-       defaultLengthInstruction_->encode(destination, pmap, encoder, accessor);
+       Messages::SingleFieldAccessor lengthAccessor(defaultLengthInstruction_->getIdentity(), lengthField);
+       defaultLengthInstruction_->encode(destination, pmap, encoder, lengthAccessor);
     }
 
     for(size_t pos = 0; pos < length; ++pos)
@@ -190,8 +190,8 @@ FieldInstructionSequence::encodeNop(
       Codecs::FieldInstructionCPtr lengthInstruction;
       if(segment_->getLengthInstruction(lengthInstruction))
       {
-         Messages::SingleFieldAccessor accessor(lengthInstruction->getIdentity(), 0);
-        lengthInstruction->encode(destination, pmap, encoder, accessor);
+         Messages::SingleFieldAccessor lengthAccessor(lengthInstruction->getIdentity(), 0);
+        lengthInstruction->encode(destination, pmap, encoder, lengthAccessor);
       }
       else
       {
@@ -204,8 +204,8 @@ FieldInstructionSequence::encodeNop(
       if(segment_->getLengthInstruction(lengthInstruction))
       {
         // let the length instruction encode the fact that it's missing
-        Messages::EmptyAccessor accessor;
-        lengthInstruction->encode(destination, pmap, encoder, accessor);
+        Messages::EmptyAccessor missingAccessor;
+        lengthInstruction->encode(destination, pmap, encoder, missingAccessor);
       }
       else
       {

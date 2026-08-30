@@ -1044,9 +1044,14 @@ TEST_F(ManagedFileSinkTest, ManagedBytesIgnoresUnsizableFiles)
   // Make file_size fail for the active file by putting a directory where it
   // should be.  This is the persistent form of the race the compress worker
   // creates by removing files outside the sink mutex.
+  //
+  // Close the active FILE* first: Windows cannot remove or replace an open
+  // path the way POSIX unlink can.
+  sink_->request_shutdown();
   std::error_code ec;
   fs::remove(cfg.base_path, ec);
-  ASSERT_TRUE(fs::create_directory(cfg.base_path, ec));
+  ASSERT_FALSE(ec) << ec.message();
+  ASSERT_TRUE(fs::create_directory(cfg.base_path, ec)) << ec.message();
 
   const std::uint64_t total = sink_->managed_bytes();
   EXPECT_EQ((total), (std::uint64_t(2 * plantedBytes)));

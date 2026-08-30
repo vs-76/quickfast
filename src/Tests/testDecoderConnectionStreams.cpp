@@ -73,6 +73,7 @@ namespace
 /// to support piping -- and on any non-Windows platform it ended the process
 /// with "free(): invalid size" and SIGABRT. The two ostream members already
 /// carried ownership flags for exactly this reason; fastFile_ never got one.
+/// On Windows, stdin is switched to binary mode so FAST bytes are not mangled.
 TEST(QuickFAST, testFastFileCinIsNotDeleted)
 {
   Application::DecoderConfiguration configuration = fileConfiguration("cin");
