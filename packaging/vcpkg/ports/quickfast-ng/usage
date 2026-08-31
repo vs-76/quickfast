@@ -1,0 +1,10 @@
+quickfast-ng provides CMake targets:
+
+    find_package(QuickFAST CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE QuickFAST::QuickFAST)
+
+Every QuickFAST header requires <Application/QuickFAST.h> to be included first,
+preferably from a precompiled header:
+
+    #include <Application/QuickFAST.h>
+    #include <Codecs/Decoder.h>

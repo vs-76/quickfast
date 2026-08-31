@@ -1,0 +1,54 @@
+# Copyright (c) 2026, QuickFAST contributors.
+# All rights reserved.
+# See the file license.txt for licensing information.
+#
+# Package config for installed QuickFAST. Re-finds the dependencies the library
+# was linked against, then loads the exported targets.
+#
+#   find_package(QuickFAST REQUIRED)
+#   target_link_libraries(app PRIVATE QuickFAST::QuickFAST)
+#
+# A static QuickFAST propagates its private dependencies as link-only usage
+# requirements, so libpcap and c-ares must be found here too even though they
+# are not part of the compile interface.
+
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# Feature set frozen at build time; consumers can query these.
+set(QuickFAST_WITH_SPDLOG @QUICKFAST_USE_SPDLOG@)
+set(QuickFAST_WITH_LIBPCAP @QUICKFAST_USE_LIBPCAP@)
+set(QuickFAST_WITH_CARES @QUICKFAST_USE_CARES@)
+set(QuickFAST_SHARED @BUILD_SHARED_LIBS@)
+set(QuickFAST_CXX_STANDARD @CMAKE_CXX_STANDARD@)
+
+# FindPCAP.cmake ships with the package for the module-mode fallback.
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
+
+find_dependency(Threads)
+find_dependency(asio CONFIG)
+find_dependency(XercesC @QUICKFAST_XERCES_MIN_VERSION@ CONFIG)
+
+if(QuickFAST_WITH_SPDLOG)
+  find_dependency(spdlog 1.12 CONFIG)
+  find_dependency(ZLIB)
+endif()
+
+if(QuickFAST_WITH_LIBPCAP)
+  if("@QUICKFAST_PCAP_PACKAGE@" STREQUAL "PCAP")
+    find_dependency(PCAP)
+  else()
+    find_dependency(@QUICKFAST_PCAP_PACKAGE@ CONFIG)
+  endif()
+endif()
+
+if(QuickFAST_WITH_CARES)
+  find_dependency(c-ares CONFIG)
+endif()
+
+list(REMOVE_ITEM CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
+
+include("${CMAKE_CURRENT_LIST_DIR}/QuickFASTTargets.cmake")
+
+check_required_components(QuickFAST)
