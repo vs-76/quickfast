@@ -73,7 +73,7 @@
 /// fixtrading.org/standards/fast</a>.
 ///
 /// Source for this fork lives at
-/// <a href="https://github.com/vs-76/quickfast">github.com/vs-76/quickfast</a>.
+/// <a href="https://github.com/vs-76/quickfast-ng">github.com/vs-76/quickfast-ng</a>.
 /// See BUILD.md in the source tree for build instructions (CMake with either
 /// Conan 2 or vcpkg).
 ///

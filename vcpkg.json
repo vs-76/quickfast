@@ -2,7 +2,7 @@
   "name": "quickfast",
   "version-string": "1.5.0",
   "description": "FAST Protocol native C++ library (CMake consumer; deps via vcpkg)",
-  "homepage": "https://github.com/vs-76/quickfast",
+  "homepage": "https://github.com/vs-76/quickfast-ng",
   "license": "BSD-3-Clause",
   "supports": "!uwp",
   "builtin-baseline": "118bba14b94bc040c098c0c15e63c142148c05ca",

@@ -7,7 +7,7 @@ alwaysApply: true
 
 Always follow **Git Flow** for branches and **Commitizen / Conventional Commits** for messages.
 
-The line that matters is **what reaches `origin`**, the fork [vs-76/quickfast](https://github.com/vs-76/quickfast): `develop` and `master` there change **only via PR**. Locally, integrating side branches into `develop` is allowed — see *Local integration* below.
+The line that matters is **what reaches `origin`**, the fork [vs-76/quickfast-ng](https://github.com/vs-76/quickfast-ng): `develop` and `master` there change **only via PR**. Locally, integrating side branches into `develop` is allowed — see *Local integration* below.
 
 - Author commits only on side branches (`feature/`, `bugfix/`, `hotfix/`, `release/`). Never write a commit while on `develop`/`master`/`main`; if asked to, stop, warn, and switch to a side branch.
 - Never push `develop`, `master` or `main`, and never push a side branch straight into them.
@@ -61,7 +61,7 @@ cmake --build build-dev-final -j && ctest --test-dir build-dev-final   # verify 
 
 ## Pull requests (fork)
 
-- Base repo is always [vs-76/quickfast](https://github.com/vs-76/quickfast) — never the OCI upstream (see `no-upstream-oci-writes`).
+- Base repo is always [vs-76/quickfast-ng](https://github.com/vs-76/quickfast-ng) — never the OCI upstream (see `no-upstream-oci-writes`).
 - Push the **side branch**, never `develop`, then open the PR against `develop` (or `master` for a hotfix).
 - One PR per side branch. If local `develop` already holds several local merges, open a PR per branch instead of pushing `develop`.
 - A hotfix needs two PRs: into `master` and into `develop`.
@@ -69,7 +69,7 @@ cmake --build build-dev-final -j && ctest --test-dir build-dev-final   # verify 
 ```bash
 # ✅ landing a branch
 git push -u origin bugfix/dst-rotation-schedule
-gh pr create --repo vs-76/quickfast --base develop --head bugfix/dst-rotation-schedule
+gh pr create --repo vs-76/quickfast-ng --base develop --head bugfix/dst-rotation-schedule
 
 # ❌ never
 git push origin develop            # bypasses review

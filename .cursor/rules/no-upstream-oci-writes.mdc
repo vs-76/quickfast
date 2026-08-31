@@ -18,7 +18,7 @@ alwaysApply: true
 
 Work only against this fork (or other remotes the user names):
 
-- [vs-76/quickfast](https://github.com/vs-76/quickfast) — default `origin`
+- [vs-76/quickfast-ng](https://github.com/vs-76/quickfast-ng) — default `origin`
 
 Upstream may be added **read-only** for fetch/rebase if needed:
 
@@ -35,4 +35,4 @@ git push upstream ...
 gh pr create --repo objectcomputing/quickfast ...
 ```
 
-If a command would touch that repo for write, **stop**, warn the user, and use `vs-76/quickfast` instead.
+If a command would touch that repo for write, **stop**, warn the user, and use `vs-76/quickfast-ng` instead.

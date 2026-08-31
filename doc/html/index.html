@@ -94,7 +94,7 @@ $(function(){initNavTree('index.html','',''); });
 <div class="contents">
 <div class="textblock"><p><a class="el" href="namespaceQuickFAST.html" title="General utility/overhead classes used throughout the rest of the system are in the QuickFAST namespac...">QuickFAST</a> is a native C++ implementation of the FIX Adapted for STreaming (FAST) protocol, with an optional .NET wrapper.</p>
 <p>The protocol specification is published by the FIX Trading Community: <a href="https://www.fixtrading.org/standards/fast/">fixtrading.org/standards/fast</a>.</p>
-<p>Source for this fork lives at <a href="https://github.com/vs-76/quickfast">github.com/vs-76/quickfast</a>. See BUILD.md in the source tree for build instructions (CMake with either Conan 2 or vcpkg).</p>
+<p>Source for this fork lives at <a href="https://github.com/vs-76/quickfast-ng">github.com/vs-76/quickfast-ng</a>. See BUILD.md in the source tree for build instructions (CMake with either Conan 2 or vcpkg).</p>
 <h3>FAST in one page</h3>
 <p>FAST is a standard for serializing an <b><em>application data type</em></b> into a <b><em>message</em></b>. The goal is to minimize the size of the encoded message, and so the bandwidth needed to transmit it, without spending excessive CPU to do so.</p>
 <p>This is achieved by defining a custom encoding/decoding strategy per message type out of a set of basic codec instructions. That strategy is called a <b><em>template</em></b>, and more than one is usually defined. The correspondence between application data types and templates is many-to-many: an encoder may choose whichever template encodes a given message most effectively.</p>
