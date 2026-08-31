@@ -16,6 +16,7 @@
 #include <Codecs/GenericMessageBuilder.h>
 
 #include <Common/Exceptions.h>
+#include "TempFile.h"
 #include "TestPaths.h"
 
 using namespace QuickFAST;
@@ -30,13 +31,8 @@ namespace
     "  </template>"
     "</templates>";
 
-  std::string inputFile(const std::string & path)
-  {
-    std::ofstream out(path.c_str(), std::ios::binary | std::ios::trunc);
-    out << "\xc0\x81\x81";
-    out.close();
-    return path;
-  }
+  /// @brief One FAST message: presence map, template id 1, value 1.
+  const char * const theMessage = "\xc0\x81\x81";
 
   /// @brief Build and immediately destroy a configured connection.
   ///
@@ -93,25 +89,23 @@ TEST(QuickFAST, testFastFileCinIsNotDeleted)
 /// @brief An owned input file is still closed, and a real file still works.
 TEST(QuickFAST, testFastFileFromDiskStillWorks)
 {
-  const std::string path = inputFile("testDecoderConnectionStreams.fast");
-  Application::DecoderConfiguration configuration = fileConfiguration(path);
+  const TestPaths::TemporaryFile input(theMessage, ".fast");
+  Application::DecoderConfiguration configuration = fileConfiguration(input.name());
   EXPECT_NO_THROW(configureAndDestroy(configuration));
-  std::remove(path.c_str());
 }
 
 /// @brief An aliased echo or verbose stream must survive destruction too.
 TEST(QuickFAST, testStandardEchoAndVerboseStreamsAreNotDeleted)
 {
-  const std::string path = inputFile("testDecoderConnectionStreams.fast");
+  const TestPaths::TemporaryFile input(theMessage, ".fast");
   for(const char * stream : {"cout", "cerr"})
   {
     SCOPED_TRACE(stream);
-    Application::DecoderConfiguration configuration = fileConfiguration(path);
+    Application::DecoderConfiguration configuration = fileConfiguration(input.name());
     configuration.setEchoFileName(stream);
     configuration.setVerboseFileName(stream);
     EXPECT_NO_THROW(configureAndDestroy(configuration));
   }
-  std::remove(path.c_str());
 }
 
 /// @brief With no verbose file configured, nothing may form a reference from null.
@@ -121,8 +115,8 @@ TEST(QuickFAST, testStandardEchoAndVerboseStreamsAreNotDeleted)
 /// every ordinary run.
 TEST(QuickFAST, testNoVerboseFileDoesNotDereferenceNull)
 {
-  const std::string path = inputFile("testDecoderConnectionStreams.fast");
-  Application::DecoderConfiguration configuration = fileConfiguration(path);
+  const TestPaths::TemporaryFile input(theMessage, ".fast");
+  Application::DecoderConfiguration configuration = fileConfiguration(input.name());
   configuration.setTemplateFileName(
     QuickFAST::TestPaths::resource("/tests/resources/unittest_mandatory.xml"));
   ASSERT_TRUE(configuration.verboseFileName().empty());
@@ -133,7 +127,6 @@ TEST(QuickFAST, testNoVerboseFileDoesNotDereferenceNull)
   Codecs::SingleMessageConsumer consumer;
   Codecs::GenericMessageBuilder builder(consumer);
   EXPECT_NO_THROW(connection.configure(builder, configuration));
-  std::remove(path.c_str());
 }
 
 /// @brief With no echo configured, nothing may form a reference from null.
@@ -145,9 +138,8 @@ TEST(QuickFAST, testNoVerboseFileDoesNotDereferenceNull)
 /// -fsanitize=null reports it.
 TEST(QuickFAST, testNoEchoFileDoesNotDereferenceNull)
 {
-  const std::string path = inputFile("testDecoderConnectionStreams.fast");
-  Application::DecoderConfiguration configuration = fileConfiguration(path);
+  const TestPaths::TemporaryFile input(theMessage, ".fast");
+  Application::DecoderConfiguration configuration = fileConfiguration(input.name());
   ASSERT_TRUE(configuration.echoFileName().empty());
   EXPECT_NO_THROW(configureAndDestroy(configuration));
-  std::remove(path.c_str());
 }
