@@ -9,8 +9,7 @@
 #include <gtest/gtest.h>
 #include <Application/CommandArgParser.h>
 #include <Application/CommandArgHandler.h>
-#include <cstdio>
-#include <fstream>
+#include "TempFile.h"
 
 using namespace QuickFAST;
 
@@ -44,19 +43,14 @@ namespace
     std::string name_;
   };
 
-  std::string writeTemp(const std::string & contents)
-  {
-    const std::string path = "testCommandArgParserOptions.tmp";
-    std::ofstream out(path.c_str(), std::ios::trunc);
-    out << contents;
-    return path;
-  }
 }
 
 /// @brief -options must load tokens, including quoted and escaped values.
 TEST(QuickFAST, testCommandArgParserReadsOptionsFile)
 {
-  const std::string path = writeTemp("-flag -name \"hello world\" -name escaped\\ value\n");
+  const TestPaths::TemporaryFile options(
+    "-flag -name \"hello world\" -name escaped\\ value\n", ".tmp");
+  const std::string path = options.name();
   FlagHandler handler;
   Application::CommandArgParser parser;
   parser.addHandler(&handler);
@@ -74,13 +68,13 @@ TEST(QuickFAST, testCommandArgParserReadsOptionsFile)
 
   EXPECT_TRUE(handler.seen_);
   EXPECT_EQ("escaped value", handler.name_);
-  std::remove(path.c_str());
 }
 
 /// @brief An empty options file is a successful no-op.
 TEST(QuickFAST, testCommandArgParserAcceptsEmptyOptionsFile)
 {
-  const std::string path = writeTemp("");
+  const TestPaths::TemporaryFile options("", ".tmp");
+  const std::string path = options.name();
   FlagHandler handler;
   Application::CommandArgParser parser;
   parser.addHandler(&handler);
@@ -92,5 +86,4 @@ TEST(QuickFAST, testCommandArgParserAcceptsEmptyOptionsFile)
   char * argv[] = {prog, opt, pathBuf.data()};
   EXPECT_TRUE(parser.parse(3, argv));
   EXPECT_FALSE(handler.seen_);
-  std::remove(path.c_str());
 }

@@ -109,7 +109,8 @@ runtime, and hardens the decoder against malformed input.
   names.
 - Unit tests were ported from Boost.Test to GoogleTest/GoogleMock; a
   fully-featured Release build runs 469 ctest cases covering codec, assembler,
-  communication, logging and CLI paths.
+  communication, logging and CLI paths. Every test that needs a scratch file
+  takes a uniquely named one, so the suite is reliable under `ctest -j`.
 - Builds run warning-free with `-Wall -Werror -pedantic` on g++ 16 and
   clang++ 22, and a mingw-w64 compile gate keeps the Windows code paths honest.
 - The Windows MSVC build and its tests work again.

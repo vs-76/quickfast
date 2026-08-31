@@ -20,11 +20,7 @@
 #include <Communication/Assembler.h>
 #include <Codecs/TemplateRegistry.h>
 #include <Common/Logger.h>
-
-#include <atomic>
-#include <cstdio>
-#include <filesystem>
-#include <fstream>
+#include "TempFile.h"
 
 using namespace QuickFAST;
 
@@ -82,36 +78,7 @@ namespace
     virtual void receiverStopped(Communication::Receiver &) {}
   };
 
-  /// @brief A file that deletes itself when the test ends.
-  class TemporaryFile
-  {
-  public:
-    explicit TemporaryFile(const std::string & contents)
-      : name_((std::filesystem::temp_directory_path() / uniqueName()).string())
-    {
-      std::ofstream out(name_.c_str(), std::ios::binary);
-      out.write(contents.data(), std::streamsize(contents.size()));
-    }
-
-    ~TemporaryFile()
-    {
-      std::remove(name_.c_str());
-    }
-
-    const std::string & name() const
-    {
-      return name_;
-    }
-
-  private:
-    static std::string uniqueName()
-    {
-      static std::atomic<unsigned> counter{0};
-      return "quickfast-drain-" + std::to_string(counter++) + ".dat";
-    }
-
-    std::string name_;
-  };
+  using TestPaths::TemporaryFile;
 
   /// @brief Read a whole file through a raw receiver and report what arrived.
   size_t bytesDelivered(const std::string & fileName, size_t bufferSize, size_t bufferCount)
