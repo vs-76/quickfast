@@ -54,6 +54,8 @@ if(NOT DEFINED BUILD_SHARED_LIBS)
 endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include(GNUInstallDirs)
+option(QUICKFAST_INSTALL "Generate install rules and an exported CMake package" ON)
 # The test-only sink hook is compiled into the shared library, so a shipping build
 # (QUICKFAST_BUILD_TESTS=OFF) must not carry it.
 option(QUICKFAST_ENABLE_TEST_HOOKS
@@ -245,7 +247,7 @@ endif()
 target_include_directories(QuickFAST
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-    $<INSTALL_INTERFACE:include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
 target_link_libraries(QuickFAST
@@ -259,7 +261,9 @@ target_compile_definitions(QuickFAST PUBLIC ASIO_STANDALONE ASIO_NO_DEPRECATED)
 
 if(QUICKFAST_USE_LIBPCAP)
   include(QuickFASTPcap)
-  target_link_libraries(QuickFAST PRIVATE PCAP::PCAP)
+  # Link the real imported target, not the PCAP::PCAP alias: an exported target
+  # file records the aliased name, which QuickFASTConfig.cmake must re-find.
+  target_link_libraries(QuickFAST PRIVATE ${QUICKFAST_PCAP_TARGET})
   target_compile_definitions(QuickFAST PUBLIC QUICKFAST_HAVE_LIBPCAP=1)
 endif()
 
@@ -294,6 +298,62 @@ set_target_properties(QuickFAST PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
   ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
 )
+
+if(QUICKFAST_INSTALL)
+  include(CMakePackageConfigHelpers)
+  set(QUICKFAST_CMAKE_INSTALL_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/QuickFAST")
+
+  install(TARGETS QuickFAST
+    EXPORT QuickFASTTargets
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  )
+
+  # Headers keep their module directory, so <Codecs/Decoder.h> resolves the same
+  # way against an install tree as it does in the source tree. DotNet and
+  # Examples are deliberately absent: neither is part of the native library.
+  foreach(_qf_header_dir Application Codecs Common Communication Messages)
+    install(DIRECTORY src/${_qf_header_dir}
+      DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+      FILES_MATCHING PATTERN "*.h"
+    )
+  endforeach()
+
+  install(EXPORT QuickFASTTargets
+    FILE QuickFASTTargets.cmake
+    NAMESPACE QuickFAST::
+    DESTINATION ${QUICKFAST_CMAKE_INSTALL_DIR}
+  )
+
+  configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/QuickFASTConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/QuickFASTConfig.cmake"
+    INSTALL_DESTINATION ${QUICKFAST_CMAKE_INSTALL_DIR}
+  )
+  write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/QuickFASTConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+  )
+
+  install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/QuickFASTConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/QuickFASTConfigVersion.cmake"
+    DESTINATION ${QUICKFAST_CMAKE_INSTALL_DIR}
+  )
+
+  # Needed only by the module-mode libpcap fallback, but harmless otherwise.
+  if(QUICKFAST_USE_LIBPCAP)
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindPCAP.cmake"
+      DESTINATION ${QUICKFAST_CMAKE_INSTALL_DIR}
+    )
+  endif()
+
+  install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/license.txt"
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/licenses/QuickFAST
+  )
+endif()
 
 if(QUICKFAST_BUILD_TESTS)
   include(QuickFASTGTest)

@@ -1,0 +1,55 @@
+{
+  "name": "quickfast-ng",
+  "version-semver": "2.0.0",
+  "description": [
+    "Native C++ implementation of the FAST protocol.",
+    "FAST (FIX Adapted for STreaming) is a FIX Trading Community standard for compact, low-latency encoding of streaming data such as market data. This is the community fork of OCI QuickFAST: Boost-free, C++20, CMake-only."
+  ],
+  "homepage": "https://github.com/vs-76/quickfast-ng",
+  "license": "BSD-3-Clause",
+  "supports": "!uwp",
+  "dependencies": [
+    "asio",
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    },
+    {
+      "name": "xerces-c",
+      "default-features": false,
+      "features": [
+        "icu"
+      ]
+    }
+  ],
+  "default-features": [
+    "cares",
+    "pcap",
+    "spdlog"
+  ],
+  "features": {
+    "cares": {
+      "description": "Resolve hostnames with c-ares instead of Asio getaddrinfo (static-link friendly)",
+      "dependencies": [
+        "c-ares"
+      ]
+    },
+    "pcap": {
+      "description": "Read pcap and pcapng capture files through libpcap",
+      "dependencies": [
+        "libpcap"
+      ]
+    },
+    "spdlog": {
+      "description": "SpdlogLogger adapter and managed_file_sink_mt (rotating, gzipping file sink)",
+      "dependencies": [
+        "spdlog",
+        "zlib"
+      ]
+    }
+  }
+}

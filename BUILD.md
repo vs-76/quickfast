@@ -93,7 +93,9 @@ cmake --build build-conan -j
 ctest --test-dir build-conan --output-on-failure
 ```
 
-`conanfile.py` options: `with_spdlog`, `with_pcap`, `with_cares`, `build_tests`.
+`conanfile.py` options: `shared`, `with_spdlog`, `with_pcap`, `with_cares`,
+`build_tests`. The same recipe packages the library — see
+[Conan package](#conan-package).
 The recipe pins current Conan Center releases: `xerces-c/3.3.0` (ICU transcoder;
 `icu/78.2` override), `asio/1.38.2`,
 `spdlog/1.17.0` + `zlib/1.3.2` (default), `libpcap/1.10.6`,
@@ -163,6 +165,114 @@ cmake -S . -B build-vcpkg-nospdlog \
 
 For a shared QuickFAST, pass `-DBUILD_SHARED_LIBS=ON` together with your Conan
 or vcpkg toolchain file.
+
+---
+
+## Installing and consuming QuickFAST
+
+### Install tree
+
+Any configured build installs a findable CMake package. Pass
+`-DQUICKFAST_INSTALL=OFF` to suppress the install rules (useful when QuickFAST is
+vendored with `add_subdirectory`).
+
+```bash
+cmake -S . -B build-release \
+  -DCMAKE_TOOLCHAIN_FILE="$(pwd)/build/conan/conan_toolchain.cmake" \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=/opt/quickfast \
+  -DQUICKFAST_BUILD_TESTS=OFF -DQUICKFAST_BUILD_EXAMPLES=OFF
+cmake --build build-release -j
+cmake --install build-release
+```
+
+| Path | Contents |
+| --- | --- |
+| `include/{Application,Codecs,Common,Communication,Messages}` | 202 public headers, module layout preserved |
+| `lib/libQuickFAST.a` or `lib/libQuickFAST.so.2.0.0` | the library (`SOVERSION` 2) |
+| `lib/cmake/QuickFAST/` | `QuickFASTConfig.cmake`, version file, exported targets |
+| `share/licenses/QuickFAST/license.txt` | license |
+
+### find_package
+
+```cmake
+find_package(QuickFAST 2.0.0 REQUIRED)
+target_link_libraries(my_app PRIVATE QuickFAST::QuickFAST)
+```
+
+`QuickFASTConfig.cmake` re-finds the dependencies the library was linked against,
+so a **static** QuickFAST still resolves libpcap and c-ares even though they are
+not part of its compile interface. Configure the consumer with the same Conan or
+vcpkg toolchain, so those dependencies are findable.
+
+The config also exports what the build was configured with:
+`QuickFAST_WITH_SPDLOG`, `QuickFAST_WITH_LIBPCAP`, `QuickFAST_WITH_CARES`,
+`QuickFAST_SHARED`, `QuickFAST_CXX_STANDARD`.
+
+Every QuickFAST header requires `<Application/QuickFAST.h>` first, preferably
+from a precompiled header:
+
+```cpp
+#include <Application/QuickFAST.h>   // must come first
+#include <Codecs/Decoder.h>
+```
+
+### Consumer smoke test
+
+`tests/package` is a standalone project that sees QuickFAST only through
+`find_package`, so a broken install layout or a missing `find_dependency` fails
+there rather than in a user's tree. It is not part of the main build — point it at
+an install prefix:
+
+```bash
+cmake -S tests/package -B build-pkgtest \
+  -DCMAKE_TOOLCHAIN_FILE="$(pwd)/build/conan/conan_toolchain.cmake" \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_PREFIX_PATH=/opt/quickfast
+cmake --build build-pkgtest -j
+ctest --test-dir build-pkgtest --output-on-failure
+```
+
+For a shared install, add `LD_LIBRARY_PATH=/opt/quickfast/lib` when running.
+
+### Conan package
+
+`conanfile.py` both installs dependencies for development (above) and packages
+the library. Tests default to on for the development flow, so turn them off when
+packaging:
+
+```bash
+conan create . -s build_type=Release --build=missing -o '&:build_tests=False'
+conan create . -s build_type=Release --build=missing \
+  -o '&:build_tests=False' -o '&:shared=True'
+```
+
+`conan create` runs `test_package/`, which links a small program against the
+packaged library. Consumers depend on `quickfast-ng/2.0.0` and get the
+`QuickFAST::QuickFAST` target. The recipe reads its version from
+`project(QuickFAST VERSION ...)`, so CMake stays the single source of truth.
+
+### vcpkg port
+
+The root `vcpkg.json` is a manifest that consumes dependencies; it does not
+install QuickFAST. The port under `packaging/vcpkg/ports/quickfast-ng` does:
+
+```bash
+vcpkg install quickfast-ng \
+  --overlay-ports=/path/to/quickfast-ng/packaging/vcpkg/ports \
+  --overlay-triplets=/path/to/quickfast-ng/triplets \
+  --triplet x64-linux-static
+```
+
+Features: `pcap`, `spdlog`, `cares`, all on by default.
+
+A port pins the SHA512 of the release archive it downloads, and that archive
+contains the portfile, so the hash cannot exist inside the tag it describes. It
+stays at vcpkg's `0` bootstrap value until the tag is pushed, then:
+
+```bash
+scripts/vcpkg-port-sha512.sh v2.0.0 --write
+```
 
 ---
 
