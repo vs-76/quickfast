@@ -84,7 +84,10 @@ runtime, and hardens the decoder against malformed input.
 ### Changed
 
 - The repository moved to
-  [vs-76/quickfast-ng](https://github.com/vs-76/quickfast-ng).
+  [vs-76/quickfast-ng](https://github.com/vs-76/quickfast-ng). The CMake
+  summary line and the `-V` product banner now say *QuickFAST-ng*; the library
+  target, the `QuickFAST::` namespace and the installed headers keep their
+  names.
 - Unit tests were ported from Boost.Test to GoogleTest/GoogleMock; a
   fully-featured Release build runs 469 ctest cases covering codec, assembler,
   communication, logging and CLI paths.
