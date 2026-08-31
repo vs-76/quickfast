@@ -426,7 +426,7 @@ if(QUICKFAST_ENABLE_PVS_STUDIO)
   endif()
 endif()
 
-message(STATUS "QuickFAST-ng ${PROJECT_VERSION}: C++${CMAKE_CXX_STANDARD}, XercesC ${XercesC_VERSION} (no Boost)")
+message(STATUS "QuickFAST-ng ${PROJECT_VERSION}")
 if(BUILD_SHARED_LIBS)
   message(STATUS "Library type: SHARED")
 else()
