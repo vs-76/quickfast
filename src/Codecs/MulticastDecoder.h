@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -25,6 +26,30 @@ namespace QuickFAST{
     ///
     /// This class cannot handle messages split across packet boundararies.  These should neever appear in a
     /// multicast feed anyway because delivery of multicast packets is unreliable.
+    ///
+    /// This is a self-contained shortcut for the common multicast case. Use
+    /// QuickFAST::Application::DecoderConnection instead when the receiver,
+    /// header handling, or assembler needs to be configurable.
+    ///
+    /// @par Example
+    /// @code
+    /// QuickFAST::Examples::JsonMessageConsumer consumer(std::cout);
+    /// QuickFAST::Codecs::GenericMessageBuilder builder(consumer);
+    ///
+    /// QuickFAST::Codecs::MulticastDecoder decoder(
+    ///   registry,
+    ///   "224.1.2.133",   // multicast group
+    ///   "0.0.0.0",       // listen interface
+    ///   "0.0.0.0",       // bind address
+    ///   13014);          // port
+    ///
+    /// decoder.start(builder);          // returns immediately
+    /// decoder.run(2, false);           // two service threads, do not block here
+    /// // ... application work, until shutdown ...
+    /// decoder.stop();
+    /// decoder.joinThreads();
+    /// @endcode
+    ///
     /// @see MulticastReceiver
 
     class QuickFAST_Export MulticastDecoder
@@ -54,7 +79,7 @@ namespace QuickFAST{
       /// @param portNumber port number
       MulticastDecoder(
         TemplateRegistryPtr templateRegistry,
-        boost::asio::io_service & ioService,
+        asio::io_context & ioService,
         const std::string & multicastGroupIP,
         const std::string & listenAddressIP,
         const std::string & bindIP,
@@ -183,10 +208,8 @@ namespace QuickFAST{
       NoHeaderAnalyzer messageHeaderAnalyzer_;
       TemplateRegistryPtr templateRegistry_;
       Codecs::MessagePerPacketAssemblerPtr assembler_;
-      Messages::ValueMessageBuilder * builder_;
+      Messages::ValueMessageBuilder * builder_ = nullptr;
       size_t messageLimit_;
-      size_t byteCount_;
-      size_t messageCount_;
       bool strict_;
       std::ostream * verboseOut_;
     };

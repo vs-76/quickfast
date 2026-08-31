@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -17,9 +18,9 @@ namespace QuickFAST
   {
     class XMLTemplateParser;
     /// @brief A smart pointer to a XMLTemplateParser.
-    typedef boost::shared_ptr<XMLTemplateParser> XMLTemplateParserPtr;
+    typedef std::shared_ptr<XMLTemplateParser> XMLTemplateParserPtr;
     /// @brief A smart pointer to a const XMLTemplateParser.
-    typedef boost::shared_ptr<const XMLTemplateParser> XMLTemplateParserCPtr;
+    typedef std::shared_ptr<const XMLTemplateParser> XMLTemplateParserCPtr;
   }
 }
 #endif // XMLTEMPLATEPARSER_FWD_H

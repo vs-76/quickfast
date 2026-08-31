@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
@@ -99,14 +100,13 @@ Encoder::encodeGroup(
   // The presence map for the group will go into the current buffer
   // that will be the last thing to appear in that buffer
   DataDestination::BufferHandle pmapBuffer = destination.getBuffer();
-  DataDestination::BufferHandle bodyBuffer = pmapBuffer;
   if(presenceMapBits > 0)
   {
-    bodyBuffer = destination.startBuffer();
+    (void)destination.startBuffer();
   }
   encodeSegmentBody(destination, pmap, group, accessor);
   // remember the buffer we're presently working on
-  bodyBuffer = destination.getBuffer();
+  DataDestination::BufferHandle bodyBuffer = destination.getBuffer();
   if(presenceMapBits > 0)
   {
     destination.selectBuffer(pmapBuffer);
@@ -127,16 +127,16 @@ Encoder::encodeSegmentBody(
   const Codecs::SegmentBodyCPtr & segment,
   const Messages::MessageAccessor & accessor)
 {
+  // Match Decoder::decodeSegmentBody: take a reference into the segment's
+  // instruction vector instead of copying FieldInstructionCPtr (atomic
+  // refcount bump) once per field per message. Index is always < size().
   size_t instructionCount = segment->size();
   for( size_t nField = 0; nField < instructionCount; ++nField)
   {
     PROFILE_POINT("encode field");
-    Codecs::FieldInstructionCPtr instruction;
-    if(segment->getInstruction(nField, instruction))
-    {
-      destination.startField(instruction->getIdentity());
-      instruction->encode(destination, pmap, *this, accessor);
-      destination.endField(instruction->getIdentity());
-    }
+    const Codecs::FieldInstructionCPtr & instruction = segment->getInstruction(nField);
+    destination.startField(instruction->getIdentity());
+    instruction->encode(destination, pmap, *this, accessor);
+    destination.endField(instruction->getIdentity());
   }
 }

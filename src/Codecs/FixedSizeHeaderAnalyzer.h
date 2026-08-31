@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -54,7 +55,7 @@ namespace QuickFAST{
       // Implement HeaderAnalyzer
       virtual bool analyzeHeader(DataSource & source, size_t & blockSize, bool & skip);
       virtual bool supportsSequenceNumber()const;
-      virtual uint32 getSequenceNumber(const uchar * buffer) const;
+      virtual uint32 getSequenceNumber(const uchar * buffer, size_t size) const;
       virtual void reset();
     private:
       size_t prefixBytes_;

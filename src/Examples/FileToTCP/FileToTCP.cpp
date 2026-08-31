@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -6,11 +7,12 @@
 #include <Examples/ExamplesPch.h>
 #include "FileToTCP.h"
 
-#include <boost/asio.hpp>
+#include <asio.hpp>
+#include <Common/LexicalCast.h>
 
 using namespace QuickFAST;
 using namespace Examples;
-using boost::asio::ip::tcp;
+using asio::ip::tcp;
 
 FileToTCP::FileToTCP()
 : portNumber_(9876)
@@ -48,12 +50,12 @@ FileToTCP::parseSingleArg(int argc, char * argv[])
     }
     else if(opt == "-p" && argc > 1)
     {
-      portNumber_ = boost::lexical_cast<unsigned short>(argv[1]);
+      portNumber_ = QuickFAST::lexical_cast<unsigned short>(argv[1]);
       consumed = 2;
     }
     else if(opt == "-c" && argc > 1)
     {
-      sendCount_ = boost::lexical_cast<size_t>(argv[1]);
+      sendCount_ = QuickFAST::lexical_cast<size_t>(argv[1]);
       consumed = 2;
     }
     else if(opt == "-hack")
@@ -64,8 +66,15 @@ FileToTCP::parseSingleArg(int argc, char * argv[])
   }
   catch (std::exception & ex)
   {
-    std::cerr << ex.what() << " while interpreting " << opt << std::endl;
-    consumed = 0;
+    // Returning 0 here would make the parser announce "Unknown argument" for
+    // an option that exists and is spelled correctly.
+    std::cerr << opt;
+    if(argc > 1)
+    {
+      std::cerr << " \"" << argv[1] << "\"";
+    }
+    std::cerr << ": " << ex.what() << std::endl;
+    consumed = Application::CommandArgHandler::ARGUMENT_VALUE_ERROR;
   }
   return consumed;
 }
@@ -126,7 +135,7 @@ FileToTCP::run()
       {
         std::cout << "Listening" << std::endl;
       }
-      acceptor.accept(*stream.rdbuf());
+      acceptor.accept(stream.socket());
       if(verbose_)
       {
         std::cout << "Accepting" << std::endl;

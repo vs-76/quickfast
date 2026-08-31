@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -16,9 +17,9 @@ namespace QuickFAST{
     class QuickFAST_Export FieldSequence : public Field{
       /// @brief Construct a field given a sequence for it to contain
       FieldSequence(Messages::SequenceCPtr sequence);
+    public:
       /// @brief a typical virtual destructor.
       virtual ~FieldSequence();
-    public:
       /// @brief Construct a field given a sequence for it to contain
       /// @param sequence the entries for this FieldSequence
       /// @returns a constant pointer to the immutable field

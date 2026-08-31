@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010, 2011, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -22,8 +23,83 @@ namespace QuickFAST
     class Receiver
     {
     public:
+      /// @brief A counter written by the receiver and read by anyone.
+      ///
+      /// Most of the counters were incremented under bufferMutex_, but the
+      /// public getters read them with no lock and two of them
+      /// (packetsProcessed_, bytesProcessed_) were incremented outside the
+      /// mutex as well. Aligned size_t reads do not tear on the hardware this
+      /// runs on, so the practical damage was limited to stale statistics --
+      /// but it is still formally a race, and it is the kind that fills a
+      /// sanitizer report with noise that hides the findings worth reading.
+      ///
+      /// Relaxed ordering throughout: these counters order nothing and
+      /// synchronise nothing, so a relaxed load and store compile to what a
+      /// plain size_t compiled to. The increments become locked instructions,
+      /// which is the whole cost of the change.
+      ///
+      /// @par Example
+      /// @code
+      /// Statistic packets;
+      /// ++packets;
+      /// size_t howMany = packets;
+      /// @endcode
+      class Statistic
+      {
+      public:
+        /// @brief Construct with an initial value.
+        /// @param value is the starting count.
+        Statistic(size_t value = 0)
+          : value_(value)
+        {
+        }
+
+        /// @brief Read the counter.
+        /// @returns the current count.
+        operator size_t() const
+        {
+          return value_.load(std::memory_order_relaxed);
+        }
+
+        /// @brief Set the counter.
+        /// @param value is the new count.
+        /// @returns this counter.
+        Statistic & operator=(size_t value)
+        {
+          value_.store(value, std::memory_order_relaxed);
+          return *this;
+        }
+
+        /// @brief Add to the counter.
+        /// @param value is the amount to add.
+        /// @returns this counter.
+        Statistic & operator+=(size_t value)
+        {
+          value_.fetch_add(value, std::memory_order_relaxed);
+          return *this;
+        }
+
+        /// @brief Pre-increment.
+        /// @returns the new count.
+        size_t operator++()
+        {
+          return value_.fetch_add(1, std::memory_order_relaxed) + 1;
+        }
+
+        /// @brief Post-increment.
+        /// @returns the count before the increment.
+        size_t operator++(int)
+        {
+          return value_.fetch_add(1, std::memory_order_relaxed);
+        }
+
+      private:
+        std::atomic<size_t> value_;
+      };
+
       Receiver()
-        : bufferSize_(1500)
+        : assembler_(0)
+        , bufferSize_(1500)
         , paused_(false)
         , stopping_(false)
         , readsInProgress_(0)
@@ -63,7 +139,7 @@ namespace QuickFAST
           assembler_->receiverStarted(*this);
 
           // Allocate initial set of buffers
-          boost::mutex::scoped_lock lock(bufferMutex_);
+          std::unique_lock<std::mutex> lock(bufferMutex_);
 
           for(size_t nBuffer = 0; nBuffer < bufferCount; ++nBuffer)
           {
@@ -79,12 +155,34 @@ namespace QuickFAST
       }
 
 
+      /// @brief The most bytes the buffer pool can hold at one time.
+      ///
+      /// needBytes cannot ever report more than this many bytes available, so
+      /// an assembler asked to wait for a larger block is waiting for
+      /// something that cannot happen.
+      ///
+      /// The pool is measured buffer by buffer rather than as count times
+      /// size, because a buffer wrapping external memory reports a capacity of
+      /// zero and carries its extent in used() instead.
+      ///
+      /// @returns the total capacity in bytes, or zero before start().
+      size_t totalBufferCapacity() const
+      {
+        std::unique_lock<std::mutex> lock(bufferMutex_);
+        size_t total = 0;
+        for(const BufferLifetime & buffer : bufferLifetimes_)
+        {
+          total += std::max(buffer->capacity(), buffer->used());
+        }
+        return total;
+      }
+
       /// @brief add additional buffers on-the-fly
       /// @param bufferCount is how many buffers to add
       void addBuffers(
         size_t bufferCount = 1)
       {
-        boost::mutex::scoped_lock lock(bufferMutex_);
+        std::unique_lock<std::mutex> lock(bufferMutex_);
 
         for(size_t nBuffer = 0; nBuffer < bufferCount; ++nBuffer)
         {
@@ -112,6 +210,32 @@ namespace QuickFAST
         stopping_ = true;
       }
 
+      /// @brief Has a stop been requested?
+      /// @returns true once stop() has been called.
+      bool stopping() const
+      {
+        return stopping_;
+      }
+
+      /// @brief Report that the source has no more data to offer.
+      ///
+      /// Called when a read fails, which for a synchronous source means end
+      /// of file. The default stops the receiver outright, which is right for
+      /// an asynchronous source: a failed read there is a broken connection,
+      /// not an orderly end, and nothing is waiting in the queue. A
+      /// synchronous receiver overrides this so the queue can drain first.
+      virtual void endOfInput()
+      {
+        stop();
+      }
+
+      /// @brief Has the source run out of data?
+      /// @returns true once a read has failed.
+      bool inputComplete() const
+      {
+        return inputComplete_;
+      }
+
       /// @brief Ignore incoming packets until resume()
       virtual void pause()
       {
@@ -128,8 +252,8 @@ namespace QuickFAST
       ///
       /// Process data from an external buffer;
       virtual void receiveBuffer(
-        const unsigned char * buffer,
-        size_t used
+        [[maybe_unused]] const unsigned char * buffer,
+        [[maybe_unused]] size_t used
         )
       {
         throw std::logic_error("Unexpected call to Communications::Receiver::receiveBuffer()");
@@ -192,11 +316,11 @@ namespace QuickFAST
         {
           more = wait;
           {
-            boost::mutex::scoped_lock lock(bufferMutex_);
+            std::unique_lock<std::mutex> lock(bufferMutex_);
             // add any idle buffers to pool
             idleBufferPool_.push(idleBuffers_);
             startReceive(lock);
-            queue_.refresh(lock, wait && !stopping_);
+            queue_.refresh(lock, wait && !stopping_ && !inputComplete_);
           }
           next = queue_.serviceNext();
         }
@@ -229,11 +353,12 @@ namespace QuickFAST
           }
           if(available < needed && wait)
           {
-            boost::mutex::scoped_lock lock(bufferMutex_);
+            std::unique_lock<std::mutex> lock(bufferMutex_);
             // add any idle buffers to pool
             idleBufferPool_.push(idleBuffers_);
             startReceive(lock);
-            queue_.refresh(lock, wait);
+            // wait is already true in this branch (guard above).
+            queue_.refresh(lock, !inputComplete_);
             available = 0;
           }
           else
@@ -263,7 +388,7 @@ namespace QuickFAST
       /// @brief Enter the startReceive method without a lock
       void startReceiveUnlocked()
       {
-        boost::mutex::scoped_lock lock(bufferMutex_);
+        std::unique_lock<std::mutex> lock(bufferMutex_);
         startReceive(lock);
       }
 
@@ -275,7 +400,7 @@ namespace QuickFAST
 
       /// @brief Receive a new buffer full if possible
       /// scoped_lock parameter means a mutex must be locked
-      void startReceive(boost::mutex::scoped_lock& lock)
+      void startReceive(std::unique_lock<std::mutex>& lock)
       {
         bool more = canStartRead();
         while( more && !stopping_)
@@ -293,7 +418,8 @@ namespace QuickFAST
             {
               idleBufferPool_.push(buffer);
               --readsInProgress_;
-              stop();
+              inputComplete_ = true;
+              endOfInput();
             }
           }
           else
@@ -332,7 +458,7 @@ namespace QuickFAST
       /// @returns true if the buffer is, or will be filled.
       virtual bool fillBuffer(
         LinkedBuffer * buffer,
-        boost::mutex::scoped_lock& lock) = 0;
+        std::unique_lock<std::mutex>& lock) = 0;
 
 
       /////////////
@@ -440,7 +566,7 @@ namespace QuickFAST
           {
             stop();
           }
-          boost::mutex::scoped_lock lock(bufferMutex_);
+          std::unique_lock<std::mutex> lock(bufferMutex_);
           // add idle buffers to pool before trying to start a read.
           //if(!idleBufferPool_.isEmpty())
           //{
@@ -462,12 +588,12 @@ namespace QuickFAST
 
     protected:
       /// The assembler to receive full buffers
-      Assembler * assembler_;
+      Assembler * assembler_ = nullptr;
       /// Manage the buffers' lifetimes
       BufferLifetimeManager bufferLifetimes_;
 
       /// Protect access to the SingleServerBufferQueue
-      boost::mutex bufferMutex_;
+      mutable std::mutex bufferMutex_;
 
       /// @brief Accept buffers from multiple threads and deliver them to a single thread.
       ///
@@ -488,10 +614,20 @@ namespace QuickFAST
       size_t bufferSize_;
 
       /// @brief temporarily ignore incoming packets
-      bool paused_;
+      // stop(), pause() and resume() are public, take no lock, and are called
+      // from whatever thread drives shutdown; the flags are read on the
+      // service thread and, for stopping_, on asio completion threads. As
+      // plain bools that is a data race, and the familiar consequence is that
+      // nothing tells the compiler the value can change under a spin: the
+      // load may be hoisted out of the loop and stop() never observed, so the
+      // receiver does not shut down and the multicast socket is never closed.
+      std::atomic<bool> paused_;
 
       /// @brief True when we're trying to shut down
-      bool stopping_;
+      std::atomic<bool> stopping_;
+      /// Set when a read fails; distinct from stopping_ because a drained
+      /// queue and an abandoned one are not the same thing.
+      std::atomic<bool> inputComplete_{false};
 
       /// @brief Number of reads in progress (usually zero or one)
       unsigned int readsInProgress_;
@@ -499,27 +635,27 @@ namespace QuickFAST
       /////////////
       // Statistics
       /// No buffers avaliable when we could have started a read
-      size_t noBufferAvailable_;
+      Statistic noBufferAvailable_;
       /// Packets accepted (includes error & empty)
-      size_t packetsReceived_;
+      Statistic packetsReceived_;
       /// Bytes in those packets
-      size_t bytesReceived_;
+      Statistic bytesReceived_;
       /// Packets received with errors (usually disconnect or EOF0
-      size_t errorPackets_;
+      Statistic errorPackets_;
       /// Packets received in error due to a linux bug.
-      size_t pausedPackets_;
+      Statistic pausedPackets_;
       /// Packets containing no data (usually during shutdown)
-      size_t emptyPackets_;
+      Statistic emptyPackets_;
       /// Packets containing valid data: queued to be processed
-      size_t packetsQueued_;
+      Statistic packetsQueued_;
       /// Batches of packets collected by queue_
-      size_t batchesProcessed_;
+      Statistic batchesProcessed_;
       /// Individual packets in the batches
-      size_t packetsProcessed_;
+      Statistic packetsProcessed_;
       /// Bytes in the processed packets.
-      size_t bytesProcessed_;
+      Statistic bytesProcessed_;
       /// Largest single packet received
-      size_t largestPacket_;
+      Statistic largestPacket_;
     };
   }
 }

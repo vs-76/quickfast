@@ -1,0 +1,484 @@
+# Copyright (c) 2026, QuickFAST contributors.
+# All rights reserved.
+# See the file license.txt for licensing information.
+
+cmake_minimum_required(VERSION 3.16)
+project(QuickFAST VERSION 2.0.0 LANGUAGES CXX)
+
+# QuickFAST requires ISO C++20 or later. Honor a higher value from the CMake
+# cache (e.g. -DCMAKE_CXX_STANDARD=23); raise package-manager defaults below 20.
+get_property(_qf_cxx_std_cache CACHE CMAKE_CXX_STANDARD PROPERTY VALUE)
+if(_qf_cxx_std_cache MATCHES "^[0-9]+$" AND _qf_cxx_std_cache GREATER_EQUAL 20)
+  set(CMAKE_CXX_STANDARD "${_qf_cxx_std_cache}")
+elseif(NOT CMAKE_CXX_STANDARD MATCHES "^[0-9]+$" OR CMAKE_CXX_STANDARD LESS 20)
+  set(CMAKE_CXX_STANDARD 20)
+endif()
+if(CMAKE_CXX_STANDARD LESS 20)
+  message(FATAL_ERROR
+    "QuickFAST requires C++20 or later (CMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD})")
+endif()
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+option(QUICKFAST_BUILD_TESTS "Build QuickFAST unit tests" ON)
+option(QUICKFAST_BUILD_EXAMPLES "Build QuickFAST example applications" ON)
+option(QUICKFAST_BUILD_DOTNET
+  "Build C++/CLI QuickFASTDotNet (.NET Framework; MSVC Windows only)"
+  OFF)
+option(QUICKFAST_BUILD_DOTNET_EXAMPLES
+  "Build C# DotNet example apps (requires QUICKFAST_BUILD_DOTNET)"
+  OFF)
+option(QUICKFAST_USE_LIBCXX
+  "Use LLVM libc++ instead of the default C++ standard library (Clang only)"
+  OFF)
+option(QUICKFAST_ENABLE_COVERAGE
+  "Instrument QuickFAST and tests for gcov coverage (GCC; use with gcovr)"
+  OFF)
+option(QUICKFAST_SANITIZE_ADDRESS "Build with AddressSanitizer (-fsanitize=address)" OFF)
+option(QUICKFAST_SANITIZE_UNDEFINED "Build with UndefinedBehaviorSanitizer (-fsanitize=undefined)" OFF)
+option(QUICKFAST_SANITIZE_THREAD "Build with ThreadSanitizer (-fsanitize=thread)" OFF)
+option(QUICKFAST_USE_SPDLOG
+  "Build SpdlogLogger + managed_file_sink_mt (spdlog + zlib)"
+  ON)
+option(QUICKFAST_USE_LIBPCAP
+  "Read capture files via libpcap (adds pcapng and nanosecond pcap support)"
+  ON)
+option(QUICKFAST_USE_CARES
+  "Resolve hostnames with c-ares instead of Asio getaddrinfo (static-link friendly)"
+  ON)
+# BUILD_SHARED_LIBS is the standard CMake switch. Default OFF (static libQuickFAST.a).
+# Pass -DBUILD_SHARED_LIBS=ON for a shared library.
+if(NOT DEFINED BUILD_SHARED_LIBS)
+  set(BUILD_SHARED_LIBS OFF)
+endif()
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+# The test-only sink hook is compiled into the shared library, so a shipping build
+# (QUICKFAST_BUILD_TESTS=OFF) must not carry it.
+option(QUICKFAST_ENABLE_TEST_HOOKS
+  "Expose managed_file_sink_mt / PCapReader test-only hooks (default: follow QUICKFAST_BUILD_TESTS)"
+  ${QUICKFAST_BUILD_TESTS})
+option(QUICKFAST_BUILD_FUZZERS
+  "Build libFuzzer harnesses (requires Clang; enables test hooks)"
+  OFF)
+
+if(QUICKFAST_ENABLE_COVERAGE)
+  if(NOT QUICKFAST_BUILD_TESTS)
+    message(FATAL_ERROR
+      "QUICKFAST_ENABLE_COVERAGE=ON requires QUICKFAST_BUILD_TESTS=ON")
+  endif()
+  if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    message(STATUS
+      "QUICKFAST_ENABLE_COVERAGE=ON with CMAKE_BUILD_TYPE=Release; "
+      "prefer Debug for accurate coverage maps")
+  endif()
+endif()
+
+if(QUICKFAST_SANITIZE_THREAD AND (QUICKFAST_SANITIZE_ADDRESS OR QUICKFAST_SANITIZE_UNDEFINED))
+  message(FATAL_ERROR
+    "QUICKFAST_SANITIZE_THREAD cannot be combined with AddressSanitizer or "
+    "UndefinedBehaviorSanitizer")
+endif()
+
+set(QUICKFAST_SANITIZE_FLAGS "")
+if(QUICKFAST_SANITIZE_ADDRESS)
+  list(APPEND QUICKFAST_SANITIZE_FLAGS -fsanitize=address -fno-omit-frame-pointer)
+endif()
+if(QUICKFAST_SANITIZE_UNDEFINED)
+  list(APPEND QUICKFAST_SANITIZE_FLAGS -fsanitize=undefined -fno-omit-frame-pointer)
+endif()
+if(QUICKFAST_SANITIZE_THREAD)
+  list(APPEND QUICKFAST_SANITIZE_FLAGS -fsanitize=thread -fno-omit-frame-pointer)
+  # libstdc++ (esp. GCC 16) diagnoses atomic_thread_fence under TSan; do not
+  # promote that into a hard -Werror failure for sanitizer builds.
+  list(APPEND QUICKFAST_SANITIZE_FLAGS -Wno-error=tsan)
+endif()
+if(QUICKFAST_SANITIZE_FLAGS)
+  add_compile_options(${QUICKFAST_SANITIZE_FLAGS})
+  add_link_options(${QUICKFAST_SANITIZE_FLAGS})
+endif()
+if(QUICKFAST_USE_LIBCXX)
+  if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
+          OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"))
+    message(FATAL_ERROR
+      "QUICKFAST_USE_LIBCXX=ON requires Clang or AppleClang "
+      "(CMAKE_CXX_COMPILER_ID=${CMAKE_CXX_COMPILER_ID})")
+  endif()
+  # Propagate to all CXX targets created after this point (including packaged
+  # deps that add their own targets). Prefer CMAKE_CXX_FLAGS over
+  # CMAKE_*_LINKER_FLAGS so C try-compiles (e.g. GoogleTest) are not passed -stdlib=.
+  if(NOT CMAKE_CXX_FLAGS MATCHES "(^|[ \t])-stdlib=libc\\+\\+([ \t]|$)")
+    string(APPEND CMAKE_CXX_FLAGS " -stdlib=libc++")
+  endif()
+endif()
+
+# Third-party libs must come from Conan 2 or vcpkg — never from system prefixes.
+include(QuickFASTPackageManager)
+find_package(Threads REQUIRED)
+quickfast_disable_system_dependency_search()
+include(QuickFASTXerces)
+include(QuickFASTAsio)
+if(QUICKFAST_USE_SPDLOG)
+  include(QuickFASTSpdlog)
+endif()
+
+# Strict warnings for first-party code (deps use SYSTEM includes / silenced below).
+# GCC/Clang CI uses -Werror -Wall -pedantic; MSVC maps to /W4 /WX.
+if(MSVC)
+  set(QUICKFAST_WARNING_FLAGS /W4 /WX)
+else()
+  set(QUICKFAST_WARNING_FLAGS -Wall -Werror -pedantic)
+endif()
+
+
+set(QUICKFAST_LIB_SOURCES
+  src/Application/CommandArgParser.cpp
+  src/Application/DecoderConnection.cpp
+  src/Application/DNDecoderConnectionImpl.cpp
+  src/Codecs/BasePacketAssembler.cpp
+  src/Codecs/Context.cpp
+  src/Codecs/DataSource.cpp
+  src/Codecs/DataSourceBuffer.cpp
+  src/Codecs/DataSourceBufferedStream.cpp
+  src/Codecs/DataSourceStream.cpp
+  src/Codecs/DataSourceString.cpp
+  src/Codecs/Decoder.cpp
+  src/Codecs/DictionaryIndexer.cpp
+  src/Codecs/Encoder.cpp
+  src/Codecs/FastEncodedHeaderAnalyzer.cpp
+  src/Codecs/FieldInstruction.cpp
+  src/Codecs/FieldInstructionAscii.cpp
+  src/Codecs/FieldInstructionBlob.cpp
+  src/Codecs/FieldInstructionByteVector.cpp
+  src/Codecs/FieldInstructionDecimal.cpp
+  src/Codecs/FieldInstructionGroup.cpp
+  src/Codecs/FieldInstructionSequence.cpp
+  src/Codecs/FieldInstructionTemplateRef.cpp
+  src/Codecs/FieldInstructionUtf8.cpp
+  src/Codecs/FieldOp.cpp
+  src/Codecs/FieldOpConstant.cpp
+  src/Codecs/FieldOpCopy.cpp
+  src/Codecs/FieldOpDefault.cpp
+  src/Codecs/FieldOpDelta.cpp
+  src/Codecs/FieldOpIncrement.cpp
+  src/Codecs/FieldOpTail.cpp
+  src/Codecs/FixedSizeHeaderAnalyzer.cpp
+  src/Codecs/GenericMessageBuilder.cpp
+  src/Codecs/MessagePerPacketAssembler.cpp
+  src/Codecs/MulticastDecoder.cpp
+  src/Codecs/PacketSequencingAssembler.cpp
+  src/Codecs/PresenceMap.cpp
+  src/Codecs/SchemaElement.cpp
+  src/Codecs/SegmentBody.cpp
+  src/Codecs/SingleMessageConsumer.cpp
+  src/Codecs/StreamingAssembler.cpp
+  src/Codecs/Template.cpp
+  src/Codecs/TemplateRegistry.cpp
+  src/Codecs/XMLTemplateParser.cpp
+  src/Common/BitMap.cpp
+  src/Common/Decimal.cpp
+  src/Common/Profiler.cpp
+  src/Common/QuickFASTPch.cpp
+  src/Common/Types.cpp
+  src/Common/WorkingBuffer.cpp
+  src/Communication/AsioService.cpp
+  src/Communication/AsynchFileSender.cpp
+  src/Communication/AsynchSender.cpp
+  src/Communication/FileSender.cpp
+  src/Communication/HostResolver.cpp
+  src/Communication/MulticastReceiverHandle.cpp
+  src/Communication/PCapReader.cpp
+  src/Messages/Field.cpp
+  src/Messages/FieldAscii.cpp
+  src/Messages/FieldByteVector.cpp
+  src/Messages/FieldDecimal.cpp
+  src/Messages/FieldGroup.cpp
+  src/Messages/FieldIdentity.cpp
+  src/Messages/FieldInt16.cpp
+  src/Messages/FieldInt32.cpp
+  src/Messages/FieldInt64.cpp
+  src/Messages/FieldInt8.cpp
+  src/Messages/FieldSequence.cpp
+  src/Messages/FieldSet.cpp
+  src/Messages/FieldString.cpp
+  src/Messages/FieldUInt16.cpp
+  src/Messages/FieldUInt32.cpp
+  src/Messages/FieldUInt64.cpp
+  src/Messages/FieldUInt8.cpp
+  src/Messages/FieldUtf8.cpp
+  src/Messages/JsonWriter.cpp
+  src/Messages/Message.cpp
+  src/Messages/MessageAccessor.cpp
+  src/Messages/MessageBuilder.cpp
+  src/Messages/MessageFormatter.cpp
+  src/Messages/MessageToJson.cpp
+)
+
+if(WIN32 AND BUILD_SHARED_LIBS)
+  list(APPEND QUICKFAST_LIB_SOURCES src/Common/dllmain.cpp)
+endif()
+
+if(QUICKFAST_USE_SPDLOG)
+  list(APPEND QUICKFAST_LIB_SOURCES
+    src/Common/SpdlogLogger.cpp
+    src/Common/ManagedFileSink.cpp)
+endif()
+
+if(BUILD_SHARED_LIBS)
+  add_library(QuickFAST SHARED ${QUICKFAST_LIB_SOURCES})
+else()
+  add_library(QuickFAST STATIC ${QUICKFAST_LIB_SOURCES})
+endif()
+add_library(QuickFAST::QuickFAST ALIAS QuickFAST)
+target_compile_features(QuickFAST PUBLIC cxx_std_20)
+
+if(BUILD_SHARED_LIBS)
+  target_compile_definitions(QuickFAST
+    PRIVATE QUICKFAST_BUILD_DLL
+    PUBLIC QUICKFAST_HAS_DLL=1
+  )
+else()
+  target_compile_definitions(QuickFAST PUBLIC QUICKFAST_HAS_DLL=0)
+endif()
+
+target_include_directories(QuickFAST
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(QuickFAST
+  PUBLIC
+    ${QUICKFAST_ASIO_TARGET}
+    Threads::Threads
+    XercesC::XercesC
+)
+# Ensure standalone Asio semantics even when the package only set ASIO_STANDALONE.
+target_compile_definitions(QuickFAST PUBLIC ASIO_STANDALONE ASIO_NO_DEPRECATED)
+
+if(QUICKFAST_USE_LIBPCAP)
+  include(QuickFASTPcap)
+  target_link_libraries(QuickFAST PRIVATE PCAP::PCAP)
+  target_compile_definitions(QuickFAST PUBLIC QUICKFAST_HAVE_LIBPCAP=1)
+endif()
+
+if(QUICKFAST_USE_CARES)
+  include(QuickFASTCAres)
+  target_link_libraries(QuickFAST PRIVATE ${QUICKFAST_CARES_TARGET})
+  target_compile_definitions(QuickFAST PUBLIC QUICKFAST_HAVE_CARES=1)
+endif()
+
+if(QUICKFAST_USE_SPDLOG)
+  target_compile_definitions(QuickFAST PUBLIC QUICKFAST_HAS_SPDLOG=1)
+  target_link_libraries(QuickFAST PUBLIC spdlog::spdlog ZLIB::ZLIB)
+endif()
+
+# Test/fuzz hooks live in the shared library (ManagedFileSink, PCapReader).
+# Fuzzers need PCapReader::dissectFrameForTest even when tests are off.
+if(QUICKFAST_ENABLE_TEST_HOOKS OR QUICKFAST_BUILD_FUZZERS)
+  target_compile_definitions(QuickFAST PUBLIC QUICKFAST_ENABLE_TEST_HOOKS=1)
+endif()
+
+target_compile_options(QuickFAST PRIVATE ${QUICKFAST_WARNING_FLAGS})
+if(QUICKFAST_ENABLE_COVERAGE)
+  target_compile_options(QuickFAST PRIVATE --coverage)
+  target_link_options(QuickFAST PRIVATE --coverage)
+endif()
+
+set_target_properties(QuickFAST PROPERTIES
+  OUTPUT_NAME QuickFAST
+  VERSION ${PROJECT_VERSION}
+  SOVERSION 2
+  LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+  RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+  ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+)
+
+if(QUICKFAST_BUILD_TESTS)
+  include(QuickFASTGTest)
+
+  enable_testing()
+  include(GoogleTest)
+
+  file(GLOB QUICKFAST_TEST_SOURCES CONFIGURE_DEPENDS tests/*.cpp)
+  list(FILTER QUICKFAST_TEST_SOURCES EXCLUDE REGEX ".*/main\\.cpp$")
+  if(NOT QUICKFAST_USE_SPDLOG)
+    list(FILTER QUICKFAST_TEST_SOURCES EXCLUDE REGEX ".*/testSpdlogLogger\\.cpp$")
+    list(FILTER QUICKFAST_TEST_SOURCES EXCLUDE REGEX ".*/testManagedFileSink\\.cpp$")
+  endif()
+
+  add_executable(QuickFASTTest ${QUICKFAST_TEST_SOURCES})
+  target_include_directories(QuickFASTTest PRIVATE ${CMAKE_SOURCE_DIR}/tests)
+  target_link_libraries(QuickFASTTest
+    PRIVATE
+      QuickFAST
+      GTest::gtest_main
+      GTest::gmock
+  )
+  target_compile_options(QuickFASTTest PRIVATE ${QUICKFAST_WARNING_FLAGS})
+  if(QUICKFAST_ENABLE_COVERAGE)
+    target_compile_options(QuickFASTTest PRIVATE --coverage)
+    target_link_options(QuickFASTTest PRIVATE --coverage)
+  endif()
+  set_target_properties(QuickFASTTest PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+  )
+
+  gtest_discover_tests(QuickFASTTest
+    PROPERTIES ENVIRONMENT "QUICKFAST_ROOT=${CMAKE_SOURCE_DIR}"
+    DISCOVERY_MODE PRE_TEST
+  )
+
+  if(QUICKFAST_ENABLE_COVERAGE)
+    find_program(QUICKFAST_GCOVR NAMES gcovr)
+    if(QUICKFAST_GCOVR)
+      include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/Coverage.cmake")
+    else()
+      message(STATUS
+        "Coverage: gcovr not found; instrumentation enabled but target "
+        "'coverage' not created (install gcovr)")
+    endif()
+  endif()
+endif()
+
+if(QUICKFAST_BUILD_EXAMPLES)
+  set(QUICKFAST_EXAMPLE_COMMON
+    src/Examples/Examples/ConsoleLock.cpp
+    src/Examples/Examples/ExamplesPch.cpp
+    src/Examples/Examples/JsonMessageConsumer.cpp
+    src/Examples/Examples/MessageInterpreter.cpp
+    src/Examples/Examples/MessagePerformance.cpp
+    src/Examples/Examples/ValueToFix.cpp
+  )
+
+  function(quickfast_add_example name)
+    add_executable(${name} ${ARGN} ${QUICKFAST_EXAMPLE_COMMON})
+    target_include_directories(${name} PRIVATE src/Examples)
+    target_link_libraries(${name} PRIVATE QuickFAST)
+    target_compile_options(${name} PRIVATE ${QUICKFAST_WARNING_FLAGS})
+    set_target_properties(${name} PROPERTIES
+      RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    )
+  endfunction()
+
+  quickfast_add_example(InterpretApplication
+    src/Examples/InterpretApplication/InterpretApplication.cpp
+    src/Examples/InterpretApplication/main.cpp)
+
+  quickfast_add_example(TutorialApplication
+    src/Examples/TutorialApplication/TutorialApplication.cpp
+    src/Examples/TutorialApplication/main.cpp)
+
+  quickfast_add_example(PerformanceTest
+    src/Examples/PerformanceTest/PerformanceTest.cpp
+    src/Examples/PerformanceTest/MessageCounter.cpp
+    src/Examples/PerformanceTest/NullMessage.cpp
+    src/Examples/PerformanceTest/main.cpp)
+
+  quickfast_add_example(FileToTCP
+    src/Examples/FileToTCP/FileToTCP.cpp
+    src/Examples/FileToTCP/main.cpp)
+
+  quickfast_add_example(FileToMulticast
+    src/Examples/FileToMulticast/FileToMulticast.cpp
+    src/Examples/FileToMulticast/main.cpp)
+
+  quickfast_add_example(PCapToMulticast
+    src/Examples/PCapToMulticast/PCapToMulticast.cpp
+    src/Examples/PCapToMulticast/main.cpp)
+
+  # Lean microbench (no Examples common objects). Manual run only — not ctest.
+  add_executable(BufferQueueBench src/Examples/BufferQueueBench/main.cpp)
+  target_link_libraries(BufferQueueBench PRIVATE QuickFAST)
+  target_compile_options(BufferQueueBench PRIVATE ${QUICKFAST_WARNING_FLAGS})
+  set_target_properties(BufferQueueBench PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+  )
+endif()
+
+# Optional PVS-Studio static analysis target (created only when the tools exist).
+option(QUICKFAST_ENABLE_PVS_STUDIO
+  "Create a pvs-studio CMake target when pvs-studio-analyzer is available"
+  ON)
+
+if(QUICKFAST_ENABLE_PVS_STUDIO)
+  find_program(QUICKFAST_PVS_STUDIO_ANALYZER NAMES pvs-studio-analyzer)
+  find_program(QUICKFAST_PVS_STUDIO_CONVERTER NAMES plog-converter)
+  if(QUICKFAST_PVS_STUDIO_ANALYZER AND QUICKFAST_PVS_STUDIO_CONVERTER)
+    include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/PVS-Studio.cmake")
+    pvs_studio_add_target(
+      TARGET pvs-studio
+      ANALYZE QuickFAST
+      MODE GA:1,2
+      OUTPUT
+      LOG "${CMAKE_BINARY_DIR}/pvs-studio.log"
+      FORMAT errorfile
+      BIN "${QUICKFAST_PVS_STUDIO_ANALYZER}"
+      CONVERTER "${QUICKFAST_PVS_STUDIO_CONVERTER}"
+      ARGS
+        -e "${CMAKE_BINARY_DIR}/_deps"
+        -e "${CMAKE_CURRENT_SOURCE_DIR}/src/DotNet"
+    )
+    message(STATUS "PVS-Studio: target 'pvs-studio' -> ${QUICKFAST_PVS_STUDIO_ANALYZER}")
+  else()
+    message(STATUS "PVS-Studio: analyzer not found; target 'pvs-studio' not created")
+  endif()
+endif()
+
+message(STATUS "QuickFAST-ng ${PROJECT_VERSION}")
+if(BUILD_SHARED_LIBS)
+  message(STATUS "Library type: SHARED")
+else()
+  message(STATUS "Library type: STATIC")
+endif()
+if(QUICKFAST_USE_LIBCXX)
+  message(STATUS "C++ standard library: libc++ (-stdlib=libc++)")
+else()
+  message(STATUS "C++ standard library: default (set -DQUICKFAST_USE_LIBCXX=ON for libc++ with Clang)")
+endif()
+if(QUICKFAST_ENABLE_COVERAGE)
+  message(STATUS "Coverage: instrumentation ON (--coverage on QuickFAST + QuickFASTTest)")
+endif()
+if(QUICKFAST_SANITIZE_FLAGS)
+  message(STATUS "Sanitizers: ${QUICKFAST_SANITIZE_FLAGS}")
+endif()
+if(QUICKFAST_USE_SPDLOG)
+  message(STATUS "spdlog: SpdlogLogger adapter enabled (QUICKFAST_HAS_SPDLOG)")
+else()
+  message(STATUS "spdlog: OFF (default is ON; pass -DQUICKFAST_USE_SPDLOG=ON to re-enable)")
+endif()
+if(QUICKFAST_USE_LIBPCAP)
+  message(STATUS "libpcap: ${PCAP_LIBRARY} (pcap and pcapng capture files)")
+else()
+  message(STATUS
+    "libpcap: OFF -- PCapReader will refuse to open capture files "
+    "(set -DQUICKFAST_USE_LIBPCAP=ON)")
+endif()
+if(QUICKFAST_USE_CARES)
+  message(STATUS "c-ares: hostname resolve via c-ares (QUICKFAST_HAVE_CARES)")
+else()
+  message(STATUS
+    "c-ares: OFF -- HostResolver uses Asio getaddrinfo "
+    "(default is ON; pass -DQUICKFAST_USE_CARES=ON to re-enable)")
+endif()
+
+if(QUICKFAST_BUILD_DOTNET)
+  if(NOT WIN32 OR NOT MSVC OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    message(FATAL_ERROR
+      "QUICKFAST_BUILD_DOTNET requires MSVC cl.exe on Windows "
+      "(not clang-cl); C++/CLI /clr is unavailable otherwise")
+  endif()
+  add_subdirectory(src/DotNet)
+  message(STATUS "DotNet: QuickFASTDotNet C++/CLI (/clr, .NET Framework)")
+  if(QUICKFAST_BUILD_DOTNET_EXAMPLES)
+    message(STATUS "DotNet examples: InterpretFASTDotNet, PerformanceTestDotNet")
+  endif()
+elseif(QUICKFAST_BUILD_DOTNET_EXAMPLES)
+  message(FATAL_ERROR
+    "QUICKFAST_BUILD_DOTNET_EXAMPLES=ON requires QUICKFAST_BUILD_DOTNET=ON")
+endif()
+
+if(QUICKFAST_BUILD_FUZZERS)
+  add_subdirectory(tests/fuzz)
+endif()

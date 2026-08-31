@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -17,6 +18,14 @@ namespace QuickFAST
     class QuickFAST_Export CommandArgHandler
     {
     public:
+      /// @brief Recognized the option, but rejected its value.
+      ///
+      /// Distinct from returning 0, which means the option itself is unknown.
+      /// A handler that conflates the two makes the parser announce that a
+      /// perfectly valid option does not exist. The handler is expected to
+      /// have reported the specific problem before returning this.
+      static const int ARGUMENT_VALUE_ERROR = -1;
+
       /// @brief Parse a single argument from the command line.
       ///
       /// Each call should consume one logical argument.  You will be called again
@@ -25,7 +34,9 @@ namespace QuickFAST
       /// [-f output] and return 2.  Do NOT go looking for the -v.
       /// @param argc the count of remaining, unparsed arguments
       /// @param argv the remaining, unparsed arguments from the command line
-      /// @return the number of arguments consumed. 0 means argv[0] was not recognized.
+      /// @return the number of arguments consumed. 0 means argv[0] was not
+      ///         recognized; ARGUMENT_VALUE_ERROR means it was recognized but
+      ///         its value was not, and has already been reported.
       virtual int parseSingleArg(int argc, char * argv[]) = 0;
 
       /// @brief Report command line arguments recognized by this handler.

@@ -30,9 +30,11 @@ namespace QuickFAST
       /// @brief Construct the field from am int8 value
       /// @param value the value to be stored in the field
       /// @returns a constant pointer to the immutable field
+      /// @note Every int8 value returns a shared instance; see Field.
       static FieldCPtr create(int8 value);
       /// @brief Construct a NULL field
       /// @returns a constant pointer to the immutable field
+      /// @note Returns a shared singleton; see Field.
       static FieldCPtr createNull();
 
       /// @brief a typical virtual destructor.
@@ -43,7 +45,7 @@ namespace QuickFAST
       virtual void valueToStringBuffer()const;
       virtual bool isSignedInteger()const;
     private:
-
+      static FieldCPtr nullField_;
     };
   }
 }

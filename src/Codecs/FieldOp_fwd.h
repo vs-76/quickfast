@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010, 2011 Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -14,9 +15,9 @@ namespace QuickFAST{
   namespace Codecs{
     class FieldOp;
     /// @brief A smart pointer to a FieldOp
-    typedef boost::shared_ptr<FieldOp> FieldOpPtr;
+    typedef std::shared_ptr<FieldOp> FieldOpPtr;
     /// @brief A smart pointer to a const FieldOp
-    typedef boost::shared_ptr<const FieldOp> FieldOpCPtr;
+    typedef std::shared_ptr<const FieldOp> FieldOpCPtr;
   }
 }
 #endif // FIELDOP_FWD_H

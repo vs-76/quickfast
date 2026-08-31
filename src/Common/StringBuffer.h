@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010, 2011 Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 
@@ -40,7 +41,8 @@ namespace QuickFAST
     static const size_t npos = size_t(-1);
     /// @brief Construct an empty StringBufferT
     StringBufferT()
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(INTERNAL_CAPACITY)
       , growCount_(0)
@@ -52,7 +54,8 @@ namespace QuickFAST
     /// @brief Copy constructor
     /// @param rhs is the data to initialize the string buffer.
     StringBufferT(const StringBufferT& rhs)
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(INTERNAL_CAPACITY)
       , growCount_(0)
@@ -64,7 +67,8 @@ namespace QuickFAST
     /// @brief copy construct from a standard string
     /// @param rhs is the data to initialize the string buffer.
     StringBufferT(const std::string & rhs)
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(INTERNAL_CAPACITY)
       , growCount_(0)
@@ -83,7 +87,8 @@ namespace QuickFAST
       size_t pos,
       size_t length = npos
       )
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(INTERNAL_CAPACITY)
       , growCount_(0)
@@ -103,7 +108,8 @@ namespace QuickFAST
 
     /// @brief Construct from an unsigned C style null terminated string
     StringBufferT(const unsigned char* rhs)
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(INTERNAL_CAPACITY)
       , growCount_(0)
@@ -114,7 +120,8 @@ namespace QuickFAST
 
     /// @brief Construct from a C style null terminated string
     StringBufferT(const char* rhs)
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(INTERNAL_CAPACITY)
       , growCount_(0)
@@ -129,7 +136,8 @@ namespace QuickFAST
     ///
     /// This method is safe to use with non-null-terminated strings
     StringBufferT(const unsigned char* rhs, size_t length)
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(INTERNAL_CAPACITY)
       , growCount_(0)
@@ -140,7 +148,8 @@ namespace QuickFAST
 
     /// @brief construct a StringBufferT with a given length, filled with the specified character.
     StringBufferT(size_t length, unsigned char c)
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(INTERNAL_CAPACITY)
       , growCount_(0)
@@ -159,7 +168,8 @@ namespace QuickFAST
     /// @param delegateString points to the real string to be wrapped.
     ///        It must exist longer than the StringBufferT.
     StringBufferT(const std::string * delegateString)
-      : heapBuffer_(0)
+      : internalBuffer_()
+      , heapBuffer_(0)
       , size_(0)
       , capacity_(0)
       , growCount_(0)
@@ -180,15 +190,19 @@ namespace QuickFAST
     {
       if(delegateString_ != 0)
       {
-        if (size() < length)
-        {
-          append(length - size(), fill);
-        }
-        else if (size() > length)
-        {
-          getBuffer()[length] = 0;
-          size_ = length;
-        }
+        // The bytes belong to the delegate. The check used to select this case
+        // for the body below, so the only buffer resize would act on was the
+        // one it cannot write, and a writable buffer fell through untouched.
+        throw std::logic_error("StringBufferT cannot resize delegated string.");
+      }
+      if (size() < length)
+      {
+        append(length - size(), fill);
+      }
+      else if (size() > length)
+      {
+        getBuffer()[length] = 0;
+        size_ = length;
       }
     }
 
@@ -211,8 +225,10 @@ namespace QuickFAST
     /// @brief assign a single character.
     StringBufferT<INTERNAL_CAPACITY>& operator=(unsigned char rhs)
     {
-      StringBufferT temp(rhs, 1);
-      swap(temp);
+      // temp(rhs, 1) cannot match (const unsigned char *, size_t), so overload
+      // resolution chose (size_t length, unsigned char c) and built a run of
+      // `rhs` bytes of 0x01: assigning 'A' produced 65 bytes rather than one.
+      assign(&rhs, 1);
       return *this;
     }
 
@@ -261,7 +277,7 @@ namespace QuickFAST
     }
 
     /// @brief access an element of the StringBufferT for possible update
-    unsigned char& operator[](size_t pos)
+    unsigned char& operator[](size_t pos) //-V659
     {
       // If pos == size(), the non-const behavior is undefined.
       if(pos < size())
@@ -424,7 +440,21 @@ namespace QuickFAST
     void erase()
     {
       size_ = 0;
-      delegateString_ = 0;
+      if(delegateString_ != 0)
+      {
+        // The delegating constructor reports zero capacity because the bytes
+        // belong to someone else. Dropping the delegate hands the buffer back
+        // to internalBuffer_, and leaving capacity_ at zero made the object
+        // claim no room while owning INTERNAL_CAPACITY bytes of it: the first
+        // append went to the heap, and reserve's growth factor started from
+        // zero instead of from the inline capacity.
+        delegateString_ = 0;
+        if(heapBuffer_ == 0)
+        {
+          capacity_ = INTERNAL_CAPACITY;
+          internalBuffer_[0] = 0;
+        }
+      }
     }
 
     /// @brief discard contents, thereby making this an empty StringBufferT.
@@ -515,10 +545,6 @@ namespace QuickFAST
           throw std::logic_error("StringBufferT growth calculation incorrect");
         }
         unsigned char * newBuffer(new unsigned char[needed + 1]);
-        if(newBuffer == 0)
-        {
-          throw std::bad_alloc();
-        }
         const unsigned char * oldBuffer = getBuffer();
         std::memcpy(newBuffer, oldBuffer, size_);
         newBuffer[size_] = 0;
@@ -573,7 +599,7 @@ namespace QuickFAST
 
 
     /// @brief find the buffer that's presently in use; mutable version
-    unsigned char * getBuffer()
+    unsigned char * getBuffer() //-V659
     {
       if (heapBuffer_ != 0)
       {
@@ -587,7 +613,7 @@ namespace QuickFAST
     }
 
   private:
-    unsigned char internalBuffer_[INTERNAL_CAPACITY + 1];
+    unsigned char internalBuffer_[INTERNAL_CAPACITY + 1] = {};
     unsigned char * heapBuffer_;
     size_t size_;
     size_t capacity_;

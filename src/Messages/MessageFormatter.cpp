@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010, 2011, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -93,21 +94,21 @@ MessageFormatter::formatSequence(
       ++fsit)
     {
       // todo: refactor with message decoding
-      const Messages::FieldIdentity & identity = fsit->getIdentity();
-      const Messages::FieldCPtr & field = fsit->getField();
-      ValueType::Type type = field->getType();
+      const Messages::FieldIdentity & entryIdentity = fsit->getIdentity();
+      const Messages::FieldCPtr & entryField = fsit->getField();
+      ValueType::Type type = entryField->getType();
       if(type == ValueType::SEQUENCE)
       {
-        formatSequence(identity, field);
+        formatSequence(entryIdentity, entryField);
       }
       else if(type == ValueType::GROUP)
       {
-        formatGroup(identity, field);
+        formatGroup(entryIdentity, entryField);
       }
       else
       {
-        out_ << ' ' << identity.name() << '[' << identity.id() << "]=";
-        displayFieldValue(field);
+        out_ << ' ' << entryIdentity.name() << '[' << entryIdentity.id() << "]=";
+        displayFieldValue(entryField);
       }
     }
   }
@@ -134,21 +135,21 @@ MessageFormatter::formatGroup(
     fsit != group->end();
     ++fsit)
   {
-    const Messages::FieldIdentity & identity = fsit->getIdentity();
-    const Messages::FieldCPtr & field = fsit->getField();
-    ValueType::Type type = field->getType();
+    const Messages::FieldIdentity & entryIdentity = fsit->getIdentity();
+    const Messages::FieldCPtr & entryField = fsit->getField();
+    ValueType::Type type = entryField->getType();
     if(type == ValueType::SEQUENCE)
     {
-      formatSequence(identity, field);
+      formatSequence(entryIdentity, entryField);
     }
     else if(type == ValueType::GROUP)
     {
-      formatGroup(identity, field);
+      formatGroup(entryIdentity, entryField);
     }
     else
     {
-      out_ << ' ' << identity.name() << '[' << identity.id() << "]=";
-      displayFieldValue(field);
+      out_ << ' ' << entryIdentity.name() << '[' << entryIdentity.id() << "]=";
+      displayFieldValue(entryField);
     }
   }
   newline();

@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -196,8 +197,68 @@ namespace QuickFAST{
       ///
       /// @param startGap the sequence number of the first missing packet
       /// @param endGap the sequence number of the first packet present after the gap.
-      virtual void reportGap(sequence_t startGap, sequence_t endGap)
+      virtual void reportGap([[maybe_unused]] sequence_t startGap, [[maybe_unused]] sequence_t endGap)
       {
+      }
+
+      /// @brief Supply the buffer receive time for the message about to be decoded.
+      ///
+      /// UTC microseconds since the Unix epoch, stamped when the buffer was
+      /// accepted from the wire (or synchronous source). Default ignores the
+      /// value; GenericMessageBuilder injects a synthetic ReceiveTime field.
+      ///
+      /// @param receiveTimeUs UTC microseconds since the Unix epoch
+      virtual void setReceiveTime([[maybe_unused]] uint64 receiveTimeUs)
+      {
+      }
+
+      /// @brief Clear any receive time previously set via setReceiveTime().
+      virtual void clearReceiveTime()
+      {
+      }
+
+      /// @brief Whether setReceiveTime() has supplied a time for this message.
+      virtual bool hasReceiveTime() const
+      {
+        return false;
+      }
+
+      /// @brief UTC microseconds since the Unix epoch for the current buffer.
+      ///
+      /// Valid only when hasReceiveTime() is true.
+      virtual uint64 receiveTime() const
+      {
+        return 0;
+      }
+
+      /// @brief Supply the received buffer/packet size for the message about to be decoded.
+      ///
+      /// Bytes accepted into the LinkedBuffer (UDP payload for datagram feeds).
+      /// Default ignores the value; GenericMessageBuilder injects a synthetic
+      /// PktSize field.
+      ///
+      /// @param packetSize bytes in the received buffer
+      virtual void setPacketSize([[maybe_unused]] uint64 packetSize)
+      {
+      }
+
+      /// @brief Clear any packet size previously set via setPacketSize().
+      virtual void clearPacketSize()
+      {
+      }
+
+      /// @brief Whether setPacketSize() has supplied a size for this message.
+      virtual bool hasPacketSize() const
+      {
+        return false;
+      }
+
+      /// @brief Byte length of the current received buffer.
+      ///
+      /// Valid only when hasPacketSize() is true.
+      virtual uint64 packetSize() const
+      {
+        return 0;
       }
 
     };

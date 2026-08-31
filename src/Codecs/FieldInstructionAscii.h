@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -104,14 +105,15 @@ namespace QuickFAST{
     private:
       /// @brief helper decoder.
       /// @param source where the data comes from
+      /// @param context receives any decoding error
       /// @param mandatory true if field is presence="mandatory"
       /// @param buffer a playground
-      /// @param[out] pointer to the decoded field.  Null if the field
-      ///             is optional and not present.
-      /// @returns false if decoding failed
+      /// @returns false if the field is optional and not present
+      /// @throws EncodingError if the input ends before the stop bit
 
      virtual bool decodeAsciiFromSource(
         Codecs::DataSource & source,
+        Codecs::Context & context,
         bool mandatory,
         WorkingBuffer & buffer) const;
 

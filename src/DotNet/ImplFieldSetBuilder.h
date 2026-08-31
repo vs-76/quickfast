@@ -1,8 +1,10 @@
 // Copyright (c) 2009, 2010 Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #pragma once
 #pragma unmanaged
+#include <memory>
 #include <DotNet/ImplBuilderBase.h>
 #include <Messages/FieldIdentity_fwd.h>
 
@@ -65,8 +67,8 @@ namespace QuickFAST
         Messages::ValueMessageBuilder & groupBuilder);
     private:
       ImplFieldSet * fieldSet_;
-      boost::scoped_ptr<ImplSequenceBuilder> sequenceBuilder_;
-      boost::scoped_ptr<ImplFieldSetBuilder> groupBuilder_;
+      std::unique_ptr<ImplSequenceBuilder> sequenceBuilder_;
+      std::unique_ptr<ImplFieldSetBuilder> groupBuilder_;
     };
   }
 }

@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -12,7 +13,7 @@ namespace QuickFAST
     class BasePacketAssembler;
 
     ///@brief smart pointer to BasePacketAssembler
-    typedef boost::shared_ptr<BasePacketAssembler> BasePacketAssemblerPtr;
+    typedef std::shared_ptr<BasePacketAssembler> BasePacketAssemblerPtr;
   }
 }
 #endif // BASEPACKETASSEMBLER_FWD_H

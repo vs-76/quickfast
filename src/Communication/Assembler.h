@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -47,9 +48,10 @@ namespace QuickFAST{
       virtual void receiverStarted(Receiver & receiver) = 0;
 
       /// @brief notify queue service that receiver is stopped
-      /// @param receiver in case the consumer needs to release buffers.
+      ///
       /// No calls to serviceQueue will be generated after this call.
-      /// @param receiver identifies the Receiver of incoming buffers.
+      /// @param receiver identifies the Receiver of incoming buffers, in case
+      ///        the consumer needs to release buffers.
       virtual void receiverStopped(Receiver & receiver) = 0;
 
       /// @brief Service the queue via Receiver callbacks

@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -30,7 +31,17 @@ namespace QuickFAST{
         size_t sequenceLength)
         : lengthIdentity_(lengthFieldIdentity)
       {
-        this->entries_.reserve(sequenceLength);
+        // sequenceLength usually comes from the wire, so reserving it outright
+        // lets a handful of bytes demand tens of gigabytes.  Reserve a
+        // plausible amount and let the vector grow as entries really decode.
+        // The hard ceiling that refuses oversized lengths lives on
+        // Codecs::Context and is checked by FieldInstructionSequence before
+        // this constructor runs for a live decode.
+        constexpr size_t maxSpeculativeReservation = 4096;
+        this->entries_.reserve(
+          sequenceLength < maxSpeculativeReservation
+            ? sequenceLength
+            : maxSpeculativeReservation);
       }
 
       ~Sequence()

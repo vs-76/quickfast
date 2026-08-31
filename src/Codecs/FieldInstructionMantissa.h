@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -13,9 +14,9 @@ namespace QuickFAST{
     /// @brief An implementation for the &lt;mantissa> field instruction within a &lt;decimal>.
     typedef FieldInstructionInteger<mantissa_t, ValueType::MANTISSA, true> FieldInstructionMantissa;
     /// @brief a pointer to a FieldInstrucionMantissa
-    typedef boost::shared_ptr<FieldInstructionMantissa> FieldInstructionMantissaPtr;
+    typedef std::shared_ptr<FieldInstructionMantissa> FieldInstructionMantissaPtr;
     /// @brief a const pointer to a FieldInstrucionMantissa
-    typedef boost::shared_ptr<const FieldInstructionMantissa> FieldInstructionMantissaCPtr;
+    typedef std::shared_ptr<const FieldInstructionMantissa> FieldInstructionMantissaCPtr;
   }
 }
 #endif // FIELDINSTRUCTIONMANTISSA_H

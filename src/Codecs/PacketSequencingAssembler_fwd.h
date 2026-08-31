@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -12,7 +13,7 @@ namespace QuickFAST
     class PacketSequencingAssembler;
 
     ///@brief smart pointer to PacketSequencingAssembler
-    typedef boost::shared_ptr<PacketSequencingAssembler> PacketSequencingAssemblerPtr;
+    typedef std::shared_ptr<PacketSequencingAssembler> PacketSequencingAssemblerPtr;
   }
 }
 #endif // PACKETSEQUENCINGASSEMBLER_FWD_H

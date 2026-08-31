@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010, 2011 Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -15,7 +16,7 @@ namespace QuickFAST{
   namespace Communication{
     class MulticastReceiver;
     /// @brief smart pointer to a MulticastReceiver
-    typedef boost::shared_ptr<MulticastReceiver> MulticastReceiverPtr;
+    typedef std::shared_ptr<MulticastReceiver> MulticastReceiverPtr;
   }
 }
 #endif // MULTICASTRECEIVER_FWD_H

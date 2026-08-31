@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -98,6 +99,13 @@ namespace QuickFAST{
       /// @brief Provide a way to control overflow checking during decoding.
       /// @param allowOverflow is true to disable/false to enable overflow checking (default is false)
       virtual void setIgnoreOverflow(bool allowOverflow);
+
+      /// @brief Is overflow checking disabled for this field?
+      /// @returns true when ignore_overflows was asked for.
+      bool getIgnoreOverflow() const
+      {
+        return ignoreOverflow_;
+      }
 
       /// @brief Set a field operation
       ///
@@ -464,13 +472,25 @@ namespace QuickFAST{
 
       /// @brief Encode a string that's nullable, but not null.
       /// @param destination to which the string will be written.
+      /// @param context reports a value the ascii encoding cannot carry.
       /// @param value to be written.
-      static void encodeNullableAscii(DataDestination & destination, const StringBuffer & value);
+      /// @param name of the field, for the error message.
+      static void encodeNullableAscii(
+        DataDestination & destination,
+        Context & context,
+        const StringBuffer & value,
+        const std::string & name);
 
       /// @brief Encode a string.
       /// @param destination to which the string will be written.
+      /// @param context reports a value the ascii encoding cannot carry.
       /// @param value to be written.
-      static void encodeAscii(DataDestination & destination, const StringBuffer & value);
+      /// @param name of the field, for the error message.
+      static void encodeAscii(
+        DataDestination & destination,
+        Context & context,
+        const StringBuffer & value,
+        const std::string & name);
 
       /// @brief Helper routine to encode a blob represented as a string; into a destination
       /// @param destination to which the data will be written
@@ -505,7 +525,7 @@ namespace QuickFAST{
       /// @param[in] allowOversize ignores one bit of overflow to cope
       ///            with out-of-range deltas (see section 6.3.7.1 of the Fast Specification v1x1)
       /// @param[in] ignoreOverflow ignores overflows completely to cope with funky ARCA encoding.
-      /// @returns true if successful; false if EOF
+      /// @throws EncodingError if the data source runs dry mid-value
       /// @throws OverflowError if the decoded value doesn't fit the supplied type
       template<typename IntType>
       static void decodeSignedInteger(
@@ -527,7 +547,7 @@ namespace QuickFAST{
       /// @param[out] value returns the result
       /// @param[in] name of this field to be used in error messages
       /// @param[in] ignoreOverflow ignores overflows completely to cope with funky ARCA encoding.
-      /// @returns true if successful; false if EOF
+      /// @throws EncodingError if the data source runs dry mid-value
       /// @throws OverflowError if the decoded value doesn't fit the supplied type
       template<typename UnsignedIntType>
       static void decodeUnsignedInteger(
@@ -1020,12 +1040,252 @@ namespace QuickFAST{
       value = 0;
 
       // Assume an 8 bit byte;
-      // Check the seven data bitsbit to make sure no significant
-      // information is lost.
-      unsigned short shift = ((sizeof(UnsignedIntType) * byteSize) / dataShift) * dataShift;
+      // Check the seven data bits to make sure no significant
+      // information is lost.  The mask must cover exactly the dataShift bits
+      // that the next "value <<= dataShift" would push off the top.
+      unsigned short shift = (sizeof(UnsignedIntType) * byteSize) - dataShift;
       UnsignedIntType overflowMask(UnsignedIntType(-1) << shift);
       UnsignedIntType overflowCheck(value << shift);
 
+      while((byte & stopBit) == 0)
+      {
+        if(!ignoreOverflow && (value & overflowMask) != overflowCheck)
+        {
+          context.reportError("[ERR D2]", "Unsigned Integer Field overflow...", name);
+        }
+        value <<= dataShift;
+        value |= byte;
+        if(!source.getByte(byte))
+        {
+          context.reportFatal("[ERR U03]", "End of file without stop bit decoding unsigned integer.", name);
+        }
+      }
+      if(!ignoreOverflow && (value & overflowMask) != overflowCheck)
+      {
+        context.reportError("[ERR D2]", "Unsigned Integer Field overflow..", name);
+      }
+      value <<= dataShift;
+      value |= (byte & dataBits);
+    }
+
+    // Contiguous fast paths for 64-bit integers. (The older int32/uint32
+    // specializations remain behind INTEGER_SPECIALIZATION / never compiled.)
+    // Max stop-bit length is (64+6)/7 = 10 bytes.
+
+    /// @brief decodeSignedInteger() specialized for int64.
+    ///
+    /// Scans for the stop bit in the source's own buffer when it can offer the
+    /// whole value -- at most (64+6)/7 = 10 bytes -- and falls back to the
+    /// generic byte-at-a-time loop when it cannot. Behaviour, including the
+    /// errors reported, is identical either way.
+    /// @param[in] source supplies the data
+    /// @param context in which the decoding occurs.
+    /// @param[out] value returns the result
+    /// @param[in] name of this field to be used in error messages
+    /// @param[in] oversize ignores one bit of overflow to cope with
+    ///            out-of-range deltas (see section 6.3.7.1 of the Fast Specification v1x1)
+    /// @param[in] ignoreOverflow ignores overflows completely to cope with funky ARCA encoding.
+    template<>
+    inline
+    void
+    FieldInstruction::decodeSignedInteger(
+      Codecs::DataSource & source,
+      Codecs::Context & context,
+      int64 & value,
+      const std::string & name,
+      bool oversize,
+      bool ignoreOverflow)
+    {
+      const size_t maxBytes = (64 + 6) / 7;
+      const uchar * buffer = 0;
+      if(source.hasContiguous(maxBytes, buffer))
+      {
+        PROFILE_POINT("decodeSignedInteger64Contiguous");
+        const uchar * start = buffer;
+        int64 result = 0;
+        uchar byte = *buffer++;
+        if((byte & signBit) != 0)
+        {
+          result = int64(-1);
+        }
+        size_t shift = sizeof(int64) * byteSize - (dataShift + 1);
+        // Build the overflow probe in unsigned space so every shift is defined
+        // for every C++ standard (analyzers that still apply the pre-C++20
+        // rule also stay quiet).
+        uint64 overflowMask = ~uint64(0) << shift;
+        uint64 overflowCheck = static_cast<uint64>(result) << shift;
+        if(oversize)
+        {
+          overflowMask <<= 1;
+          overflowCheck <<= 1;
+        }
+        while((byte & stopBit) == 0)
+        {
+          if(!ignoreOverflow &&
+            (static_cast<uint64>(result) & overflowMask) != overflowCheck)
+          {
+            context.reportError("[ERR D2]", "Integer Field overflow (signed).", name);
+          }
+          result <<= dataShift;
+          result |= byte;
+          if(static_cast<size_t>(buffer - start) >= maxBytes)
+          {
+            if(!ignoreOverflow)
+            {
+              context.reportFatal("[ERR D2]", "Overflow in signed 64 bit integer field.", name);
+            }
+            value = int64(-1);
+            source.skipContiguous(buffer - start);
+            unsigned char trash = 0;
+            while(0 == (trash & stopBit))
+            {
+              if(!source.getByte(trash))
+              {
+                context.reportFatal("[ERR D2]", "Unexpected EOF in signed 64 bit integer field.", name);
+              }
+            }
+            return;
+          }
+          byte = *buffer++;
+        }
+        if(!ignoreOverflow &&
+          (static_cast<uint64>(result) & overflowMask) != overflowCheck)
+        {
+          context.reportError("[ERR D2]", "Signed Integer Field overflow.", name);
+        }
+        result <<= dataShift;
+        result |= (byte & dataBits);
+        value = result;
+        source.skipContiguous(buffer - start);
+        return;
+      }
+
+      PROFILE_POINT("decodeSignedInteger");
+      uchar byte = 0;
+      if(!source.getByte(byte))
+      {
+        context.reportFatal("[ERR U03]", "Unexpected end of data decoding signedinteger", name);
+      }
+      value = 0;
+      if((byte & signBit) != 0)
+      {
+        value = int64(-1);
+      }
+      size_t shift = sizeof(int64) * byteSize - (dataShift + 1);
+      // Build the overflow probe in unsigned space so every shift is defined
+      // for every C++ standard (analyzers that still apply the pre-C++20
+      // rule also stay quiet).
+      uint64 overflowMask = ~uint64(0) << shift;
+      uint64 overflowCheck = static_cast<uint64>(value) << shift;
+      if(oversize)
+      {
+        overflowMask <<= 1;
+        overflowCheck <<= 1;
+      }
+      while((byte & stopBit) == 0)
+      {
+        if(!ignoreOverflow &&
+          (static_cast<uint64>(value) & overflowMask) != overflowCheck)
+        {
+          context.reportError("[ERR D2]", "Integer Field overflow (signed).", name);
+        }
+        value <<= dataShift;
+        value |= byte;
+        if(!source.getByte(byte))
+        {
+          context.reportFatal("[ERR D2]", "Unexpected EOF in signed integer field.", name);
+        }
+      }
+      if(!ignoreOverflow &&
+        (static_cast<uint64>(value) & overflowMask) != overflowCheck)
+      {
+        context.reportError("[ERR D2]", "Signed Integer Field overflow.", name);
+      }
+      value <<= dataShift;
+      value |= (byte & dataBits);
+    }
+
+    /// @brief decodeUnsignedInteger() specialized for uint64.
+    ///
+    /// Scans for the stop bit in the source's own buffer when it can offer the
+    /// whole value -- at most (64+6)/7 = 10 bytes -- and falls back to the
+    /// generic byte-at-a-time loop when it cannot. Behaviour, including the
+    /// errors reported, is identical either way.
+    /// @param[in] source supplies the data
+    /// @param context in which the decoding occurs.
+    /// @param[out] value returns the result
+    /// @param[in] name of this field to be used in error messages
+    /// @param[in] ignoreOverflow ignores overflows completely to cope with funky ARCA encoding.
+    template<>
+    inline
+    void
+    FieldInstruction::decodeUnsignedInteger(
+      Codecs::DataSource & source,
+      Codecs::Context & context,
+      uint64 & value,
+      const std::string & name,
+      bool ignoreOverflow)
+    {
+      const size_t maxBytes = (64 + 6) / 7;
+      const uchar * buffer = 0;
+      if(source.hasContiguous(maxBytes, buffer))
+      {
+        PROFILE_POINT("decodeUnsignedInteger64Contiguous");
+        const uchar * start = buffer;
+        uint64 result = 0;
+        uchar byte = *buffer++;
+        unsigned short shift = (sizeof(uint64) * byteSize) - dataShift;
+        uint64 overflowMask(uint64(-1) << shift);
+        uint64 overflowCheck(result << shift);
+        while((byte & stopBit) == 0)
+        {
+          if(!ignoreOverflow && (result & overflowMask) != overflowCheck)
+          {
+            context.reportError("[ERR D2]", "Unsigned Integer Field overflow...", name);
+          }
+          result <<= dataShift;
+          result |= byte;
+          if(static_cast<size_t>(buffer - start) >= maxBytes)
+          {
+            if(!ignoreOverflow)
+            {
+              context.reportFatal("[ERR D2]", "Overflow in unsigned 64 bit integer field.", name);
+            }
+            value = uint64(-1);
+            source.skipContiguous(buffer - start);
+            unsigned char trash = 0;
+            while(0 == (trash & stopBit))
+            {
+              if(!source.getByte(trash))
+              {
+                context.reportFatal("[ERR D2]", "Unexpected EOF in integer field.", name);
+              }
+            }
+            return;
+          }
+          byte = *buffer++;
+        }
+        if(!ignoreOverflow && (result & overflowMask) != overflowCheck)
+        {
+          context.reportError("[ERR D2]", "Unsigned Integer Field overflow..", name);
+        }
+        result <<= dataShift;
+        result |= (byte & dataBits);
+        value = result;
+        source.skipContiguous(buffer - start);
+        return;
+      }
+
+      PROFILE_POINT("decodeUnsignedInteger");
+      uchar byte = 0;
+      if(!source.getByte(byte))
+      {
+        context.reportFatal("[ERR U03]", "Unexpected end of data decoding unsigned integer", name);
+      }
+      value = 0;
+      unsigned short shift = (sizeof(uint64) * byteSize) - dataShift;
+      uint64 overflowMask(uint64(-1) << shift);
+      uint64 overflowCheck(value << shift);
       while((byte & stopBit) == 0)
       {
         if(!ignoreOverflow && (value & overflowMask) != overflowCheck)

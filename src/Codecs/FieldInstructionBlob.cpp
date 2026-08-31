@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
@@ -238,18 +239,21 @@ FieldInstructionBlob::decodeDelta(
       previousValue = fieldOp_->getValue();
     }
   }
-  size_t previousLength = previousValue.size();
-
   if( deltaLength < 0)
   {
     // operate on front of string
     // compensete for the excess -1 encoding that allows -0 != +0
     deltaLength = -(deltaLength + 1);
+    const size_t previousLength = previousValue.size();
     // don't chop more than is there
     if(static_cast<unsigned long>(deltaLength) > previousLength)
     {
       decoder.reportError("[ERR D7]", "String tail delta front length exceeds length of previous string.", identity_);
-      deltaLength = QuickFAST::int32(previousLength);
+      // [ERR D7] always throws, so the clamp that used to follow could
+      // never run. It also disagreed with itself: int32 here against
+      // uint32 in the other branch, over a size_t, so a base value longer
+      // than INT32_MAX would have handed substr a negative length if it
+      // ever had run.
     }
     std::string value = deltaValue + previousValue.substr(deltaLength);
     builder.addValue(
@@ -261,6 +265,7 @@ FieldInstructionBlob::decodeDelta(
   }
   else
   { // operate on end of string
+    const size_t previousLength = previousValue.size();
     // don't chop more than is there
     if(static_cast<size_t>(deltaLength) > previousLength)
     {
@@ -268,7 +273,11 @@ FieldInstructionBlob::decodeDelta(
       std::cout << "decode blob delta length: " << deltaLength << " previous: " << previousLength << std::endl;
 #endif
       decoder.reportError("[ERR D7]", "String tail delta back length exceeds length of previous string.", identity_);
-      deltaLength = QuickFAST::uint32(previousLength);
+      // [ERR D7] always throws, so the clamp that used to follow could
+      // never run. It also disagreed with itself: int32 here against
+      // uint32 in the other branch, over a size_t, so a base value longer
+      // than INT32_MAX would have handed substr a negative length if it
+      // ever had run.
     }
 
     std::string value = previousValue.substr(0, previousLength - deltaLength) + deltaValue;
@@ -309,6 +318,11 @@ FieldInstructionBlob::decodeTail(
         }
       }
       size_t previousLength = previousValue.length();
+      // Not a truncation: FAST 1.1 6.3.8.1 and 6.3.8.3 say that if the
+      // tail value is longer than the base value, the combined value is
+      // the tail value, and clamping the overlay to the whole base is how
+      // that falls out. Unlike the delta operators, there is no error to
+      // report here.
       if(tailLength > previousLength)
       {
         tailLength = previousLength;
@@ -348,7 +362,7 @@ FieldInstructionBlob::decodeTail(
     {
       if(isMandatory())
       {
-        decoder.reportFatal("[ERR D6]", "No value available for mandatory copy field.", identity_);
+        decoder.reportFatal("[ERR D6]", "No value available for mandatory tail field.", identity_);
       }
     }
   }
@@ -648,15 +662,21 @@ FieldInstructionBlob::encodeTail(
   const StringBuffer * value;
   if(accessor.getString(identity_, type_, value))
   {
-    size_t prefix = longestMatchingPrefix(previousValue, *value);
-    // performance: add substr method to StringBuffer
-    std::string tailValue = static_cast<std::string>(*value).substr(prefix);
-    if(tailValue.empty())
+    // An empty tail means "unchanged", which the decoder can only resolve
+    // against an established previous value. An empty *value* also yields an
+    // empty tail, and treating that as unchanged left the decoder with nothing
+    // to resolve: mandatory fields produced a stream it rejected outright, and
+    // optional ones a stream where the field had disappeared.
+    if(previousStatus == Context::OK_VALUE &&
+      static_cast<std::string>(*value) == previousValue)
     {
       pmap.setNextField(false);
     }
     else
     {
+      size_t prefix = longestMatchingPrefix(previousValue, *value);
+      // performance: add substr method to StringBuffer
+      std::string tailValue = static_cast<std::string>(*value).substr(prefix);
       pmap.setNextField(true);
       if(!isMandatory())
       {

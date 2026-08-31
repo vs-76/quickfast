@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010, 2011 Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -15,7 +16,7 @@ namespace QuickFAST{
   namespace Communication{
     class RawFileReceiver;
     /// @brief smart pointer to a FileReceiver
-    typedef boost::shared_ptr<RawFileReceiver> RawFileReceiverPtr;
+    typedef std::shared_ptr<RawFileReceiver> RawFileReceiverPtr;
   }
 }
 #endif // RAWFILERECEIVER_FWD_H

@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010, 2011, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -11,6 +12,7 @@
 //#include <Common/QuickFAST_Export.h>
 #include "BufferQueue_fwd.h"
 #include <Communication/LinkedBuffer.h>
+#include <cassert>
 
 namespace QuickFAST
 {

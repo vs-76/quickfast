@@ -11,9 +11,19 @@
 #include <Common/Exceptions.h>
 #include <Common/Decimal.h>
 #include <Common/StringBuffer.h>
+#include <memory>
 namespace QuickFAST{
 
   /// @brief A container for several different types of values
+  ///
+  /// Numeric / empty / undefined entries do not allocate a StringBuffer.
+  /// String payloads and displayString() caches allocate one on demand so
+  /// dictionary arrays of integers stay dense.
+  ///
+  /// Once allocated the buffer is kept: erase() and numeric assignment clear
+  /// it rather than release it. Context::reset() erases every dictionary entry
+  /// between messages, and freeing there would cost a free/malloc pair per
+  /// string entry per message.
   ///
   class Value
   {
@@ -39,16 +49,70 @@ namespace QuickFAST{
     {
     }
 
-    /// @brief a typical destructor.
-    ~Value()
+    /// @brief Copy construct, duplicating any string storage.
+    /// @param rhs is the value to copy
+    Value(const Value & rhs)
+      : class_(rhs.class_)
+      , cachedString_(rhs.cachedString_)
+      , unsignedInteger_(rhs.unsignedInteger_)
+      , signedInteger_(rhs.signedInteger_)
+      , exponent_(rhs.exponent_)
+      , string_(rhs.string_ ? std::make_unique<StringBuffer>(*rhs.string_) : nullptr)
     {
     }
+
+    /// @brief Move construct, stealing any string storage.
+    ///
+    /// The moved-from value keeps its class but loses its string buffer, so
+    /// isString() may report true while getValue() returns false. Assign or
+    /// erase() it before reading it again.
+    Value(Value &&) noexcept = default;
+
+    /// @brief a typical destructor.
+    ~Value() = default;
+
+    /// @brief Copy assign, reusing this value's string buffer when it has one.
+    /// @param rhs is the value to copy
+    /// @returns a reference to this value
+    Value & operator=(const Value & rhs)
+    {
+      if(this != &rhs)
+      {
+        class_ = rhs.class_;
+        cachedString_ = rhs.cachedString_;
+        unsignedInteger_ = rhs.unsignedInteger_;
+        signedInteger_ = rhs.signedInteger_;
+        exponent_ = rhs.exponent_;
+        if(rhs.string_)
+        {
+          if(string_)
+          {
+            *string_ = *rhs.string_;
+          }
+          else
+          {
+            string_ = std::make_unique<StringBuffer>(*rhs.string_);
+          }
+        }
+        else
+        {
+          string_.reset();
+        }
+      }
+      return *this;
+    }
+
+    /// @brief Move assign, stealing any string storage.
+    ///
+    /// Leaves the source in the state described by the move constructor.
+    /// @returns a reference to this value
+    Value & operator=(Value &&) noexcept = default;
 
     /// @brief Set Compound type
     void setCompound()
     {
       class_ = COMPOUND;
-      cachedString_ = false;
+      discardStringStorage();
     }
 
     /// @brief reset the value class
@@ -57,14 +121,14 @@ namespace QuickFAST{
     void setUndefined(ValueClass undefined = UNDEFINED)
     {
       class_ = undefined;
-      cachedString_ = false;
+      discardStringStorage();
     }
 
     /// @brief set the value to NULL
     void setNull()
     {
       class_ = EMPTY;
-      cachedString_ = false;
+      discardStringStorage();
     }
 
     /// @brief check for NULL value
@@ -77,8 +141,7 @@ namespace QuickFAST{
     void erase()
     {
       class_ = UNDEFINED;
-      cachedString_ = false;
-      string_.erase();
+      discardStringStorage();
       signedInteger_ = 0;
       unsignedInteger_ = 0;
       exponent_ = 0;
@@ -89,7 +152,7 @@ namespace QuickFAST{
     void setValue(const int64 value)
     {
       class_ = SIGNEDINTEGER;
-      cachedString_ = false;
+      discardStringStorage();
       signedInteger_ = value;
     }
 
@@ -98,7 +161,7 @@ namespace QuickFAST{
     void setValue(const uint64 value)
     {
       class_ = UNSIGNEDINTEGER;
-      cachedString_ = false;
+      discardStringStorage();
       unsignedInteger_ = value;
     }
 
@@ -107,7 +170,7 @@ namespace QuickFAST{
     void setValue(const int32 value)
     {
       class_ = SIGNEDINTEGER;
-      cachedString_ = false;
+      discardStringStorage();
       signedInteger_ = value;
     }
 
@@ -116,7 +179,7 @@ namespace QuickFAST{
     void setValue(const uint32 value)
     {
       class_ = UNSIGNEDINTEGER;
-      cachedString_ = false;
+      discardStringStorage();
       unsignedInteger_ = value;
     }
 
@@ -125,7 +188,7 @@ namespace QuickFAST{
     void setValue(const int16 value)
     {
       class_ = SIGNEDINTEGER;
-      cachedString_ = false;
+      discardStringStorage();
       signedInteger_ = value;
     }
 
@@ -134,7 +197,7 @@ namespace QuickFAST{
     void setValue(const uint16 value)
     {
       class_ = UNSIGNEDINTEGER;
-      cachedString_ = false;
+      discardStringStorage();
       unsignedInteger_ = value;
     }
 
@@ -143,7 +206,7 @@ namespace QuickFAST{
     void setValue(const int8 value)
     {
       class_ = SIGNEDINTEGER;
-      cachedString_ = false;
+      discardStringStorage();
       signedInteger_ = value;
     }
 
@@ -152,7 +215,7 @@ namespace QuickFAST{
     void setValue(const uchar value)
     {
       class_ = UNSIGNEDINTEGER;
-      cachedString_ = false;
+      discardStringStorage();
       unsignedInteger_ = value;
     }
 
@@ -161,7 +224,7 @@ namespace QuickFAST{
     void setValue(const Decimal& value)
     {
       class_ = DECIMAL;
-      cachedString_ = false;
+      discardStringStorage();
       exponent_ = value.getExponent();
       signedInteger_ = value.getMantissa();
     }
@@ -173,7 +236,7 @@ namespace QuickFAST{
     {
       class_ = STRING;
       cachedString_ = true;
-      string_.assign(value, length);
+      ensureString().assign(value, length);
     }
 
     /// @brief assign a value from a null terminated C-style string
@@ -210,7 +273,11 @@ namespace QuickFAST{
       }
       if((class_ & STRING) == STRING)
       {
-        return string_ == rhs.string_;
+        if(!string_ || !rhs.string_)
+        {
+          return string_ == rhs.string_;
+        }
+        return *string_ == *rhs.string_;
       }
       return true;
     }
@@ -228,7 +295,7 @@ namespace QuickFAST{
       {
         valueToStringBuffer();
       }
-      return string_;
+      return ensureString();
     }
 
     /// @brief Does this field have a value?
@@ -382,10 +449,10 @@ namespace QuickFAST{
     /// @param length is the length of the string.
     bool getValue(const unsigned char *& value, size_t &length) const
     {
-      if(class_ == STRING)
+      if(class_ == STRING && string_)
       {
-        value = string_.data();
-        length = string_.size();
+        value = string_->data();
+        length = string_->size();
         return true;
       }
       return false;
@@ -395,9 +462,9 @@ namespace QuickFAST{
     /// @param value is set to point to the string
     bool getValue(const char *& value) const
     {
-      if(class_ == STRING)
+      if(class_ == STRING && string_)
       {
-        value = reinterpret_cast<const char *>(string_.c_str());
+        value = reinterpret_cast<const char *>(string_->c_str());
         return true;
       }
       return false;
@@ -407,9 +474,9 @@ namespace QuickFAST{
     /// @param value receives the data
     bool getValue(std::string& value) const
     {
-      if(class_ == STRING)
+      if(class_ == STRING && string_)
       {
-        value = static_cast<std::string>(string_);
+        value = static_cast<std::string>(*string_);
         return true;
       }
       return false;
@@ -476,6 +543,32 @@ namespace QuickFAST{
     }
 
   private:
+    /// @brief Invalidate the string payload / display cache.
+    ///
+    /// Keeps any buffer already allocated. Context::reset() erases every
+    /// dictionary entry between messages, so freeing here would cost a
+    /// free/malloc pair per string-valued entry per message. Slots that never
+    /// hold a string still never allocate, which is where the density comes
+    /// from.
+    void discardStringStorage() const
+    {
+      cachedString_ = false;
+      if(string_)
+      {
+        string_->erase();
+      }
+    }
+
+    /// @brief Allocate string storage if needed and return it.
+    StringBuffer & ensureString() const
+    {
+      if(!string_)
+      {
+        string_ = std::make_unique<StringBuffer>();
+      }
+      return *string_;
+    }
+
     /// @brief Produce a cached "human readable" representation of the value
     void valueToStringBuffer()const
     {
@@ -502,7 +595,7 @@ namespace QuickFAST{
       {
         buffer << "[null]";
       }
-      string_ = buffer.str();
+      ensureString() = buffer.str();
     }
 
 
@@ -526,8 +619,8 @@ namespace QuickFAST{
     ///@brief Exponent for Decimal types (mantissa is in signedInteger_)
     exponent_t exponent_;
 
-    ///@brief Buffer containing string value. Owned by this object
-    mutable StringBuffer string_;
+    ///@brief On-demand buffer for STRING values and displayString() caches.
+    mutable std::unique_ptr<StringBuffer> string_;
   };
 }
 

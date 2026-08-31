@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -58,6 +59,14 @@ namespace QuickFAST{
     /// the reverse parameter is honored so this is either push_back or push_front
     /// @param byte is the data to be added.
     void push(uchar byte);
+
+    /// @brief add a contiguous run of bytes
+    ///
+    /// Honors reverse mode: equivalent to push(bytes[i]) for i in [0, count).
+    /// Forward mode uses a single memcpy after one grow. Zero count is a no-op.
+    /// @param bytes pointer to count bytes (ignored when count is 0)
+    /// @param count number of bytes to append
+    void push(const uchar * bytes, size_t count);
 
     /// @brief Support forward iteration from the beginning of the buffer
     /// @returns a uchar* to be used as an iterator
@@ -130,7 +139,7 @@ namespace QuickFAST{
     size_t capacity_;
     size_t startPos_;
     size_t endPos_;
-    boost::scoped_array<uchar> buffer_;
+    std::unique_ptr<uchar[]> buffer_;
   };
 }
 

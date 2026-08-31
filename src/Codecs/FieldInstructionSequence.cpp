@@ -1,4 +1,5 @@
-// C+opyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
@@ -21,11 +22,22 @@ FieldInstructionSequence::FieldInstructionSequence(
   const std::string & name,
   const std::string & fieldNamespace)
   : FieldInstruction(name, fieldNamespace)
+  , defaultLengthInstruction_(new FieldInstructionUInt32)
 {
+  defaultLengthInstruction_->setPresence(isMandatory());
 }
 
 FieldInstructionSequence::FieldInstructionSequence()
+  : defaultLengthInstruction_(new FieldInstructionUInt32)
 {
+  defaultLengthInstruction_->setPresence(isMandatory());
+}
+
+void
+FieldInstructionSequence::setPresence(bool mandatory)
+{
+  FieldInstruction::setPresence(mandatory);
+  defaultLengthInstruction_->setPresence(mandatory);
 }
 
 FieldInstructionSequence::~FieldInstructionSequence()
@@ -62,6 +74,7 @@ FieldInstructionSequence::decodeNop(
   if(!segment_)
   {
     decoder.reportFatal("[ERR U07]", "SegmentBody not defined for Sequence instruction.");
+    return;
   }
   size_t length = 0;
   Codecs::FieldInstructionCPtr lengthInstruction;
@@ -73,13 +86,23 @@ FieldInstructionSequence::decodeNop(
   }
   else
   {
-    FieldInstructionUInt32 defaultLengthInstruction;
-    defaultLengthInstruction.setPresence(isMandatory());
-    defaultLengthInstruction.decode(source, pmap, decoder, lengthSet);
+    defaultLengthInstruction_->decode(source, pmap, decoder, lengthSet);
   }
   if(lengthSet.isSet())
   {
     length = lengthSet.value();
+
+    // Speculative reserve is already capped in Messages::Sequence; this stops
+    // the decode loop itself from materialising an unbounded number of entries
+    // when the wire length is large and the payload is actually present.
+    const size_t maxLength = decoder.getMaxSequenceLength();
+    if(maxLength != 0 && length > maxLength)
+    {
+      decoder.reportFatal(
+        "[ERR U19]",
+        "Sequence length exceeds the configured maximum.",
+        identity_);
+    }
 
     Messages::ValueMessageBuilder & sequenceBuilder = builder.startSequence(
       identity_,
@@ -120,6 +143,7 @@ FieldInstructionSequence::encodeNop(
   if(!segment_)
   {
     encoder.reportFatal("[ERR U07]", "SegmentBody not defined for Sequence instruction.");
+    return;
   }
 
   size_t length = 0;
@@ -130,15 +154,13 @@ FieldInstructionSequence::encodeNop(
     Codecs::FieldInstructionCPtr lengthInstruction;
     if(segment_->getLengthInstruction(lengthInstruction))
     {
-      Messages::SingleFieldAccessor accessor(lengthInstruction->getIdentity(), lengthField);
-      lengthInstruction->encode(destination, pmap, encoder, accessor);
+      Messages::SingleFieldAccessor lengthAccessor(lengthInstruction->getIdentity(), lengthField);
+      lengthInstruction->encode(destination, pmap, encoder, lengthAccessor);
     }
     else
     {
-       FieldInstructionUInt32 defaultLengthInstruction;
-       defaultLengthInstruction.setPresence(isMandatory());
-       Messages::SingleFieldAccessor accessor(defaultLengthInstruction.getIdentity(), lengthField);
-       defaultLengthInstruction.encode(destination, pmap, encoder, accessor);
+       Messages::SingleFieldAccessor lengthAccessor(defaultLengthInstruction_->getIdentity(), lengthField);
+       defaultLengthInstruction_->encode(destination, pmap, encoder, lengthAccessor);
     }
 
     for(size_t pos = 0; pos < length; ++pos)
@@ -169,8 +191,8 @@ FieldInstructionSequence::encodeNop(
       Codecs::FieldInstructionCPtr lengthInstruction;
       if(segment_->getLengthInstruction(lengthInstruction))
       {
-         Messages::SingleFieldAccessor accessor(lengthInstruction->getIdentity(), 0);
-        lengthInstruction->encode(destination, pmap, encoder, accessor);
+         Messages::SingleFieldAccessor lengthAccessor(lengthInstruction->getIdentity(), 0);
+        lengthInstruction->encode(destination, pmap, encoder, lengthAccessor);
       }
       else
       {
@@ -183,8 +205,8 @@ FieldInstructionSequence::encodeNop(
       if(segment_->getLengthInstruction(lengthInstruction))
       {
         // let the length instruction encode the fact that it's missing
-        Messages::EmptyAccessor accessor;
-        lengthInstruction->encode(destination, pmap, encoder, accessor);
+        Messages::EmptyAccessor missingAccessor;
+        lengthInstruction->encode(destination, pmap, encoder, missingAccessor);
       }
       else
       {

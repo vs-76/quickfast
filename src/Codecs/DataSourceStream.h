@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -43,7 +44,7 @@ namespace QuickFAST{
       size_t pos_; // position within file
       size_t end_; // end of file
 
-      boost::scoped_array<uchar> buffer_;
+      std::unique_ptr<uchar[]> buffer_;
       size_t capacity_; // size of buffer
     };
   }

@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010, 2011, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -9,6 +10,7 @@
 #define DECODERCONFIGURATION_H
 #include "DecoderConfiguration_fwd.h"
 #include <Codecs/DataSource.h>
+#include <Common/LexicalCast.h>
 
 namespace
 {
@@ -56,110 +58,70 @@ namespace QuickFAST{
         /// @brief For MulticastReceiver the dotted IP of the multicast group
         std::string groupIP_;
         /// @brief For MulticastRecevier the port number of the multicast group
-        unsigned short portNumber_;
+        unsigned short portNumber_ = 0;
+        /// @brief Has a port number actually been supplied for this feed?
+        ///
+        /// A named-but-unaddressed feed used to carry -1 as its port, which the
+        /// unsigned short member turned into 65535 -- a legal port number,
+        /// indistinguishable from one the operator asked for. The type has no
+        /// spare value to mean "unset", so the flag supplies one.
+        bool portNumberSet_ = false;
         /// @brief For MulticastReceiver selects the NIC on which to subscribe/listen
         std::string listenInterfaceIP_;
         /// @brief For MulticastReceiver the IP to which the socket will be bound
         std::string bindIP_;
+        /// @brief The senders this feed will accept, empty for any-source multicast
+        ///
+        /// A non-empty list turns the feed into a source-specific (RFC 4607)
+        /// subscription, carried by a SourceSpecificMulticastReceiver.
+        std::vector<std::string> sourceIPs_;
 
-        /// @brief Construct a Multicast feed
+        /// @brief Construct a fully specified Multicast feed
         MulticastFeed(
             const std::string & name,
             const std::string & groupIP,
-            short portNumber,
+            unsigned short portNumber,
             const std::string & listenIP,
             const std::string & bindIP)
           : name_(name)
           , groupIP_(groupIP)
-          , portNumber_(13014)
+          , portNumber_(portNumber)
+          , portNumberSet_(true)
           , listenInterfaceIP_(listenIP)
           , bindIP_(bindIP)
         {
         }
 
-        /// @brief copy a multicast feed
-        MulticastFeed(const MulticastFeed & rhs)
-          : name_(rhs.name_)
-          , groupIP_(rhs.groupIP_)
-          , portNumber_(rhs.portNumber_)
-          , listenInterfaceIP_(rhs.listenInterfaceIP_)
-          , bindIP_(rhs.bindIP_)
+        /// @brief Construct a feed that has been named but not yet addressed.
+        explicit MulticastFeed(const std::string & name)
+          : name_(name)
         {
         }
+
+        /// @brief copy a multicast feed
+        MulticastFeed(const MulticastFeed & rhs) = default;
+        /// @brief assign a multicast feed
+        /// @param rhs the feed to copy
+        /// @returns *this
+        MulticastFeed & operator=(const MulticastFeed & rhs) = default;
 
       };
       /// @brief A collection of multicast feeds.
       typedef std::vector<MulticastFeed> MulticastFeedVector;
 
       /// @brief Initalize to defaults
-      DecoderConfiguration()
-        : head_(0)
-        , reset_(false)
-        , strict_(true)
-        , asynchReads_(false)
-        , echoType_(Application::DecoderConfigurationEnums::HEX)
-        , echoMessage_(true)
-        , echoField_(false)
-        , pcapWordSize_(0)
-        , packetHeaderType_(NO_HEADER)
-        , packetHeaderMessageSizeBytes_(0)
-        , packetHeaderBigEndian_(true)
-        , packetHeaderPrefixCount_(0)
-        , packetHeaderSuffixCount_(0)
-        , messageHeaderType_(NO_HEADER)
-        , messageHeaderMessageSizeBytes_(0)
-        , messageHeaderBigEndian_(true)
-        , messageHeaderPrefixCount_(0)
-        , messageHeaderSuffixCount_(0)
-        , assemblerType_(UNSPECIFIED_ASSEMBLER)
-        , waitForCompleteMessage_(false)
-        , receiverType_(UNSPECIFIED_RECEIVER)
-        , bufferSize_(1500)
-        , bufferCount_(2)
-        , nonstandard_(0)
-        , privateIOService_(false)
-        , testSkip_(0)
-      {
-      }
+      ///
+      /// The defaults live on the member declarations. Both constructors were
+      /// written out by hand and the copy had drifted: it omitted
+      /// multicastFeeds_ entirely and hard-coded asynchReads_ to false. A
+      /// thirty-four entry initializer list cannot be reviewed reliably, and
+      /// every member here is copyable, so the compiler writes both.
+      DecoderConfiguration() = default;
 
       /// @brief copy consructor
-      DecoderConfiguration(const DecoderConfiguration & rhs)
-        : head_(rhs.head_)
-        , reset_(rhs.reset_)
-        , strict_(rhs.strict_)
-        , asynchReads_(false)
-        , templateFileName_(rhs.templateFileName_)
-        , fastFileName_(rhs.fastFileName_)
-        , verboseFileName_(rhs.verboseFileName_)
-        , pcapFileName_(rhs.pcapFileName_)
-        , echoFileName_(rhs.echoFileName_)
-        , echoType_(rhs.echoType_)
-        , echoMessage_(rhs.echoMessage_)
-        , echoField_(rhs.echoField_)
-        , pcapWordSize_(rhs.pcapWordSize_)
-        , packetHeaderType_(rhs.packetHeaderType_)
-        , packetHeaderMessageSizeBytes_(rhs.packetHeaderMessageSizeBytes_)
-        , packetHeaderBigEndian_(rhs.packetHeaderBigEndian_)
-        , packetHeaderPrefixCount_(rhs.packetHeaderPrefixCount_)
-        , packetHeaderSuffixCount_(rhs.packetHeaderSuffixCount_)
-        , messageHeaderType_(rhs.messageHeaderType_)
-        , messageHeaderMessageSizeBytes_(rhs.messageHeaderMessageSizeBytes_)
-        , messageHeaderBigEndian_(rhs.messageHeaderBigEndian_)
-        , messageHeaderPrefixCount_(rhs.messageHeaderPrefixCount_)
-        , messageHeaderSuffixCount_(rhs.messageHeaderSuffixCount_)
-        , assemblerType_(rhs.assemblerType_)
-        , waitForCompleteMessage_(rhs.waitForCompleteMessage_)
-        , receiverType_(rhs.receiverType_)
-        , hostName_(rhs.hostName_)
-        , portName_(rhs.portName_)
-        , bufferSize_(rhs.bufferSize_)
-        , bufferCount_(rhs.bufferCount_)
-        , nonstandard_(rhs.nonstandard_)
-        , privateIOService_(rhs.privateIOService_)
-        , testSkip_(rhs.testSkip_)
-        , extras_(rhs.extras_)
-      {
-      }
+      DecoderConfiguration(const DecoderConfiguration & rhs) = default;
+
+      DecoderConfiguration & operator=(const DecoderConfiguration &) = delete;
 
       /// @brief Process the first "head" messages then stop.
       size_t head()const
@@ -235,6 +197,11 @@ namespace QuickFAST{
 
 
       /// @brief What word size is used in the PCAP file.
+      /// @brief Deprecated: capture files are read through libpcap, which
+      /// determines the record layout from the file itself.
+      ///
+      /// The value is retained only so the managed binding keeps compiling;
+      /// nothing reads it.
       size_t pcapWordSize()const
       {
         return pcapWordSize_;
@@ -333,10 +300,12 @@ namespace QuickFAST{
         if(multicastFeeds_.size() == 1 && multicastFeeds_[0].name_ == DEFAULT_MULTICAST_NAME)
         {
           multicastFeeds_[0].name_ = name;
+          currentFeed_ = 0;
         }
         else
         {
-          multicastFeeds_.push_back(MulticastFeed(name, "", -1, "", ""));
+          multicastFeeds_.push_back(MulticastFeed(name));
+          currentFeed_ = multicastFeeds_.size() - 1;
         }
       }
 
@@ -361,6 +330,16 @@ namespace QuickFAST{
         return multicastFeeds_[index].portNumber_;
       }
 
+      /// @brief Was a port number supplied for the indexth multicast group?
+      ///
+      /// Distinguishes a feed that was named but never addressed from one the
+      /// operator deliberately pointed at a high port.
+      bool portNumberIsSet(size_t index = 0)const
+      {
+        needMulticastFeed();
+        return multicastFeeds_[index].portNumberSet_;
+      }
+
       /// @brief For MulticastReceiver selects the NIC on which to subscribe/listen
       const std::string & listenInterfaceIP(size_t index = 0)const
       {
@@ -377,6 +356,40 @@ namespace QuickFAST{
           return multicastFeeds_[index].listenInterfaceIP_;
         }
         return multicastFeeds_[index].bindIP_;
+      }
+
+      /// @brief Was a bind address supplied for the indexth multicast group?
+      ///
+      /// The default differs by subscription type -- an any-source feed binds
+      /// to the listen interface, a source-specific feed to the group -- so
+      /// the caller has to be able to tell a default from a choice.
+      bool multicastBindIPIsSet(size_t index = 0)const
+      {
+        needMulticastFeed();
+        return !multicastFeeds_[index].bindIP_.empty();
+      }
+
+      /// @brief For MulticastReceiver the senders accepted on the indexth feed
+      ///
+      /// Empty means any-source multicast: whoever sends to the group is heard.
+      const std::vector<std::string> & multicastSourceIPs(size_t index = 0)const
+      {
+        needMulticastFeed();
+        return multicastFeeds_[index].sourceIPs_;
+      }
+
+      /// @brief Does any configured feed name the senders it will accept?
+      /// @returns true if the multicast input is source-specific
+      bool sourceSpecificMulticast()const
+      {
+        for(size_t index = 0; index < multicastFeeds_.size(); ++index)
+        {
+          if(!multicastFeeds_[index].sourceIPs_.empty())
+          {
+            return true;
+          }
+        }
+        return false;
       }
 
 
@@ -406,6 +419,18 @@ namespace QuickFAST{
       size_t bufferCount()const
       {
         return bufferCount_;
+      }
+
+      /// @brief Maximum accepted &lt;byteVector&gt; length (0 = unlimited).
+      size_t maxByteVectorLength()const
+      {
+        return maxByteVectorLength_;
+      }
+
+      /// @brief Maximum accepted &lt;sequence&gt; entry count (0 = unlimited).
+      size_t maxSequenceLength()const
+      {
+        return maxSequenceLength_;
       }
 
       /// @brief Support (nonstandard) presence attribute on length instruction
@@ -505,6 +530,7 @@ namespace QuickFAST{
       }
 
       /// @brief What word size is used in the PCAP file.
+      /// @brief Deprecated: has no effect. See pcapWordSize().
       void setPcapWordSize(size_t pcapWordSize)
       {
         pcapWordSize_ = pcapWordSize;
@@ -637,21 +663,22 @@ namespace QuickFAST{
       void setMulticastGroupIP(const std::string & multicastGroupIP)
       {
         needMulticastFeed();
-        multicastFeeds_[0].groupIP_ = multicastGroupIP;
+        multicastFeeds_[currentFeed_].groupIP_ = multicastGroupIP;
       }
 
       /// @brief For MulticastRecevier the port number of the multicast group
       void setPortNumber(unsigned short portNumber)
       {
         needMulticastFeed();
-        multicastFeeds_[0].portNumber_ = portNumber;
+        multicastFeeds_[currentFeed_].portNumber_ = portNumber;
+        multicastFeeds_[currentFeed_].portNumberSet_ = true;
       }
 
       /// @brief For MulticastReceiver selects the NIC on which to subscribe/listen
       void setListenInterfaceIP(const std::string & listenInterfaceIP)
       {
         needMulticastFeed();
-        multicastFeeds_[0].listenInterfaceIP_ = listenInterfaceIP;
+        multicastFeeds_[currentFeed_].listenInterfaceIP_ = listenInterfaceIP;
       }
 
 
@@ -659,7 +686,19 @@ namespace QuickFAST{
       void setMulticastBindIP(const std::string & multicastBindIP)
       {
         needMulticastFeed();
-        multicastFeeds_[0].bindIP_ = multicastBindIP;
+        multicastFeeds_[currentFeed_].bindIP_ = multicastBindIP;
+      }
+
+      /// @brief Accept traffic on the current feed only from this sender.
+      ///
+      /// Call more than once to accept more than one sender, which is what
+      /// redundant publishers on a single group need.
+      ///
+      /// @param sourceIP the dotted IP of a permitted sender
+      void addMulticastSourceIP(const std::string & sourceIP)
+      {
+        needMulticastFeed();
+        multicastFeeds_[currentFeed_].sourceIPs_.push_back(sourceIP);
       }
 
       /// @brief For TCPIPReceiver, Host name or IP
@@ -687,6 +726,18 @@ namespace QuickFAST{
       void setBufferCount(size_t bufferCount)
       {
         bufferCount_ = bufferCount;
+      }
+
+      /// @brief Cap decoded byte-vector lengths (0 disables the ceiling).
+      void setMaxByteVectorLength(size_t maxBytes)
+      {
+        maxByteVectorLength_ = maxBytes;
+      }
+
+      /// @brief Cap decoded sequence lengths (0 disables the ceiling).
+      void setMaxSequenceLength(size_t maxEntries)
+      {
+        maxSequenceLength_ = maxEntries;
       }
 
       /// @brief Support nonstandard FAST featurs
@@ -755,7 +806,6 @@ namespace QuickFAST{
         out << "  -afile file          : Use asynchronous reads from FAST message file." << std::endl;
         out << "  -bfile file          : Buffer entire FAST message file in memory." << std::endl;
         out << "  -pcap file           : Input from PCap FAST message file." << std::endl;
-        out << "  -pcapsource [64|32]    : Word size of the machine where the PCap data was captured." << std::endl;
         out << "                           Defaults to the current platform." << std::endl;
         out << "  -mname name          : Declare a new multicast feed with the given name." << std::endl;
         out << "                         May appear multiple times. The first occurrence names the default feed." << std::endl;
@@ -769,6 +819,10 @@ namespace QuickFAST{
         out << "                           on which to subscribe and listen." << std::endl;
         out << "                           0.0.0.0 means pick any NIC." << std::endl;
         out << "  -mbind ip            : Multicast bind address.  Defaults to listenIP. Override if you dare." << std::endl;
+        out << "                           (source specific feeds bind to the group instead)." << std::endl;
+        out << "  -msource ip[,ip...]  : Accept traffic only from these senders." << std::endl;
+        out << "                           Subscribes source-specific (RFC 4607, 232.0.0.0/8)." << std::endl;
+        out << "                           Repeatable; applies to the current -mname feed." << std::endl;
         out << "  -tcp host:port       : Input from TCP/IP.  Connect to \"host\" name or" << std::endl;
         out << "                         dotted IP on named or numbered port." << std::endl;
         out << std::endl;
@@ -819,6 +873,10 @@ namespace QuickFAST{
         out << "  -buffers count       : Number of buffers. (default " << bufferCount() << ")." << std::endl;
         out << "                         For \"-streaming block\" buffersize * buffers must" << std::endl;
         out << "                         exceed largest expected message." << std::endl;
+        out << "  -maxbytevector n     : Reject <byteVector> lengths above n bytes." << std::endl;
+        out << "                         0 disables the ceiling (default " << maxByteVectorLength() << ")." << std::endl;
+        out << "  -maxsequence n       : Reject <sequence> lengths above n entries." << std::endl;
+        out << "                         0 disables the ceiling (default " << maxSequenceLength() << ")." << std::endl;
         out << std::endl;
         out << "  -e file              : Echo input to file:" << std::endl;
         out << "    -ehex                : Echo as hexadecimal (default)." << std::endl;
@@ -850,7 +908,7 @@ namespace QuickFAST{
         }
         else if(opt == "-limit" && argc > 1)
         {
-          setHead(boost::lexical_cast<size_t>(argv[1]));
+          setHead(QuickFAST::lexical_cast<size_t>(argv[1]));
           consumed = 2;
         }
         else if(opt == "-reset")
@@ -933,20 +991,6 @@ namespace QuickFAST{
           setPcapFileName(argv[1]);
           consumed = 2;
         }
-        else if(opt == "-pcapsource" && argc > 1)
-        {
-          std::string argv1(argv[1]);
-          if(argv1 == "64")
-          {
-            setPcapWordSize(64);
-            consumed = 2;
-          }
-          else if(argv1 == "32" )
-          {
-            setPcapWordSize(32);
-            consumed = 2;
-          }
-        }
         else if(opt == "-mname" && argc > 1)
         {
           setMulticastName(argv[1]);
@@ -960,7 +1004,7 @@ namespace QuickFAST{
           setMulticastGroupIP(address.substr(0, colon));
           if(colon != std::string::npos)
           {
-            setPortNumber(boost::lexical_cast<unsigned short>(
+            setPortNumber(QuickFAST::lexical_cast<unsigned short>(
               address.substr(colon+1)));
           }
           consumed = 2;
@@ -973,6 +1017,28 @@ namespace QuickFAST{
         else if(opt == "-mbind" && argc > 1)
         {
           setMulticastBindIP(argv[1]);
+          consumed = 2;
+        }
+        else if(opt == "-msource" && argc > 1)
+        {
+          std::string list = argv[1];
+          std::string::size_type start = 0;
+          while(start <= list.size())
+          {
+            std::string::size_type comma = list.find(',', start);
+            std::string source = list.substr(
+              start,
+              comma == std::string::npos ? std::string::npos : comma - start);
+            if(!source.empty())
+            {
+              addMulticastSourceIP(source);
+            }
+            if(comma == std::string::npos)
+            {
+              break;
+            }
+            start = comma + 1;
+          }
           consumed = 2;
         }
         else if(opt == "-tcp" && argc > 1)
@@ -1018,7 +1084,7 @@ namespace QuickFAST{
         else if(opt == "-hfix" && argc > 1) // n             : Header contains fixed size fields; block size field is n bytes" << std::endl;
         {
           setMessageHeaderType(FIXED_HEADER);
-          setMessageHeaderMessageSizeBytes(boost::lexical_cast<size_t>(argv[1]));
+          setMessageHeaderMessageSizeBytes(QuickFAST::lexical_cast<size_t>(argv[1]));
           consumed = 2;
         }
         else if(opt == "-hfast" ) //              : Header contains fast encoded fields" << std::endl;
@@ -1028,12 +1094,12 @@ namespace QuickFAST{
         }
         else if(opt == "-hprefix" && argc > 1) // n            : 'n' bytes (fixed) or fields (FAST) preceed block size" << std::endl;
         {
-          setMessageHeaderPrefixCount(boost::lexical_cast<size_t>(argv[1]));
+          setMessageHeaderPrefixCount(QuickFAST::lexical_cast<size_t>(argv[1]));
           consumed = 2;
         }
         else if(opt == "-hsuffix" && argc > 1) // n            : 'n' bytes (fixed) or fields (FAST) follow block size" << std::endl;
         {
-          setMessageHeaderSuffixCount(boost::lexical_cast<size_t>(argv[1]));
+          setMessageHeaderSuffixCount(QuickFAST::lexical_cast<size_t>(argv[1]));
           consumed = 2;
         }
         else if(opt == "-hbig" ) //                 : fixed size header is big-endian" << std::endl;
@@ -1062,7 +1128,7 @@ namespace QuickFAST{
         else if(opt == "-pfix" && argc > 1) // n             : Header contains fixed size fields; block size field is n bytes" << std::endl;
         {
           setPacketHeaderType(FIXED_HEADER);
-          setPacketHeaderMessageSizeBytes(boost::lexical_cast<size_t>(argv[1]));
+          setPacketHeaderMessageSizeBytes(QuickFAST::lexical_cast<size_t>(argv[1]));
           consumed = 2;
         }
         else if(opt == "-pfast" ) //              : Header contains fast encoded fields" << std::endl;
@@ -1072,12 +1138,12 @@ namespace QuickFAST{
         }
         else if(opt == "-pprefix" && argc > 1) // n            : 'n' bytes (fixed) or fields (FAST) preceed block size" << std::endl;
         {
-          setPacketHeaderPrefixCount(boost::lexical_cast<size_t>(argv[1]));
+          setPacketHeaderPrefixCount(QuickFAST::lexical_cast<size_t>(argv[1]));
           consumed = 2;
         }
         else if(opt == "-psuffix" && argc > 1) // n            : 'n' bytes (fixed) or fields (FAST) follow block size" << std::endl;
         {
-          setPacketHeaderSuffixCount(boost::lexical_cast<size_t>(argv[1]));
+          setPacketHeaderSuffixCount(QuickFAST::lexical_cast<size_t>(argv[1]));
           consumed = 2;
         }
         else if(opt == "-pbig" ) //                 : fixed size header is big-endian" << std::endl;
@@ -1105,22 +1171,32 @@ namespace QuickFAST{
         }
         else if(opt == "-testskip" && argc > 1)
         {
-          setTestSkip(boost::lexical_cast<size_t>(argv[1]));
+          setTestSkip(QuickFAST::lexical_cast<size_t>(argv[1]));
           consumed = 2;
         }
         else if(opt == "-buffersize" && argc > 1) // size         : Size of communication buffers. For multicast largest expected message. (default " << bufferSize_ << ")" << std::endl;
         {
-          setBufferSize(boost::lexical_cast<size_t>(argv[1]));
+          setBufferSize(QuickFAST::lexical_cast<size_t>(argv[1]));
           consumed = 2;
         }
         else if(opt == "-buffers" && argc > 1) // count      : Number of buffers. (default " << bufferCount_ << ")" << std::endl;
         {
-          setBufferCount(boost::lexical_cast<size_t>(argv[1]));
+          setBufferCount(QuickFAST::lexical_cast<size_t>(argv[1]));
+          consumed = 2;
+        }
+        else if(opt == "-maxbytevector" && argc > 1)
+        {
+          setMaxByteVectorLength(QuickFAST::lexical_cast<size_t>(argv[1]));
+          consumed = 2;
+        }
+        else if(opt == "-maxsequence" && argc > 1)
+        {
+          setMaxSequenceLength(QuickFAST::lexical_cast<size_t>(argv[1]));
           consumed = 2;
         }
         else if(opt == "-nonstandard" && argc > 1)
         {
-          setNonstandard(boost::lexical_cast<unsigned long>(argv[1]));
+          setNonstandard(QuickFAST::lexical_cast<unsigned long>(argv[1]));
           consumed = 2;
         }
         return consumed;
@@ -1137,20 +1213,24 @@ namespace QuickFAST{
       {
         if(multicastFeeds_.empty())
         {
-          multicastFeeds_.push_back(MulticastFeed(DEFAULT_MULTICAST_NAME, "224.1.2.133", 13014, "0.0.0.0", "0.0.0.0"));
+          // The bind address is left unset rather than spelled 0.0.0.0: it
+          // resolves to the listen interface anyway, and only an unset value
+          // lets a source specific feed apply its own default.
+          multicastFeeds_.push_back(MulticastFeed(DEFAULT_MULTICAST_NAME, "224.1.2.133", 13014, "0.0.0.0", ""));
+          currentFeed_ = 0;
         }
       }
 
     private:
       /// @brief Process the first "head" messages then stop.
-      size_t head_;
+      size_t head_ = 0;
       /// @brief Reset the decoder at the start of every message and/or packet
-      bool reset_;
+      bool reset_ = false;
       /// @brief Use strict decoding rules
-      bool strict_;
+      bool strict_ = true;
 
       /// @brief Should file reads be asynchronous
-      bool asynchReads_;
+      bool asynchReads_ = false;
 
       /// @brief The name of the template file
       std::string templateFileName_;
@@ -1163,48 +1243,56 @@ namespace QuickFAST{
       /// @brief The name of a file to which echo output will be written
       std::string echoFileName_;
       /// @brief The type of data to be echoed (hex/raw)
-      Application::DecoderConfigurationEnums::EchoType echoType_;
+      Application::DecoderConfigurationEnums::EchoType echoType_ =
+        Application::DecoderConfigurationEnums::HEX;
       /// @brief Echo Message Boundaries?
-      bool echoMessage_;
+      bool echoMessage_ = true;
       /// @brief Echo Field Boundaries?
-      bool echoField_;
+      bool echoField_ = false;
 
       /// @brief What word size is used in the PCAP file.
-      size_t pcapWordSize_;
+      size_t pcapWordSize_ = 0;
 
       /// @brief What type of header is expected for each packet
-      HeaderType packetHeaderType_;
+      HeaderType packetHeaderType_ = NO_HEADER;
 
-      size_t packetHeaderMessageSizeBytes_;
+      size_t packetHeaderMessageSizeBytes_ = 0;
       /// @brief For FIXED_HEADER, is the size field big-endian?
-      bool packetHeaderBigEndian_;
+      bool packetHeaderBigEndian_ = true;
       /// @brief For FIXED_HEADER byte count before size; for FAST_HEADER field count before size
-      size_t packetHeaderPrefixCount_;
+      size_t packetHeaderPrefixCount_ = 0;
       /// @brief For FIXED_HEADER byte count after size; for FAST_HEADER field count after size
-      size_t packetHeaderSuffixCount_;
+      size_t packetHeaderSuffixCount_ = 0;
 
       /// @brief What type of header is expected for each message
-      HeaderType messageHeaderType_;
-      size_t messageHeaderMessageSizeBytes_;
+      HeaderType messageHeaderType_ = NO_HEADER;
+      size_t messageHeaderMessageSizeBytes_ = 0;
       /// @brief For FIXED_HEADER, is the size field big-endian?
-      bool messageHeaderBigEndian_;
+      bool messageHeaderBigEndian_ = true;
       /// @brief For FIXED_HEADER byte count before size; for FAST_HEADER field count before size
-      size_t messageHeaderPrefixCount_;
+      size_t messageHeaderPrefixCount_ = 0;
       /// @brief For FIXED_HEADER byte count after size; for FAST_HEADER field count after size
-      size_t messageHeaderSuffixCount_;
+      size_t messageHeaderSuffixCount_ = 0;
 
       /// @brief For FIXED_HEADER, how many bytes in the header size field.
       /// @brief What type of assembler processes incoming buffers
-      AssemblerType assemblerType_;
+      AssemblerType assemblerType_ = UNSPECIFIED_ASSEMBLER;
 
       /// @brief Should StreamingAssembler wait for a complete message
       /// before decoding starts.
-      bool waitForCompleteMessage_;
+      bool waitForCompleteMessage_ = false;
 
       /// @brief What type of receiver supplies incoming buffers.
-      ReceiverType receiverType_;
+      ReceiverType receiverType_ = UNSPECIFIED_RECEIVER;
 
       MulticastFeedVector multicastFeeds_;
+
+      /// @brief The feed that -mname most recently named.
+      ///
+      /// Without a cursor every address setter wrote feed zero, so a second
+      /// -mname created a feed that nothing could then configure while its
+      /// -multicast overwrote the first one.
+      size_t currentFeed_ = 0;
 
       /// @brief For TCPIPReceiver, Host name or IP
       std::string hostName_;
@@ -1212,23 +1300,30 @@ namespace QuickFAST{
       std::string portName_;
       /// @brief Size of a communication buffer.
       /// For MessagePerPacketAssembler, must equal or exceed maximum message size.
-      size_t bufferSize_;
+      size_t bufferSize_ = 1500;
       /// @brief How many communication buffers to allocate.
       /// For StreamingAssembler with waitForCompleteMessage_ specified,
       /// bufferCount_ * bufferSize_ must equal or exceed maximum message size.
-      size_t bufferCount_;
+      size_t bufferCount_ = 2;
+
+      /// @brief Cap for a decoded byteVector; matches Context::defaultMaxByteVectorLength.
+      /// Zero means unlimited.
+      size_t maxByteVectorLength_ = 16u * 1024u * 1024u;
+      /// @brief Cap for a decoded sequence length; matches Context::defaultMaxSequenceLength.
+      /// Zero means unlimited.
+      size_t maxSequenceLength_ = 1000000u;
 
       /// @brief Allow nonstandard presence attribute on length instruction
       /// If true, allow presence= attribute on sequence length instruction
-      unsigned long nonstandard_;
+      unsigned long nonstandard_ = 0;
 
       /// @brief Allocate a private IO Service
       ///
       /// This makes connections independent of each other, but may require more threads to be
       /// allocated because connections can no longer share threads.
-      bool privateIOService_;
+      bool privateIOService_ = false;
 
-      size_t testSkip_;
+      size_t testSkip_ = 0;
 
       typedef std::map<std::string, std::string> NameValuePairs;
       NameValuePairs extras_;

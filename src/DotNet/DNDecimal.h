@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #pragma once
@@ -35,12 +36,14 @@ namespace QuickFAST
         return System::String::Format("{0}E{1}", this->Mantissa, this->Exponent);
       }
 
+    /// @cond INTERNAL
     internal:
       DNDecimal(const QuickFAST::Decimal& decimal):
         Mantissa(decimal.getMantissa()),
         Exponent(decimal.getExponent())
       {
       }
+    /// @endcond
     };
   }
 }

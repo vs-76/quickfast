@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -16,6 +17,7 @@
 
 #include <Examples/StopWatch.h>
 #include <Common/Profiler.h>
+#include <Common/LexicalCast.h>
 
 using namespace QuickFAST;
 using namespace Examples;
@@ -84,7 +86,7 @@ PerformanceTest::parseSingleArg(int argc, char * argv[])
     }
     else if(opt == "-i" && argc > 1)
     {
-      interpret_ = boost::lexical_cast<size_t>(argv[1]);
+      interpret_ = QuickFAST::lexical_cast<size_t>(argv[1]);
       consumed = 2;
     }
     else if(opt == "-null")
@@ -94,17 +96,17 @@ PerformanceTest::parseSingleArg(int argc, char * argv[])
     }
     else if(opt == "-head" && argc > 1)
     {
-      head_ = boost::lexical_cast<size_t>(argv[1]);
+      head_ = QuickFAST::lexical_cast<size_t>(argv[1]);
       consumed = 2;
     }
     else if(opt == "-c" && argc > 1)
     {
-      count_ = boost::lexical_cast<size_t>(argv[1]);
+      count_ = QuickFAST::lexical_cast<size_t>(argv[1]);
       consumed = 2;
     }
     else if(opt == "-hfix" && argc > 1)
     {
-      headerBytes_ = boost::lexical_cast<size_t>(argv[1]);
+      headerBytes_ = QuickFAST::lexical_cast<size_t>(argv[1]);
       consumed = 2;
     }
     else if(opt == "-e")
@@ -115,8 +117,15 @@ PerformanceTest::parseSingleArg(int argc, char * argv[])
   }
   catch (std::exception & ex)
   {
-    std::cerr << ex.what() << " while interpreting " << opt << std::endl;
-    consumed = 0;
+    // Returning 0 here would make the parser announce "Unknown argument" for
+    // an option that exists and is spelled correctly.
+    std::cerr << opt;
+    if(argc > 1)
+    {
+      std::cerr << " \"" << argv[1] << "\"";
+    }
+    std::cerr << ": " << ex.what() << std::endl;
+    consumed = Application::CommandArgHandler::ARGUMENT_VALUE_ERROR;
   }
   return consumed;
 }

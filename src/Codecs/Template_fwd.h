@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2011 Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -14,9 +15,9 @@ namespace QuickFAST{
   namespace Codecs{
     class Template;
     /// @brief A smart pointer to a Template.
-    typedef boost::shared_ptr<Template> TemplatePtr;
+    typedef std::shared_ptr<Template> TemplatePtr;
     /// @brief A smart pointer to a const Template.
-    typedef boost::shared_ptr<const Template> TemplateCPtr;
+    typedef std::shared_ptr<const Template> TemplateCPtr;
   }
 }
 #endif // TEMPLATE_FWD_H

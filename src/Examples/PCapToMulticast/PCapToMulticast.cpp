@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -6,6 +7,7 @@
 #include "PCapToMulticast.h"
 #include <Examples/StopWatch.h>
 #include <Common/Types.h>
+#include <Common/LexicalCast.h>
 using namespace QuickFAST;
 using namespace Examples;
 
@@ -65,12 +67,12 @@ PCapToMulticast::parseSingleArg(int argc, char * argv[])
     }
     else if(opt == "-p" && argc > 1)
     {
-      portNumber_ = boost::lexical_cast<unsigned short>(argv[1]);
+      portNumber_ = QuickFAST::lexical_cast<unsigned short>(argv[1]);
       consumed = 2;
     }
     else if(opt == "-r" && argc > 1)
     {
-      size_t mps = boost::lexical_cast<size_t>(argv[1]);
+      size_t mps = QuickFAST::lexical_cast<size_t>(argv[1]);
       if(mps > 0)
       {
         sendMicroseconds_ = 1000000/mps;
@@ -84,12 +86,12 @@ PCapToMulticast::parseSingleArg(int argc, char * argv[])
     }
     else if(opt == "-b" && argc > 1)
     {
-      burst_ = boost::lexical_cast<size_t>(argv[1]);
+      burst_ = QuickFAST::lexical_cast<size_t>(argv[1]);
       consumed = 2;
     }
     else if(opt == "-c" && argc > 1)
     {
-      sendCount_ = boost::lexical_cast<size_t>(argv[1]);
+      sendCount_ = QuickFAST::lexical_cast<size_t>(argv[1]);
       consumed = 2;
     }
     else if(opt == "-a" && argc > 1)
@@ -107,18 +109,6 @@ PCapToMulticast::parseSingleArg(int argc, char * argv[])
       pauseEveryPass_ = true;
       consumed = 1;
     }
-    else if(opt == "-32")
-    {
-      pcapReader_.set32bit(true);
-      pcapReader_.set64bit(false);
-      consumed = 1;
-    }
-    else if(opt == "-64")
-    {
-      pcapReader_.set32bit(false);
-      pcapReader_.set64bit(true);
-      consumed = 1;
-    }
     else if(opt == "-v")
     {
       verbose_ = !verbose_;
@@ -127,8 +117,15 @@ PCapToMulticast::parseSingleArg(int argc, char * argv[])
   }
   catch (std::exception & ex)
   {
-    std::cerr << ex.what() << " while interpreting " << opt << std::endl;
-    consumed = 0;
+    // Returning 0 here would make the parser announce "Unknown argument" for
+    // an option that exists and is spelled correctly.
+    std::cerr << opt;
+    if(argc > 1)
+    {
+      std::cerr << " \"" << argv[1] << "\"";
+    }
+    std::cerr << ": " << ex.what() << std::endl;
+    consumed = Application::CommandArgHandler::ARGUMENT_VALUE_ERROR;
   }
   return consumed;
 }
@@ -146,8 +143,6 @@ PCapToMulticast::usage(std::ostream & out) const
   out << "                       (default 1; 0 means forever.)" << std::endl;
   out << "  -pausemessage      : Wait for 'Enter' before every message." << std::endl;
   out << "  -pausepass         : Wait for 'Enter' before every pass." << std::endl;
-  out << "  -32                : Data file was captured on 32 bit system." << std::endl;
-  out << "  -64                : Data file was captured on 64 bit system." << std::endl;
   out << "  -packetchecksum n  : size of packet checksum (default is 4)" << std::endl;
   out << "  -v                 : Noise to the console while it runs" << std::endl;
 }
@@ -166,8 +161,8 @@ PCapToMulticast::applyArgs()
     }
     ok = ok && pcapReader_.open(dataFileName_.c_str());// for debugging dump to->, &std::cout);
 
-    multicastAddress_ = boost::asio::ip::address::from_string(sendAddress_);
-    endpoint_ = boost::asio::ip::udp::endpoint(multicastAddress_, portNumber_);
+    multicastAddress_ = asio::ip::make_address(sendAddress_);
+    endpoint_ = asio::ip::udp::endpoint(multicastAddress_, portNumber_);
     socket_.open(endpoint_.protocol());
     std::cout << "Opening multicast group: " << endpoint_.address().to_string() << ':' << endpoint_.port() << std::endl;
   }
@@ -189,8 +184,8 @@ PCapToMulticast::run()
       std::cout << " Configuring multicast: " << multicastAddress_ << '|' << sendAddress_ << ':' << portNumber_ << std::endl;
     }
 
-    strand_.dispatch(
-        strand_.wrap(boost::bind(&PCapToMulticast::sendBurst, this)));
+    asio::dispatch(strand_,
+        [this]{ this->sendBurst(); });
     StopWatch lapse;
     this->ioService_.run();
     unsigned long sendLapse = lapse.freeze();
@@ -228,9 +223,10 @@ PCapToMulticast::sendBurst()
     // set the next timeout
     if(sendMicroseconds_ != 0)
     {
-      timer_.expires_from_now(boost::posix_time::microseconds(sendMicroseconds_));
+      timer_.expires_after(std::chrono::microseconds(sendMicroseconds_));
       timer_.async_wait(
-        strand_.wrap(boost::bind(&PCapToMulticast::sendBurst, this))
+        asio::bind_executor(strand_,
+          [this](const asio::error_code&){ this->sendBurst(); })
         );
     }
 
@@ -263,7 +259,12 @@ PCapToMulticast::sendBurst()
 
       const unsigned char * msgBuffer = 0;
       size_t bytesRead = 0;
-      pcapReader_.read(msgBuffer, bytesRead);
+      if(!pcapReader_.read(msgBuffer, bytesRead))
+      {
+        // Without this the end of a pass sent a zero length datagram before
+        // good() was next tested.
+        return;
+      }
 
       nMsg_ += 1;
       totalMessageCount_ += 1;
@@ -288,7 +289,7 @@ PCapToMulticast::sendBurst()
       {
         waitForEnter();
       }
-      socket_.send_to(boost::asio::buffer(msgBuffer, bytesRead), endpoint_);
+      socket_.send_to(asio::buffer(msgBuffer, bytesRead), endpoint_);
     }
   }
   catch (std::exception& e)

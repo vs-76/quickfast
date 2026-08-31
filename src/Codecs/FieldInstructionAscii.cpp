@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
@@ -36,11 +37,17 @@ FieldInstructionAscii::~FieldInstructionAscii()
 bool
 FieldInstructionAscii::decodeAsciiFromSource(
   Codecs::DataSource & source,
+  Codecs::Context & context,
   bool mandatory,
   WorkingBuffer & buffer) const
 {
   PROFILE_POINT("ascii::decodeAsciiFromSource");
-  decodeAscii(source, buffer);
+  if(!decodeAscii(source, buffer))
+  {
+    // The stop bit never arrived, so what is in the buffer is a fragment.
+    // decodeByteVector treats the same condition as fatal.
+    context.reportFatal("[ERR U03]", "End of file: Ascii string is missing its stop bit.", identity_.name());
+  }
   if(!mandatory)
   {
     if(checkNullAscii(buffer))
@@ -66,7 +73,7 @@ FieldInstructionAscii::decodeNop(
   // note NOP never uses pmap.  It uses a null value instead for optional fields
   // so it's always safe to do the basic decode.
   WorkingBuffer & buffer = decoder.getWorkingBuffer();
-  if(decodeAsciiFromSource(source, isMandatory(), buffer))
+  if(decodeAsciiFromSource(source, decoder, isMandatory(), buffer))
   {
     builder.addValue(identity_, ValueType::ASCII, buffer.begin(), buffer.size());
   }
@@ -116,7 +123,7 @@ FieldInstructionAscii::decodeDefault(
   if(pmap.checkNextField())
   {
     WorkingBuffer & buffer = decoder.getWorkingBuffer();
-    if(decodeAsciiFromSource(source, isMandatory(), buffer))
+    if(decodeAsciiFromSource(source, decoder, isMandatory(), buffer))
     {
       builder.addValue(
         identity_,
@@ -155,7 +162,7 @@ FieldInstructionAscii::decodeCopy(
   {
     // field is in the stream, use it
     WorkingBuffer & buffer = decoder.getWorkingBuffer();
-    if(decodeAsciiFromSource(source, isMandatory(), buffer))
+    if(decodeAsciiFromSource(source, decoder, isMandatory(), buffer))
     {
       builder.addValue(
         identity_,
@@ -219,7 +226,7 @@ FieldInstructionAscii::decodeDelta(
   }
   std::string deltaValue;
   WorkingBuffer & buffer = decoder.getWorkingBuffer();
-  if(decodeAsciiFromSource(source, true, buffer))
+  if(decodeAsciiFromSource(source, decoder, true, buffer))
   {
     deltaValue = std::string(
       reinterpret_cast<const char *>(buffer.begin()),
@@ -237,17 +244,21 @@ FieldInstructionAscii::decodeDelta(
     }
   }
 
-  size_t previousLength = previousValue.length();
   if( deltaLength < 0)
   {
     // operate on front of string
     // compensete for the excess -1 encoding that allows -0 != +0
     deltaLength = -(deltaLength + 1);
+    const size_t previousLength = previousValue.length();
     // don't chop more than is there
     if(static_cast<unsigned long>(deltaLength) > previousLength)
     {
       decoder.reportError("[ERR D7]", "ASCII tail delta front length exceeds length of previous string.", identity_);
-      deltaLength = QuickFAST::int32(previousLength);
+      // [ERR D7] always throws, so the clamp that used to follow could
+      // never run. It also disagreed with itself: int32 here against
+      // uint32 in the other branch, over a size_t, so a base value longer
+      // than INT32_MAX would have handed substr a negative length if it
+      // ever had run.
     }
     std::string value = deltaValue + previousValue.substr(deltaLength);
     builder.addValue(
@@ -259,6 +270,7 @@ FieldInstructionAscii::decodeDelta(
   }
   else
   { // operate on end of string
+    const size_t previousLength = previousValue.length();
     // don't chop more than is there
     if(static_cast<unsigned long>(deltaLength) > previousLength)
     {
@@ -266,7 +278,11 @@ FieldInstructionAscii::decodeDelta(
       std::cout << "decode ascii delta length: " << deltaLength << " previous: " << previousLength << std::endl;
 #endif
       decoder.reportError("[ERR D7]", "ASCII tail delta back length exceeds length of previous string.", identity_);
-      deltaLength = QuickFAST::uint32(previousLength);
+      // [ERR D7] always throws, so the clamp that used to follow could
+      // never run. It also disagreed with itself: int32 here against
+      // uint32 in the other branch, over a size_t, so a base value longer
+      // than INT32_MAX would have handed substr a negative length if it
+      // ever had run.
     }
     std::string value = previousValue.substr(0, previousLength - deltaLength) + deltaValue;
     builder.addValue(
@@ -290,7 +306,7 @@ FieldInstructionAscii::decodeTail(
   {
     // field is in the stream, use it
     WorkingBuffer & buffer = decoder.getWorkingBuffer();
-    if(decodeAsciiFromSource(source, isMandatory(), buffer))
+    if(decodeAsciiFromSource(source, decoder, isMandatory(), buffer))
     {
       const std::string tailValue(reinterpret_cast<const char *>(buffer.begin()), buffer.size());
       size_t tailLength = tailValue.length();
@@ -305,6 +321,11 @@ FieldInstructionAscii::decodeTail(
         }
       }
       size_t previousLength = previousValue.length();
+      // Not a truncation: FAST 1.1 6.3.8.1 and 6.3.8.3 say that if the
+      // tail value is longer than the base value, the combined value is
+      // the tail value, and clamping the overlay to the whole base is how
+      // that falls out. Unlike the delta operators, there is no error to
+      // report here.
       if(tailLength > previousLength)
       {
         tailLength = previousLength;
@@ -347,7 +368,7 @@ FieldInstructionAscii::decodeTail(
     {
       if(isMandatory())
       {
-        decoder.reportFatal("[ERR D6]", "No value available for mandatory copy field.", identity_);
+        decoder.reportFatal("[ERR D6]", "No value available for mandatory tail field.", identity_);
       }
     }
   }
@@ -366,11 +387,11 @@ FieldInstructionAscii::encodeNop(
   {
     if(!isMandatory())
     {
-      encodeNullableAscii(destination, *value);
+      encodeNullableAscii(destination, encoder, *value, identity_.name());
     }
     else
     {
-      encodeAscii(destination, *value);
+      encodeAscii(destination, encoder, *value, identity_.name());
     }
   }
   else // not defined in accessor
@@ -437,12 +458,12 @@ FieldInstructionAscii::encodeDefault(
       if(!isMandatory())
       {
 //        std::cout << "   and send nullable value" << std::endl;
-        encodeNullableAscii(destination, *value);
+        encodeNullableAscii(destination, encoder, *value, identity_.name());
       }
       else
       {
 //        std::cout << "   and send normal value" << std::endl;
-        encodeAscii(destination, *value);
+        encodeAscii(destination, encoder, *value, identity_.name());
       }
     }
   }
@@ -508,11 +529,11 @@ FieldInstructionAscii::encodeCopy(
       pmap.setNextField(true);// value in stream
       if(!isMandatory())
       {
-        encodeNullableAscii(destination, *value);
+        encodeNullableAscii(destination, encoder, *value, identity_.name());
       }
       else
       {
-        encodeAscii(destination, *value);
+        encodeAscii(destination, encoder, *value, identity_.name());
       }
       fieldOp_->setDictionaryValue(encoder, *value);
     }
@@ -587,7 +608,7 @@ FieldInstructionAscii::encodeDelta(
     std::cout << "count:" << deltaCount << " Delta["<< deltaValue << ']' << std::endl;
 #endif
     encodeSignedInteger(destination, encoder.getWorkingBuffer(), deltaCount);
-    encodeAscii(destination, deltaValue);
+    encodeAscii(destination, encoder, deltaValue, identity_.name());
 
     if(previousStatus != Context::OK_VALUE  || value != previousValue)
     {
@@ -636,22 +657,27 @@ FieldInstructionAscii::encodeTail(
   if(accessor.getString(identity_, ValueType::ASCII, valueBuffer))
   {
     std::string value(*valueBuffer);
-    size_t prefix = longestMatchingPrefix(previousValue, value);
-    std::string tailValue = value.substr(prefix);
-    if(tailValue.empty())
+    // An empty tail means "unchanged", which the decoder can only resolve
+    // against an established previous value. An empty *value* also yields an
+    // empty tail, and treating that as unchanged left the decoder with nothing
+    // to resolve: mandatory fields produced a stream it rejected outright, and
+    // optional ones a stream where the field had disappeared.
+    if(previousStatus == Context::OK_VALUE && value == previousValue)
     {
       pmap.setNextField(false);
     }
     else
     {
+      size_t prefix = longestMatchingPrefix(previousValue, value);
+      std::string tailValue = value.substr(prefix);
       pmap.setNextField(true);
       if(!isMandatory())
       {
-        encodeNullableAscii(destination, tailValue);
+        encodeNullableAscii(destination, encoder, tailValue, identity_.name());
       }
       else
       {
-        encodeAscii(destination, tailValue);
+        encodeAscii(destination, encoder, tailValue, identity_.name());
       }
     }
     if(previousStatus != Context::OK_VALUE  || value != previousValue)

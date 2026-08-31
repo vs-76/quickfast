@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
@@ -7,6 +8,8 @@
 
 using namespace ::QuickFAST;
 using namespace ::QuickFAST::Messages;
+
+FieldCPtr FieldInt16::nullField_ = FieldCPtr(new FieldInt16);
 
 FieldInt16::FieldInt16(int16 value)
   : Field(ValueType::INT16, true)
@@ -28,7 +31,7 @@ FieldInt16::toInt16() const
 {
   if(!valid_)
   {
-    FieldNotPresent ex("Field not present");
+    throw FieldNotPresent("Field not present");
   }
   return static_cast<int16>(signedInteger_);
 }
@@ -36,13 +39,13 @@ FieldInt16::toInt16() const
 FieldCPtr
 FieldInt16::create(int16 value)
 {
-  return new FieldInt16(value);
+  return FieldCPtr(new FieldInt16(value));
 }
 
 FieldCPtr
 FieldInt16::createNull()
 {
-  return new FieldInt16;
+  return nullField_;
 }
 
 void

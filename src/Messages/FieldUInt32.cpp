@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
@@ -7,7 +8,13 @@
 using namespace ::QuickFAST;
 using namespace ::QuickFAST::Messages;
 
-FieldCPtr FieldUInt32::nullField_ = new FieldUInt32;
+namespace
+{
+  const uint32 internMax = 255u;
+  const size_t internCount = static_cast<size_t>(internMax) + 1u;
+}
+
+FieldCPtr FieldUInt32::nullField_ = FieldCPtr(new FieldUInt32);
 
 FieldUInt32::FieldUInt32(uint32 value)
   : Field(ValueType::UINT32, true)
@@ -29,7 +36,7 @@ FieldUInt32::toUInt32() const
 {
   if(!valid_)
   {
-    FieldNotPresent ex("Field not present");
+    throw FieldNotPresent("Field not present");
   }
   return static_cast<uint32>(unsignedInteger_);
 }
@@ -37,16 +44,26 @@ FieldUInt32::toUInt32() const
 FieldCPtr
 FieldUInt32::create(uint32 value)
 {
-  return new
-    FieldUInt32(value);
-}
+  static FieldCPtr entries[internCount];
+  static const bool initialized = []
+  {
+    for(uint32 v = 0; v <= internMax; ++v)
+    {
+      entries[v].reset(new FieldUInt32(v));
+    }
+    return true;
+  }();
+  (void)initialized;
 
-void
-FieldUInt32::freeField()const
-{
-  delete this;
+  if(value <= internMax)
+  {
+    return entries[value];
+  }
+#if defined(QUICKFAST_ENABLE_TEST_HOOKS)
+  Field::noteHeapCreate();
+#endif
+  return FieldCPtr(new FieldUInt32(value));
 }
-
 
 FieldCPtr
 FieldUInt32::createNull()

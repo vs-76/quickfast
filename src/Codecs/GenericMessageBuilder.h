@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -114,8 +115,8 @@ namespace QuickFAST{
       Messages::MessageBuilder * parent_;
       Messages::FieldSetPtr fieldSet_;
       Messages::SequencePtr sequence_;
-      boost::scoped_ptr<GenericSequenceBuilder> sequenceBuilder_;
-      boost::scoped_ptr<GenericGroupBuilder> groupBuilder_;
+      std::unique_ptr<GenericSequenceBuilder> sequenceBuilder_;
+      std::unique_ptr<GenericGroupBuilder> groupBuilder_;
     };
 
     /// @brief Build a Group during decoding
@@ -208,8 +209,8 @@ namespace QuickFAST{
       Messages::FieldSetPtr fieldSetx_;
       Messages::GroupPtr group_;
 
-      boost::scoped_ptr<GenericSequenceBuilder> sequenceBuilder_;
-      boost::scoped_ptr<GenericGroupBuilder> groupBuilder_;
+      std::unique_ptr<GenericSequenceBuilder> sequenceBuilder_;
+      std::unique_ptr<GenericGroupBuilder> groupBuilder_;
     };
 
     /// @brief Build a generic message during decoding
@@ -223,6 +224,37 @@ namespace QuickFAST{
 
       /// @brief Virtual destructor
       virtual ~GenericMessageBuilder();
+
+      /// @brief Supply the buffer receive time for the next decoded message.
+      ///
+      /// UTC microseconds since the Unix epoch. Injected as a synthetic
+      /// ReceiveTime uInt64 field when endMessage() delivers to the consumer,
+      /// unless the template already defined a field with that name.
+      virtual void setReceiveTime(uint64 receiveTimeUs);
+
+      /// @brief Clear any receive time previously set via setReceiveTime().
+      virtual void clearReceiveTime();
+
+      /// @brief Whether setReceiveTime() has supplied a time for this message.
+      virtual bool hasReceiveTime() const;
+
+      /// @brief UTC microseconds since the Unix epoch for the current buffer.
+      virtual uint64 receiveTime() const;
+
+      /// @brief Supply the received buffer/packet size for the next decoded message.
+      ///
+      /// Injected as a synthetic PktSize uInt64 field when endMessage() delivers
+      /// to the consumer, unless the template already defined a field with that name.
+      virtual void setPacketSize(uint64 packetSize);
+
+      /// @brief Clear any packet size previously set via setPacketSize().
+      virtual void clearPacketSize();
+
+      /// @brief Whether setPacketSize() has supplied a size for this message.
+      virtual bool hasPacketSize() const;
+
+      /// @brief Byte length of the current received buffer.
+      virtual uint64 packetSize() const;
 
       //////////////////////////
       // Implement MessageBuilder
@@ -281,6 +313,10 @@ namespace QuickFAST{
       Messages::MessagePtr message_;
       GenericSequenceBuilder sequenceBuilder_;
       GenericGroupBuilder groupBuilder_;
+      uint64 receiveTimeUs_ = 0;
+      bool hasReceiveTime_ = false;
+      uint64 packetSize_ = 0;
+      bool hasPacketSize_ = false;
     };
   }
 }

@@ -1,0 +1,91 @@
+---
+description: Mandatory copyright header for code written or modified after the fork
+alwaysApply: true
+---
+
+# Post-fork copyright attribution
+
+All code **written after the fork** is attributed to **QuickFAST contributors** — never to Object
+Computing, Inc. (OCI). OCI holds copyright only on the pre-fork upstream code it actually wrote.
+
+This applies to **new files and to pre-fork files you modify**. Editing an upstream file adds
+post-fork content to it, so that file must carry the contributors line too.
+
+The contributors line is always exactly:
+
+```
+Copyright (c) 2026, QuickFAST contributors.
+```
+
+The year stays `2026` (the fork year). Do not bump it, and do not grow it into a range or list when
+touching a file again later.
+
+## New files
+
+Three lines, at the very top:
+
+```cpp
+// Copyright (c) 2026, QuickFAST contributors.
+// All rights reserved.
+// See the file license.txt for licensing information.
+```
+
+Use the comment syntax of the file's language (`#` for CMake/Python/shell, `<!-- -->` for HTML/XML
+project files), but keep the three lines and the exact wording, including the comma and trailing
+period. Below a `#!` shebang, not above it. Leave a blank line after the header when the next line
+is not itself blank.
+
+## Modified pre-fork files
+
+Leave the OCI line **byte-for-byte as it is** and add the contributors line directly below it, so
+the holders read in chronological order. Everything else in the header stays put.
+
+```cpp
+// ✅ upstream file, modified after the fork
+// Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
+// All rights reserved.
+// See the file license.txt for licensing information.
+```
+
+This holds for every OCI variant in the tree (`2009`, `2009, 2010`, `2009, 2010, 2011`, `2011`).
+Match the comment prefix already on the OCI line. Add the line once — never a second copy.
+
+A file relocated from upstream still counts as pre-fork content: if it carries an OCI header, treat
+it as a modified pre-fork file, whatever git reports about the rename.
+
+## Which files carry a header
+
+Headers go on source and build files: `*.cpp`, `*.h`, `*.cmake`, `CMakeLists.txt`, `*.py`, `*.sh`,
+`*.csproj`.
+
+Do **not** add one to generated or non-code files: `src/Doxyfile`, `*.md`, `.gitignore`,
+`.cursor/rules/*.mdc`, test resources (`*.xml`, `*.bin`, `*.pcap`, `*.pcapng`).
+
+## Hard rules
+
+- Do **not** write `Copyright (c) 2026, Object Computing, Inc.` or any other year paired with OCI on
+  a file created after the fork.
+- Do **not** ship a bare `// Copyright (c) 2026` with no holder.
+- Do **not** reword, reformat, re-year or remove an existing pre-fork OCI line. Adding the
+  contributors line below it is the only change that header normally takes. Correcting an outright
+  spelling error in the word `Copyright` itself is the one exception, and the tree is clean of those.
+- Do **not** add our copyright to vendored third-party files. `cmake/PVS-Studio.cmake` is
+  PVS-Studio LLC's; leave it alone. Anything else arriving with a foreign copyright is the same.
+- When you notice a post-fork file carrying only an OCI header, fix it to the contributors line.
+- Preserve each file's existing line endings and encoding when inserting a header. Repo line endings
+  are mixed; a header edit must not turn into a whole-file CRLF/LF churn.
+
+```cpp
+// ❌ new file, wrong holder
+// Copyright (c) 2026 Object Computing, Inc.
+
+// ❌ no holder
+// Copyright (c) 2026
+
+// ❌ modified upstream file, OCI attribution dropped
+// Copyright (c) 2026, QuickFAST contributors.
+
+// ✅
+// Copyright (c) 2026, QuickFAST contributors.
+```

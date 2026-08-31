@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -57,6 +58,21 @@ namespace QuickFAST{
       {
       }
 
+      /// @brief Assign the FieldIdentity
+      /// @param rhs is the FieldIdentity from which to copy
+      /// @returns *this
+      FieldIdentity & operator=(const FieldIdentity & rhs)
+      {
+        if(this != &rhs)
+        {
+          localName_ = rhs.localName_;
+          fieldNamespace_ = rhs.fieldNamespace_;
+          fullName_ = rhs.fullName_;
+          id_ = rhs.id_;
+        }
+        return *this;
+      }
+
       /// @brief Set the fields ID (not terribly useful)
       /// @param id to be stored
       void setId(const field_id_t & id)
@@ -98,10 +114,34 @@ namespace QuickFAST{
 
       /// @brief Compare identities
       ///
-      /// Equality means names, namespaces, and possibly ids are equal.
-      /// ids are considered only if both are specified.
+      /// Equality means names, namespaces and ids are all equal.
+      ///
+      /// @note This is a strict comparison because containers require an
+      /// equivalence relation. The lenient "ignore an absent id" rule this
+      /// operator used to apply is not transitive -- with ids "", "1" and "2"
+      /// on the same name, the anonymous one compared equal to both of the
+      /// others while those two compared unequal -- so results depended on
+      /// which pair was asked about. That rule lives in matches().
+      ///
       /// @param rhs is the identity to be compared to this.
       bool operator == (const FieldIdentity & rhs) const
+      {
+        return(
+          (fieldNamespace_ == rhs.fieldNamespace_) &&
+          (fullName_ == rhs.fullName_) &&
+          (id_ == rhs.id_));
+      }
+
+      /// @brief Would a lookup for one of these identities find the other?
+      ///
+      /// Ids are compared only when both are specified, so a caller holding
+      /// just a name finds a field that was stored with an id. This is what
+      /// the field containers want and it is deliberately not an equivalence
+      /// relation, so do not use it to de-duplicate or as a container
+      /// predicate.
+      ///
+      /// @param rhs is the identity to be compared to this.
+      bool matches(const FieldIdentity & rhs) const
       {
         return(
           (fieldNamespace_ == rhs.fieldNamespace_) &&

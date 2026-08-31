@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -34,8 +35,7 @@ namespace QuickFAST{
 
     private:
       bool first_;
-      boost::scoped_array<unsigned char> buffer_;
-      size_t pos_;
+      std::unique_ptr<unsigned char[]> buffer_;
       size_t end_;
     };
   }

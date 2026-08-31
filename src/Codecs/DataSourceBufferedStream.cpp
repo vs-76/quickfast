@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
@@ -8,7 +9,6 @@ using namespace ::QuickFAST::Codecs;
 
 DataSourceBufferedStream::DataSourceBufferedStream(std::istream & stream)
 : first_(true)
-, pos_(0)
 , end_(0)
 {
   stream.seekg(0,std::ios::end);

@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -148,7 +149,7 @@ namespace QuickFAST{
         const StringBuffer & value) const;
     protected:
       /// @brief the actual data type (UTF8, BITVECTOR)
-      ValueType::Type type_;
+      ValueType::Type type_ = ValueType::UNDEFINED;
       /// @brief a field of the appropriate type containing the intial value specified with the field Op
       Messages::FieldCPtr initialValue_;
     };

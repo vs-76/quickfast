@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -64,8 +65,8 @@ namespace QuickFAST{
       bool verbose_;
 
       Communication::AsioService ioService_;
-      boost::asio::strand strand_;
-      boost::asio::deadline_timer timer_;
+      asio::io_context::strand strand_;
+      asio::steady_timer timer_;
 
       Application::CommandArgParser commandArgParser_;
       FILE * dataFile_;
@@ -74,7 +75,7 @@ namespace QuickFAST{
       typedef std::vector<MessagePosition> MessageIndex;
       MessageIndex messageIndex_;
 
-      boost::scoped_array<unsigned char> buffer_;
+      std::unique_ptr<unsigned char[]> buffer_;
       size_t bufferSize_;
       size_t nPass_;
       size_t nMsg_;

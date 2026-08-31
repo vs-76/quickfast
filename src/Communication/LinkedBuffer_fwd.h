@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010, 2011 Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -17,7 +18,7 @@ namespace QuickFAST
   {
     class LinkedBuffer;
     /// Normal use will be via raw pointer for speed. This is here to manage buffer lifetime (separately from use)
-    typedef boost::shared_ptr<LinkedBuffer> BufferLifetime;
+    typedef std::shared_ptr<LinkedBuffer> BufferLifetime;
     /// A collection of BufferLifetimes
     typedef std::vector<BufferLifetime> BufferLifetimeManager;
 

@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
@@ -41,7 +42,7 @@ FieldByteVector::toByteVector() const
 {
   if(!valid_)
   {
-    FieldNotPresent ex("Field not present");
+    throw FieldNotPresent("Field not present");
   }
   return string_;
 }
@@ -50,18 +51,18 @@ FieldByteVector::toByteVector() const
 FieldCPtr
 FieldByteVector::create(const std::string & value)
 {
-  return new FieldByteVector(value);
+  return FieldCPtr(new FieldByteVector(value));
 }
 
 FieldCPtr
 FieldByteVector::create(const uchar * buffer, size_t length)
 {
-  return new FieldByteVector(buffer, length);
+  return FieldCPtr(new FieldByteVector(buffer, length));
 }
 
 FieldCPtr
 FieldByteVector::createNull()
 {
-  return new FieldByteVector;
+  return FieldCPtr(new FieldByteVector);
 }
 

@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010, 2011 Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -12,30 +13,39 @@
 
 #include <Common/QuickFAST_Export.h>
 #include <Common/Types.h>
-#include <Common/ByteSwapper.h>
 
+#include <string>
+
+struct pcap;
 
 namespace QuickFAST
 {
   namespace Communication
   {
-    /// @brief Read a PCap file containing UDP packets
+    /// @brief Read a packet capture file containing UDP packets
     ///
     /// A simple file reader that handles only UDP (and multicast) packets.
-    /// For more power, see tcpdump and/or winpcap open source projects.
+    /// For more power, see tcpdump and/or the libpcap open source project.
     ///
-    /// PCap is the format used by many communication utility data capture packages
-    /// including Wireshark (aka Ethereal) and tcpdump.
+    /// Capture files are read through libpcap, so classic pcap in either
+    /// endianness and at either timestamp resolution, and pcapng, are all
+    /// accepted without the caller having to know which it has. Building with
+    /// -DQUICKFAST_USE_LIBPCAP=OFF leaves open() reporting that capture
+    /// support was not compiled in.
     class QuickFAST_Export PCapReader
     {
     public:
       PCapReader();
-      /// @brief open a PCap formatted file
+      ~PCapReader();
+
+      PCapReader(const PCapReader &) = delete;
+      PCapReader & operator=(const PCapReader &) = delete;
+
+      /// @brief open a packet capture file
       ///
       /// @param filename names the file
-      /// @param dumpFile if present, a hex dump of the input file will be written to this stream.
       /// @returns true if the open was successful
-      bool open(const char * filename, std::ostream * dumpFile = 0);
+      bool open(const char * filename);
 
       /// @brief enable noisy operation for debugging purposes
       ///
@@ -44,6 +54,7 @@ namespace QuickFAST
 
       /// @brief Start over with the first record in the file.
       ///
+      /// libpcap savefiles are read forward only, so this closes and reopens.
       /// @returns true if everything went ok.
       bool rewind();
 
@@ -52,53 +63,64 @@ namespace QuickFAST
       /// @returns true if no errors and not at end of file.
       bool good()const;
 
+      /// @brief Did the last read stop because the file ran out, rather than failed?
+      ///
+      /// @returns true after a clean end of file, false if reading failed.
+      bool atEnd()const;
+
+      /// @brief Describe why the reader is not good().
+      ///
+      /// @returns libpcap's diagnostic, or an empty string if nothing failed.
+      const std::string & errorMessage()const;
+
       /// @brief Read the next record in the file.
+      ///
+      /// @warning The returned pointer belongs to libpcap and is valid only
+      /// until the next call to read() or rewind(), or until this reader is
+      /// destroyed. Copy the bytes before doing anything asynchronous with
+      /// them.
       ///
       /// @param[out] buffer end up pointing to the user data in the packet (headers are bypassed)
       /// @param[out] size contains the number of bytes of user data in the packet (zero is possible and legal!)
       /// @returns true if the read was successful.  False usually means end of data
       bool read(const unsigned char *& buffer, size_t & size);
 
-      /// @brief DEBUG ONLY.  Seek to a particular address.
+#if defined(QUICKFAST_ENABLE_TEST_HOOKS)
+      /// @brief Expose link-layer dissection for unit tests and libFuzzer.
       ///
-      /// since there is no tell() method the address probably came from a verbose display.
-      /// not intended for general use.  I needed it while debugging and saw no reason to throw it away.
-      /// @param address raw seek address of the beginning of a packet
-      void seek(size_t address);
-
-      /// @brief force the reader to expect 64 bit headers even on a 32 bit system.
+      /// Sets the reader's link type for the duration of one call, then
+      /// restores the previous value. Does not open a capture file.
       ///
-      /// Only one of 64bit and 32bit should be set.
-      /// @param state turns the 64bit state on or off (default is off)
-      void set64bit(bool state = true)
-      {
-        usetv64_ = state;
-      }
-
-      /// @brief force the reader to expect 32 bit headers even on a 64 bit system.
-      ///
-      /// Only one of 64bit and 32bit should be set.
-      /// @param state turns the 32bit state on or off (default is off)
-      void set32bit(bool state = true)
-      {
-        usetv32_ = state;
-      }
+      /// @param linktype libpcap DLT_* value (1 = Ethernet, 113 = Linux cooked)
+      /// @param frame captured link-layer bytes
+      /// @param frameLength number of bytes in frame
+      /// @param[out] buffer points into frame at the UDP cargo on success
+      /// @param[out] size UDP cargo length on success
+      /// @returns true when a plausible UDP cargo was found
+      bool dissectFrameForTest(
+        int linktype,
+        const unsigned char * frame,
+        size_t frameLength,
+        const unsigned char *& buffer,
+        size_t & size);
+#endif
 
     private:
-      boost::scoped_array<unsigned char> buffer_;
-      size_t fileSize_;
-      size_t pos_;
-      bool ok_;
-      bool usetv32_;  // true forces 32 bit header on 64 bit platform
-      bool usetv64_;  // true forces 64 bit header on 32 bit platform
-                      // neither usetv32_ nor usetv64_ means use native
-                      // both is an (undetected) error.
-      uint32 linktype_;
+      /// Find the UDP cargo inside one captured link-layer frame.
+      bool dissect(
+        const unsigned char * frame,
+        size_t frameLength,
+        const unsigned char *& buffer,
+        size_t & size);
 
-      // Important note: swap applies to pcap hader info.  It does NOT apply to
-      // network ordered bytes within the message body.
-      // For actual captured data, use ntohl or ntohs rather than swap.
-      ByteSwapper swap;
+      void close();
+
+      pcap * handle_;
+      std::string filename_;
+      std::string errorMessage_;
+      bool ok_;
+      bool atEnd_;
+      int linktype_;
       bool verbose_;
     };
   }

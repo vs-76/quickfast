@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -15,7 +16,7 @@ namespace QuickFAST{
     class ValueMessageBuilder;
     /// @brief a smart pointer to a heap allocated ValueMessageBuilder
     /// Note in most cases the ValueMessageBuilder will be stack allocated so this should not be used.
-    typedef boost::shared_ptr<ValueMessageBuilder> ValueMessageBuilderPtr;
+    typedef std::shared_ptr<ValueMessageBuilder> ValueMessageBuilderPtr;
   }
 }
 #endif // VALUEMESSAGEBUILDER_FWD_H

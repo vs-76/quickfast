@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -70,6 +71,8 @@ namespace QuickFAST{
 
       virtual void finalize(TemplateRegistry & templateRegistry);
 
+      virtual void setPresence(bool mandatory);
+
       virtual ValueType::Type fieldInstructionType()const;
       virtual void displayBody(std::ostream & output, size_t indent)const;
 
@@ -77,6 +80,11 @@ namespace QuickFAST{
       void interpretValue(const std::string & value);
     private:
       Codecs::SegmentBodyPtr segment_;
+      /// Implicit length instruction used when the template omits &lt;length>.
+      /// A decoded Messages::Sequence holds this instruction's identity by
+      /// reference for its whole lifetime, so the instruction must live as
+      /// long as the template rather than as long as the decode call.
+      Codecs::FieldInstructionPtr defaultLengthInstruction_;
     };
   }
 }

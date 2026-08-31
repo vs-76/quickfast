@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010, 2011 Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -38,8 +39,10 @@ namespace QuickFAST{
       /// @brief Decode directly from a buffer which must be complete in memory.
       ///
       /// @param buffer points to a fast encoded buffer;
+      /// @param bufferLength is the number of bytes readable from buffer
       /// @param[in,out] pos is the position in the buffer. It will be updated to point beyond the presence map
-      void decode(const unsigned char * buffer, size_t &pos);
+      /// @throws EncodingError if the buffer ends before the stop bit
+      void decode(const unsigned char * buffer, size_t bufferLength, size_t &pos);
 
 
       /// @brief Return the number of bytes needed to encode this PMAP
@@ -122,8 +125,8 @@ namespace QuickFAST{
       uchar bitMask_;
       size_t bytePosition_;
       size_t byteCapacity_;
-      uchar internalBuffer_[defaultByteCapacity_];
-      boost::scoped_array<uchar> externalBuffer_;
+      uchar internalBuffer_[defaultByteCapacity_] = {};
+      std::unique_ptr<uchar[]> externalBuffer_;
       uchar * bits_;
       std::ostream * vout_;
     };

@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010, 2011 Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -14,9 +15,9 @@ namespace QuickFAST{
   namespace Messages{
     class Message;
     /// @brief Smart pointer to a Message.
-    typedef boost::shared_ptr<Message> MessagePtr;
+    typedef std::shared_ptr<Message> MessagePtr;
     /// @brief Smart pointer to a const Message.
-    typedef boost::shared_ptr<const Message> MessageCPtr;
+    typedef std::shared_ptr<const Message> MessageCPtr;
   }
 }
 #endif // MESSAGE_FWD_H

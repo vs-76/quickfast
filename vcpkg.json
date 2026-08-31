@@ -1,0 +1,62 @@
+{
+  "name": "quickfast",
+  "version": "2.0.0",
+  "description": "FAST Protocol native C++ library (CMake consumer; deps via vcpkg)",
+  "homepage": "https://github.com/vs-76/quickfast-ng",
+  "license": "BSD-3-Clause",
+  "supports": "!uwp",
+  "builtin-baseline": "118bba14b94bc040c098c0c15e63c142148c05ca",
+  "dependencies": [
+    {
+      "name": "xerces-c",
+      "default-features": false,
+      "features": [
+        "icu"
+      ]
+    },
+    "asio"
+  ],
+  "default-features": [
+    "pcap",
+    "tests",
+    "spdlog",
+    "cares"
+  ],
+  "features": {
+    "pcap": {
+      "description": "Read capture files through libpcap (QUICKFAST_USE_LIBPCAP)",
+      "dependencies": [
+        "libpcap"
+      ]
+    },
+    "spdlog": {
+      "description": "SpdlogLogger + managed_file_sink_mt (QUICKFAST_USE_SPDLOG); pulls zlib",
+      "dependencies": [
+        "spdlog",
+        "zlib"
+      ]
+    },
+    "cares": {
+      "description": "Hostname resolve via c-ares (QUICKFAST_USE_CARES)",
+      "dependencies": [
+        "c-ares"
+      ]
+    },
+    "tests": {
+      "description": "GoogleTest / GoogleMock for QuickFASTTest",
+      "dependencies": [
+        "gtest"
+      ]
+    }
+  },
+  "overrides": [
+    { "name": "asio", "version": "1.32.0" },
+    { "name": "xerces-c", "version": "3.3.0#1" },
+    { "name": "icu", "version": "78.3#2" },
+    { "name": "spdlog", "version": "1.17.0#1" },
+    { "name": "zlib", "version": "1.3.2#2" },
+    { "name": "libpcap", "version": "1.10.6" },
+    { "name": "c-ares", "version": "1.34.8" },
+    { "name": "gtest", "version": "1.18.0" }
+  ]
+}

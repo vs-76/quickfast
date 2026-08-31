@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -117,12 +118,11 @@ namespace QuickFAST
     /// @returns true if big-endian.
     static bool isBigEndian()
     {
-      static BigEndian nativeBigEndian;
-      return nativeBigEndian();
+      return nativeBigEndian_();
     }
 
   private:
-
+    inline static BigEndian nativeBigEndian_;
     bool swap_;
   };
 

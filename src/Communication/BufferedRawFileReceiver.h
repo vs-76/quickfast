@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -61,7 +62,7 @@ namespace QuickFAST
       }
 
       // Implement Receiver method
-      bool fillBuffer(LinkedBuffer * buffer, boost::mutex::scoped_lock& lock)
+      bool fillBuffer(LinkedBuffer * buffer, std::unique_lock<std::mutex>& lock)
       {
         bool result = size_ > 0;
         if(result)
@@ -81,7 +82,7 @@ namespace QuickFAST
 
     private:
       size_t size_;
-      boost::scoped_array<unsigned char> buffer_;
+      std::unique_ptr<unsigned char[]> buffer_;
     };
   }
 }

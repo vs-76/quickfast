@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -13,6 +14,8 @@
 #include <Common/Types.h>
 #include <Codecs/SchemaElement.h>
 #include <Codecs/Template_fwd.h>
+#include <unordered_map>
+#include <vector>
 
 namespace QuickFAST{
   namespace Codecs{
@@ -56,10 +59,19 @@ namespace QuickFAST{
       }
 
       /// @brief Add a definition to the registry
+      ///
+      /// Invalidates the getTemplate() id index; finalize() rebuilds it.
       /// @param value smart pointer to the template to be added
       virtual void addTemplate(TemplatePtr value);
 
+      /// Bring SchemaElement::finalize(TemplateRegistry&) into scope so finalize()
+      /// does not hide the base overload (-Woverloaded-virtual).
+      using SchemaElement::finalize;
+
       /// @brief do any final processing after parsing is complete.
+      ///
+      /// Also builds the id index that getTemplate() uses, so call this once
+      /// the last template has been added and before the registry is shared.
       virtual void finalize();
 
       /// @brief How many templates are defined?
@@ -90,6 +102,14 @@ namespace QuickFAST{
       }
 
       /// @brief Use Template ID to find a template.
+      ///
+      /// Constant time: served from an id index built by finalize().
+      ///
+      /// @note If addTemplate() ran after finalize() the index is stale and the
+      /// next call rebuilds it, which writes to mutable state. Finish loading
+      /// the registry and call finalize() before sharing it between threads;
+      /// after that this method only reads.
+      ///
       /// @param[in] templateId the desired template
       /// @param[out] valueFound is the result of the search if return is true
       /// @returns true if the template was found.
@@ -203,6 +223,14 @@ namespace QuickFAST{
       // forbid assignment
       TemplateRegistry & operator =(const TemplateRegistry &);
 
+      /// Rebuild the O(1) id index from templates_. Called by finalize and
+      /// lazily after addTemplate invalidates the index.
+      void rebuildIdIndex() const;
+
+      /// Prefer a dense vector when max id fits; otherwise unordered_map.
+      /// 64K shared_ptr entries is ~1 MiB — fine for market-data schemas.
+      static const template_id_t denseIdLimit_ = 65536;
+
     private:
       TemplateIdMap templates_;
 
@@ -217,6 +245,12 @@ namespace QuickFAST{
       std::string namespace_;
       std::string templateNamespace_;
       std::string dictionaryName_;
+
+      /// Id → template fast path (mutable: rebuilt lazily from const getTemplate).
+      mutable bool idIndexValid_;
+      mutable bool idIndexDense_;
+      mutable std::vector<TemplateCPtr> idIndexDenseVec_;
+      mutable std::unordered_map<template_id_t, TemplateCPtr> idIndexHash_;
     };
   }
 }

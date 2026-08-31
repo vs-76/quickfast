@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
@@ -10,6 +11,7 @@
 #include <Codecs/FieldInstruction.h>
 #include <Messages/ValueMessageBuilder.h>
 #include <Common/Profiler.h>
+#include <Common/LexicalCast.h>
 
 using namespace ::QuickFAST;
 using namespace ::QuickFAST::Codecs;
@@ -84,7 +86,7 @@ Decoder::decodeMessage(
   else
   {
     std::string error =  "Unknown template ID:";
-    error += boost::lexical_cast<std::string>(getTemplateId());
+    error += QuickFAST::lexical_cast<std::string>(getTemplateId());
     reportError("[ERR D9]", error);
   }
   return;
@@ -138,7 +140,7 @@ Decoder::decodeNestedTemplate(
   else
   {
     std::string error =  "Unknown template ID:";
-    error += boost::lexical_cast<std::string>(getTemplateId());
+    error += QuickFAST::lexical_cast<std::string>(getTemplateId());
     reportError("[ERR D9]", error);
   }
   return;

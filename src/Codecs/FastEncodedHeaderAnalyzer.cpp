@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
@@ -32,6 +33,13 @@ FastEncodedHeaderAnalyzer::~FastEncodedHeaderAnalyzer()
 bool
 FastEncodedHeaderAnalyzer::analyzeHeader(DataSource & source, size_t & blockSize, bool & skip)
 {
+  // Both out-parameters used to be written only after the parse completed, so
+  // every incomplete-data return left them untouched. FixedSizeHeaderAnalyzer,
+  // the other implementation of this interface, has always initialised them
+  // here; the two disagreeing about who owns initialisation is what breaks
+  // when a third caller appears that does not pre-initialise its locals.
+  blockSize = 0;
+  skip = false;
   while(state_ != ParsingComplete)
   {
     switch(state_)
@@ -41,8 +49,8 @@ FastEncodedHeaderAnalyzer::analyzeHeader(DataSource & source, size_t & blockSize
         source.beginField("FAST_ENCODED_HEADER");
         state_ = ParsingPrefix;
         fieldCount_ = 0;
-//        break;
       }
+      [[fallthrough]];
     case ParsingPrefix:
       {
         while(fieldCount_ < prefixCount_)
@@ -59,8 +67,8 @@ FastEncodedHeaderAnalyzer::analyzeHeader(DataSource & source, size_t & blockSize
         }
         state_ = ParsingBlockSize;
         blockSize_ = 0;
-//        break;
       }
+      [[fallthrough]];
     case ParsingBlockSize:
       {
         if(!hasBlockSize_)
@@ -75,6 +83,18 @@ FastEncodedHeaderAnalyzer::analyzeHeader(DataSource & source, size_t & blockSize
           {
             return false;
           }
+          // Nothing used to stop this loop except a stop bit, and nothing
+          // detected the bits that fell off the top. A sender that never sets
+          // the stop bit spins here for as long as it keeps sending, and one
+          // that sends eleven groups chooses the block size freely no matter
+          // what the first ten said -- which is how a peer picks the value
+          // that leaves the assembler waiting for a block that cannot arrive.
+          const size_t roomAtTheTop = std::numeric_limits<size_t>::max() >> 7;
+          if(blockSize_ > roomAtTheTop)
+          {
+            throw OverflowError(
+              "[ERR D2] Block size in FAST encoded header is too large to represent.");
+          }
           blockSize_ <<= 7;
           blockSize_ |= (next & 0x7f);
           if((next & 0x80) != 0)
@@ -83,8 +103,8 @@ FastEncodedHeaderAnalyzer::analyzeHeader(DataSource & source, size_t & blockSize
             fieldCount_ = 0;
           }
         }
-//        break;
       }
+      [[fallthrough]];
     case ParsingSuffix:
       {
         while(fieldCount_ < suffixCount_)

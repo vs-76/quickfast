@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -28,14 +29,33 @@ StreamingAssembler::StreamingAssembler(
   , skipBlock_(false)
   , blockSize_(0)
   , inDecoder_(false)
-  , messageCount_(0)
-  , byteCount_(0)
   , messageLimit_(0)
 {
 }
 
 StreamingAssembler::~StreamingAssembler()
 {
+}
+
+void
+StreamingAssembler::reportHeaderFailure(
+  Communication::Receiver & receiver,
+  const std::string & what)
+{
+  builder_.reportDecodingError(what);
+  // A message that fails to decode still leaves the next message boundary
+  // known, so the decode path can be told to carry on. A header that fails
+  // does not: the framing is what was lost, and there is no position in the
+  // stream left to resume from. Stopping is the only honest answer.
+  stopping_ = true;
+  headerIsComplete_ = false;
+  blockSize_ = 0;
+  skipBlock_ = false;
+  if(currentBuffer_ != 0)
+  {
+    receiver.releaseBuffer(currentBuffer_);
+    currentBuffer_ = 0;
+  }
 }
 
 bool
@@ -49,14 +69,42 @@ StreamingAssembler::serviceQueue(
   {
     if(!headerIsComplete_)
     {
-      headerIsComplete_ = headerAnalyzer_.analyzeHeader(*this, blockSize_, skipBlock_);
+      // analyzeHeader was outside every error path, so a header analyzer that
+      // rejected its input took the whole receiver down instead of being
+      // reported as the decoding error it is. BasePacketAssembler has always
+      // wrapped its two calls; this one was the exception.
+      try
+      {
+        headerIsComplete_ = headerAnalyzer_.analyzeHeader(*this, blockSize_, skipBlock_);
+      }
+      catch(std::exception & ex)
+      {
+        reportHeaderFailure(receiver, ex.what());
+        break;
+      }
     }
-    more = headerIsComplete_ && !stopping_;
+    more = headerIsComplete_;
 
     if(more)
     {
       if(waitForCompleteMessage_ && blockSize_ > 0)
       {
+        // A block larger than the whole buffer pool can never be assembled,
+        // so waiting for it is not patience but a permanent stall: the header
+        // stays consumed, headerIsComplete_ stays set, and every later packet
+        // is counted towards a block that will never be complete. The stream
+        // is dead from here on, and saying so beats hanging silently.
+        const size_t capacity = receiver_->totalBufferCapacity();
+        if(capacity != 0 && blockSize_ > capacity)
+        {
+          std::stringstream message;
+          message << "Block size of " << blockSize_
+            << " bytes exceeds the " << capacity
+            << " bytes the receiver can hold. The stream cannot be assembled.";
+          reportHeaderFailure(receiver, message.str());
+          break;
+        }
+
         /// check # bytes available to see if there's a complete message to decode
         size_t available = currentBytesAvailable();
 
@@ -87,6 +135,24 @@ StreamingAssembler::serviceQueue(
           if(reset_)
           {
             decoder_.reset();
+          }
+          // Prefer the buffer that currently holds the message start; messages
+          // that later span buffers keep this first arrival time and size.
+          if(currentBuffer_ != 0 && currentBuffer_->hasReceiveTime())
+          {
+            builder_.setReceiveTime(currentBuffer_->receiveTime());
+          }
+          else
+          {
+            builder_.clearReceiveTime();
+          }
+          if(currentBuffer_ != 0)
+          {
+            builder_.setPacketSize(static_cast<uint64>(currentBuffer_->used()));
+          }
+          else
+          {
+            builder_.clearPacketSize();
           }
           decoder_.decodeMessage(*this, builder_);
         }

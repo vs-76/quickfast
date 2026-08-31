@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010, 2011 Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -13,7 +14,7 @@
 #include <Common/AtomicCounter.h>
 
 // In gcc including asio.hpp in precompiled headers causes problems
-#include <boost/asio.hpp>
+#include <asio.hpp>
 
 namespace QuickFAST
 {
@@ -31,7 +32,7 @@ namespace QuickFAST
       AsioService();
 
       /// @brief Construct using an external io service
-      AsioService(boost::asio::io_service & ioService);
+      AsioService(asio::io_context & ioService);
 
       ~AsioService();
 
@@ -66,9 +67,15 @@ namespace QuickFAST
       }
 
       /// @brief Allow external access (thereby blowing encapsulization)
-      boost::asio::io_service & ioService()
+      asio::io_context & ioService()
       {
         return ioService_;
+      }
+
+      /// @brief Expose the underlying executor so Asio sockets/timers accept AsioService.
+      asio::io_context::executor_type get_executor() noexcept
+      {
+        return ioService_.get_executor();
       }
 
       /// @brief create additional threads to run the event loop
@@ -87,15 +94,15 @@ namespace QuickFAST
       /// should be called after joinThreads before calling run*, poll*, etc. again.
       void resetService()
       {
-        ioService_.reset();
+        ioService_.restart();
         stopping_ = false;
       }
 
       /// @brief stop the ioservice
       void stopService();
 
-      /// @brief allow implicit cast to io_service
-      operator boost::asio::io_service &()
+      /// @brief allow implicit cast to io_context
+      operator asio::io_context &()
       {
         return ioService_;
       }
@@ -105,7 +112,7 @@ namespace QuickFAST
       template<typename CompletionHandler>
       void post(CompletionHandler handler)
       {
-        ioService_.post(handler);
+        asio::post(ioService_, handler);
       }
 
       /// @brief Attempt to determine how many threads are available to ASIO
@@ -122,18 +129,18 @@ namespace QuickFAST
     private:
       // if no io_service is specified, this one
       // will be used (shared among all users)
-      static boost::asio::io_service sharedIoService_;
+      static asio::io_context sharedIoService_;
       static AtomicCounter sharedRunningThreadCount_;
 
       /// Pointer to a boost thread
-      typedef boost::shared_ptr<boost::thread> ThreadPtr;
-      bool stopping_;
-      boost::scoped_array<ThreadPtr> threads_;
+      typedef std::shared_ptr<std::thread> ThreadPtr;
+      std::atomic<bool> stopping_;
+      std::unique_ptr<ThreadPtr[]> threads_;
       size_t threadCount_;
       size_t threadCapacity_;
 
       AtomicCounter runningThreadCount_;
-      boost::asio::io_service & ioService_;
+      asio::io_context & ioService_;
       bool usingSharedService_;
       Common::Logger * logger_;
     };

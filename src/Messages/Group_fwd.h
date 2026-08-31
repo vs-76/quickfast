@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -14,9 +15,9 @@ namespace QuickFAST{
     typedef FieldSet Group;
 
     /// @brief Smart pointer to a Group.
-    typedef boost::shared_ptr<Group> GroupPtr;
+    typedef std::shared_ptr<Group> GroupPtr;
     /// @brief Smart pointer to a const Group.
-    typedef boost::shared_ptr<const Group> GroupCPtr;
+    typedef std::shared_ptr<const Group> GroupCPtr;
   }
 }
 

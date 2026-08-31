@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
@@ -242,22 +243,51 @@ FieldInstruction::decodeAscii(
   WorkingBuffer & workingBuffer)
 {
   workingBuffer.clear(false);
-  uchar byte = 0;
-  if(!source.getByte(byte))
+  // Prefer a contiguous scan for the stop bit, then one bulk copy for the
+  // payload bytes.  Fall back to getByte when the window ends mid-string or
+  // when the source has no buffered data yet.
+  for(;;)
   {
-    return false;
-  }
-  while((byte & stopBit) == 0)
-  {
-    workingBuffer.push(byte);
+    const size_t available = source.currentBytesAvailable();
+    if(available > 0)
+    {
+      const uchar * contiguous = 0;
+      if(source.hasContiguous(available, contiguous))
+      {
+        size_t run = 0;
+        while(run < available && (contiguous[run] & stopBit) == 0)
+        {
+          ++run;
+        }
+        if(run < available)
+        {
+          if(run > 0)
+          {
+            workingBuffer.push(contiguous, run);
+          }
+          workingBuffer.push(contiguous[run] & dataBits);
+          source.skipContiguous(run + 1);
+          return true;
+        }
+        workingBuffer.push(contiguous, available);
+        source.skipContiguous(available);
+        continue;
+      }
+    }
+
+    uchar byte = 0;
     if(!source.getByte(byte))
     {
       // todo: exception?
       return false;
     }
+    if((byte & stopBit) != 0)
+    {
+      workingBuffer.push(byte & dataBits);
+      return true;
+    }
+    workingBuffer.push(byte);
   }
-  workingBuffer.push(byte & dataBits);
-  return true;
 }
 
 bool
@@ -297,17 +327,47 @@ FieldInstruction::decodeByteVector(
   WorkingBuffer & buffer,
   size_t length)
 {
-  buffer.clear(false, length);
-  for(size_t pos = 0;
-    pos < length;
-    ++pos)
+  // Hard ceiling first: an honest payload that is simply too large for the
+  // application must not grow the Context working buffer entry by entry.
+  const size_t maxLength = decoder.getMaxByteVectorLength();
+  if(maxLength != 0 && length > maxLength)
   {
+    decoder.reportFatal(
+      "[ERR U19]",
+      "ByteVector length exceeds the configured maximum.",
+      name);
+  }
+
+  // The length arrived on the wire and the buffer belongs to the Context, so
+  // it outlives the message.  Reserve only a plausible amount up front and let
+  // push() grow the buffer as bytes actually arrive; anything longer than the
+  // input runs out of data and reports [ERR U03] before the memory is claimed.
+  static const size_t maxSpeculativeReservation = 64 * 1024;
+  buffer.clear(false, std::min(length, maxSpeculativeReservation));
+  size_t remaining = length;
+  while(remaining > 0)
+  {
+    const size_t available = source.currentBytesAvailable();
+    if(available > 0)
+    {
+      const size_t chunk = std::min(remaining, available);
+      const uchar * contiguous = 0;
+      if(source.hasContiguous(chunk, contiguous))
+      {
+        buffer.push(contiguous, chunk);
+        source.skipContiguous(chunk);
+        remaining -= chunk;
+        continue;
+      }
+    }
+
     uchar byte = 0;
     if(!source.getByte(byte))
     {
       decoder.reportFatal("[ERR U03]", "End of file: Too few bytes in ByteVector.", name);
     }
     buffer.push(byte);
+    --remaining;
   }
 }
 
@@ -497,94 +557,101 @@ FieldInstruction::encodeSignedInteger(DataDestination & destination, WorkingBuff
   }
   else
   {
-    // using absolute value avoids tricky word length issues
-    int64 absv = -value;
-//    if(absv == value) // Apparently this is not a valid check on all compilers
-    if((value << 1) == 0)
+    // The magnitude is taken in unsigned arithmetic: -value is undefined for
+    // INT64_MIN, and the hand-written special case that used to sidestep that
+    // is exactly what the ten-group branch below now produces anyway.
+    const uint64 absv = uint64(0) - uint64(value);
     {
-      // encode the most negative possible number
-      destination.putByte(0x7F);    // 8... .... .... ....
-      destination.putByte(0x00);    // 7F.. .... .... ....
-      destination.putByte(0x00);    // . FE .... .... ....
-      destination.putByte(0x00);    // ...1 FC.. .... ....
-      destination.putByte(0x00);    // .... .3F8 .... ....
-      destination.putByte(0x00);    // .... ...7 F... ....
-      destination.putByte(0x00);    // .... .... .FE. ....
-      destination.putByte(0x00);    // .... .... ...1 FC..
-      destination.putByte(0x00);    // .... .... .... 3F8.
-      destination.putByte(0x80);    // .... .... .... ..7f
-    }
-    else if (absv <= 0x0000000000000040LL)
-    {
-      destination.putByte(value & 0xFF); // .... .... .... ..7f
-    }
-    else if (absv <= 0x0000000000002000LL)
-    {
-      destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
-      destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
-    }
-    else if (absv <= 0x0000000000100000LL)
-    {
-      destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
-      destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
-      destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
-    }
-    else if (absv <= 0x0000000008000000LL)
-    {
-      destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
-      destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
-      destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
-      destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
-    }
-    else if (absv <= 0x0000000400000000LL)
-    {
-      destination.putByte(((value >> 28)  & 0x7F)); // .... ...7 F... ....
-      destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
-      destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
-      destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
-      destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
-    }
-    else if (absv <= 0x0000020000000000LL)
-    {
-      destination.putByte(((value >> 35)  & 0x7F)); // .... .3F8 .... ....
-      destination.putByte(((value >> 28)  & 0x7F)); // .... ...7 F... ....
-      destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
-      destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
-      destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
-      destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
-    }
-    else if (absv <= 0x0001000000000000LL)
-    {
-      destination.putByte(((value >> 42)  & 0x7F));// ...1 FC.. .... ....
-      destination.putByte(((value >> 35)  & 0x7F)); // .... .3F8 .... ....
-      destination.putByte(((value >> 28)  & 0x7F)); // .... ...7 F... ....
-      destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
-      destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
-      destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
-      destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
-    }
-    else if (absv <= 0x0080000000000000LL)
-    {
-      destination.putByte(((value >> 49)  & 0x7F)); // ..FE .... .... ....
-      destination.putByte(((value >> 42)  & 0x7F)); // ...1 FC.. .... ....
-      destination.putByte(((value >> 35)  & 0x7F)); // .... .3F8 .... ....
-      destination.putByte(((value >> 28)  & 0x7F)); // .... ...7 F... ....
-      destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
-      destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
-      destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
-      destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
-    }
-    else
-    {
-      destination.putByte(((value >> 56)  & 0x7F)); // 7F.. .... .... ....
-      destination.putByte(((value >> 49)  & 0x7F)); // ..FE .... .... ....
-      destination.putByte(((value >> 42)  & 0x7F)); // ...1 FC.. .... ....
-      destination.putByte(((value >> 35)  & 0x7F)); // .... .3F8 .... ....
-      destination.putByte(((value >> 28)  & 0x7F)); // .... ...7 F... ....
-      destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
-      destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
-      destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
-      destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
+      if (absv <= 0x0000000000000040ULL)
+      {
+        destination.putByte(value & 0xFF); // .... .... .... ..7f
+      }
+      else if (absv <= 0x0000000000002000ULL)
+      {
+        destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
+        destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
+      }
+      else if (absv <= 0x0000000000100000ULL)
+      {
+        destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
+        destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
+        destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
+      }
+      else if (absv <= 0x0000000008000000ULL)
+      {
+        destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
+        destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
+        destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
+        destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
+      }
+      else if (absv <= 0x0000000400000000ULL)
+      {
+        destination.putByte(((value >> 28)  & 0x7F)); // .... ...7 F... ....
+        destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
+        destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
+        destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
+        destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
+      }
+      else if (absv <= 0x0000020000000000ULL)
+      {
+        destination.putByte(((value >> 35)  & 0x7F)); // .... .3F8 .... ....
+        destination.putByte(((value >> 28)  & 0x7F)); // .... ...7 F... ....
+        destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
+        destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
+        destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
+        destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
+      }
+      else if (absv <= 0x0001000000000000ULL)
+      {
+        destination.putByte(((value >> 42)  & 0x7F));// ...1 FC.. .... ....
+        destination.putByte(((value >> 35)  & 0x7F)); // .... .3F8 .... ....
+        destination.putByte(((value >> 28)  & 0x7F)); // .... ...7 F... ....
+        destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
+        destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
+        destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
+        destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
+      }
+      else if (absv <= 0x0080000000000000ULL)
+      {
+        destination.putByte(((value >> 49)  & 0x7F)); // ..FE .... .... ....
+        destination.putByte(((value >> 42)  & 0x7F)); // ...1 FC.. .... ....
+        destination.putByte(((value >> 35)  & 0x7F)); // .... .3F8 .... ....
+        destination.putByte(((value >> 28)  & 0x7F)); // .... ...7 F... ....
+        destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
+        destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
+        destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
+        destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
+      }
+      else if (absv <= 0x4000000000000000ULL)
+      {
+        destination.putByte(((value >> 56)  & 0x7F)); // 7F.. .... .... ....
+        destination.putByte(((value >> 49)  & 0x7F)); // ..FE .... .... ....
+        destination.putByte(((value >> 42)  & 0x7F)); // ...1 FC.. .... ....
+        destination.putByte(((value >> 35)  & 0x7F)); // .... .3F8 .... ....
+        destination.putByte(((value >> 28)  & 0x7F)); // .... ...7 F... ....
+        destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
+        destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
+        destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
+        destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
+      }
+      else
+      {
+        // Nine groups carry 63 signed bits, so they stop at -2^62. Below that
+        // the tenth group is the only place the sign can live; without it the
+        // truncated field's sign bit read as zero and the value came back
+        // positive. The arithmetic shift makes this group 0x7F, which is what
+        // the old INT64_MIN special case wrote by hand.
+        destination.putByte(((value >> 63)  & 0x7F)); // 8... .... .... ....
+        destination.putByte(((value >> 56)  & 0x7F)); // 7F.. .... .... ....
+        destination.putByte(((value >> 49)  & 0x7F)); // ..FE .... .... ....
+        destination.putByte(((value >> 42)  & 0x7F)); // ...1 FC.. .... ....
+        destination.putByte(((value >> 35)  & 0x7F)); // .... .3F8 .... ....
+        destination.putByte(((value >> 28)  & 0x7F)); // .... ...7 F... ....
+        destination.putByte(((value >> 21)  & 0x7F)); // .... .... .FE. ....
+        destination.putByte(((value >> 14)  & 0x7F)); // .... .... ...1 FC..
+        destination.putByte(((value >> 7)   & 0x7F)); // .... .... .... 3F8.
+        destination.putByte((value & 0x7F)  | 0x80);  // .... .... .... ..7f
+      }
     }
   }
 }
@@ -705,17 +772,25 @@ FieldInstruction::encodeUnsignedInteger(DataDestination & destination, WorkingBu
 #endif
 
 void
-FieldInstruction::encodeNullableAscii(DataDestination & destination, const StringBuffer & value)
+FieldInstruction::encodeNullableAscii(
+  DataDestination & destination,
+  Context & context,
+  const StringBuffer & value,
+  const std::string & name)
 {
   if(value.empty() || value[0] == '\0')
   {
     destination.putByte(nullableStringPreamble);
   }
-  encodeAscii(destination, value);
+  encodeAscii(destination, context, value, name);
 }
 
 void
-FieldInstruction::encodeAscii(DataDestination & destination, const StringBuffer & value)
+FieldInstruction::encodeAscii(
+  DataDestination & destination,
+  Context & context,
+  const StringBuffer & value,
+  const std::string & name)
 {
   if(value.empty())
   {
@@ -723,6 +798,23 @@ FieldInstruction::encodeAscii(DataDestination & destination, const StringBuffer 
   }
   else
   {
+    // The stop bit is the eighth, so ascii has no room for a byte that already
+    // uses it. Written verbatim such a byte terminates the string early; as the
+    // final byte the stop-bit OR is a no-op and the decoder masks the bit off,
+    // changing the value. Both outcomes are well-formed FAST, so nothing
+    // downstream can tell. Refusing is the only honest option, and the loop
+    // below has to walk every byte regardless.
+    for(size_t pos = 0; pos < value.size(); ++pos)
+    {
+      if((value[pos] & stopBit) != 0)
+      {
+        context.reportError("[ERR D1]",
+          "Value contains a byte that an ascii field cannot carry;"
+          " use a byteVector for eight bit data.",
+          name);
+      }
+    }
+
     if (value[0] == '\0')
     {
       destination.putByte(leadingZeroBytePreamble);

@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010, 2011 Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -14,9 +15,9 @@ namespace QuickFAST{
   namespace Codecs{
     class Decoder;
     /// @brief A smart pointer to a Decoder.
-//    typedef boost::shared_ptr<Decoder> DecoderPtr;
+//    typedef std::shared_ptr<Decoder> DecoderPtr;
     /// @brief A smart pointer to a const Decoder.
-//    typedef boost::shared_ptr<const Decoder> DecoderCPtr;
+//    typedef std::shared_ptr<const Decoder> DecoderCPtr;
   }
 }
 #endif // DECODER_FWD_H

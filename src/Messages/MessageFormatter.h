@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -46,7 +47,8 @@ namespace QuickFAST
       /// @param field contains the field to be formatted
       void displayFieldValue(const Messages::FieldCPtr & field);
     private:
-      MessageFormatter & operator =(const MessageFormatter &); // do not autogenerate assignment operator
+      MessageFormatter(const MessageFormatter &) = delete;
+      MessageFormatter & operator=(const MessageFormatter &) = delete;
     private:
       void newline();
     private:

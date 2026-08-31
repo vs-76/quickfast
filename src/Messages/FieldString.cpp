@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
@@ -56,18 +57,18 @@ FieldString::toByteVector() const
 FieldCPtr
 FieldString::create(const std::string & value)
 {
-  return new FieldString(value);
+  return FieldCPtr(new FieldString(value));
 }
 
 FieldCPtr
 FieldString::create(const uchar * buffer, size_t length)
 {
-  return new FieldString(buffer, length);
+  return FieldCPtr(new FieldString(buffer, length));
 }
 
 FieldCPtr
 FieldString::createNull()
 {
-  return new FieldString;
+  return FieldCPtr(new FieldString);
 }
 

@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
@@ -12,10 +13,10 @@ DataSource::DataSource()
 , size_(0)
 , position_(0)
 , echo_(0)
-, raw_(false)
-, hex_(true)
 , verboseMessages_(true)
 , verboseFields_(false)
+, raw_(false)
+, hex_(true)
 , byteCount_(0)
 , isPmap_(false)
 {

@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
@@ -58,6 +59,7 @@ FieldInstructionGroup::decodeNop(
     if(!segmentBody_)
     {
       decoder.reportFatal("[ERR U08}", "Segment not defined for Group instruction.");
+      return;
     }
     if(messageBuilder.getApplicationType() != segmentBody_->getApplicationType())
     {
@@ -77,6 +79,12 @@ FieldInstructionGroup::decodeNop(
     else
     {
 //      std::cout << "Folding group into parent segment: " << segmentBody_->getApplicationType() << std::endl;
+      // Note for template authors: this makes typeRef structural rather than
+      // decorative. A group with no typeRef does not inherit its parent's
+      // type, so adding one to either the group or the enclosing template
+      // moves every field in the group one level deeper in the decoded
+      // message, with no diagnostic on either side. doc/template-authoring.md
+      // has the full table; tests/testGroupTypeRef.cpp pins every row.
       // Because the application types match,
       // the group fields are decoded directly into to the current
       // field set.  As a result the group "disappears" completely

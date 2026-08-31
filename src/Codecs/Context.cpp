@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
@@ -17,6 +18,8 @@ Context::Context(Codecs::TemplateRegistryCPtr registry)
 , templateRegistry_(registry)
 , templateId_(~0U)
 , strict_(true)
+, maxByteVectorLength_(defaultMaxByteVectorLength)
+, maxSequenceLength_(defaultMaxSequenceLength)
 , indexedDictionarySize_(registry->dictionarySize())
 //, indexedDictionary_(new Messages::FieldCPtr[indexedDictionarySize_])
 , indexedDictionary_(new Value[indexedDictionarySize_])
@@ -111,7 +114,7 @@ Context::reportError(
   const std::string & message,
   const Messages::FieldIdentity & identity)
 {
-  throw EncodingError(errorCode + ' ' + message + " Field: " + identity.name());
+  reportError(errorCode, message, identity.name());
 }
 
 void
@@ -120,7 +123,9 @@ Context::reportError(
   const std::string & message,
   const std::string & name)
 {
-  throw EncodingError(errorCode + ' ' + message + " Field: " + name);
+  // Every [ERR D2] site in the codec names a field, so setStrict(false) would
+  // do nothing at all unless this overload honours it too.
+  reportError(errorCode, message + " Field: " + name);
 }
 
 void

@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2011 Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -13,7 +14,7 @@ namespace QuickFAST{
     {
     public:
       /// @brief the mutex to be locked before doing console writes.
-      static boost::mutex consoleMutex;
+      static std::mutex consoleMutex;
     };
   }
 }

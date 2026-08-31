@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
@@ -33,7 +34,7 @@ FieldSequence::toSequence() const
 FieldCPtr
 FieldSequence::create(Messages::SequenceCPtr sequence)
 {
-  return new FieldSequence(sequence);
+  return FieldCPtr(new FieldSequence(sequence));
 }
 
 bool

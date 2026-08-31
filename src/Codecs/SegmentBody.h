@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -165,7 +166,7 @@ namespace QuickFAST{
       /// @brief the maximum number of presence map bits needed to encode these fields
       size_t presenceMapBits_;
       /// @brief How many fields will be Xcoded by this segment
-      size_t fieldCount_;
+      size_t fieldCount_ = 0;
       /// @brief the number of presence map bits before any fields are added.
       size_t initialPresenceMapBits_;
       /// @brief the container type for instructions

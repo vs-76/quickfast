@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -16,6 +17,7 @@
 #include <Messages/Field.h>
 
 #include <Common/Profiler.h>
+#include <Common/LexicalCast.h>
 
 namespace QuickFAST{
   namespace Codecs{
@@ -142,6 +144,85 @@ namespace QuickFAST{
       virtual ValueType::Type fieldInstructionType()const;
 
     private:
+      /// @brief Put a value on the wire, applying the optional-field adjustment.
+      ///
+      /// FAST reserves zero for null, so an optional non-negative integer goes
+      /// out as value + 1. That increment used to be done in INTEGER_TYPE, one
+      /// line before the call to an encoder that takes 64 bits anyway, so the
+      /// maximum of the type had nowhere to go: unsigned wrapped to zero, which
+      /// *is* the null encoding, and signed overflowed. Either way the wire
+      /// bytes stayed valid FAST and carried a different number.
+      ///
+      /// Widening first fixes every type narrower than 64 bits. At 64 bits the
+      /// adjusted value is genuinely unrepresentable -- the decoder could not
+      /// hold it either -- so the only honest answers are to refuse or to lie,
+      /// and this refuses.
+      ///
+      /// @param destination receives the encoded value.
+      /// @param encoder supplies the working buffer and the error handler.
+      /// @param value the application value, unadjusted.
+      void encodeNullableValue(
+        Codecs::DataDestination & destination,
+        Codecs::Encoder & encoder,
+        INTEGER_TYPE value) const;
+
+      /// @brief Read a value, undoing the optional-field adjustment.
+      ///
+      /// The mirror image of encodeNullableValue, and it has to be: a nullable
+      /// value is on the wire one larger than it will be delivered, so the
+      /// maximum uInt32 arrives as 2^32, which does not fit the field's own
+      /// type. Decoding at the field width rejected it as an overflow. The
+      /// delta operator was the only one that got this right, by decoding into
+      /// an int64 -- which is why delta was the one operator whose maximum
+      /// survived a round trip.
+      ///
+      /// The range check that decoding at the field width used to provide is
+      /// reapplied after the adjustment, so a genuinely out-of-range wire value
+      /// is still reported rather than silently truncated.
+      ///
+      /// @param source supplies the encoded bytes.
+      /// @param decoder supplies the error handler.
+      /// @param[out] value the decoded value; untouched when the field is null.
+      /// @return false if the field is null, and so absent from the message.
+      bool decodeNullableValue(
+        Codecs::DataSource & source,
+        Codecs::Decoder & decoder,
+        INTEGER_TYPE & value) const;
+
+      /// @brief Apply a decoded delta, reporting a result outside the field.
+      ///
+      /// The specification requires an error when applying a delta leaves the
+      /// field's range. The previous code wrote value + delta and narrowed:
+      /// undefined behaviour for int64, and for everything narrower a silent
+      /// truncation -- a uInt32 holding 4,000,000,000 with a wire delta of
+      /// 1,000,000,000 became 705,032,704 without a word.
+      ///
+      /// The sum is taken modulo 2^64, which is well defined and which the
+      /// 64-bit instantiations depend on: a uInt64 delta of -1 from zero is
+      /// how UINT64_MAX is expressed, since no int64 delta can carry 2^64-1
+      /// directly. That wrap loses nothing when the field is as wide as the
+      /// arithmetic, so the range check asks the question that actually
+      /// matters -- whether the result survives the trip through
+      /// INTEGER_TYPE -- rather than whether the addition wrapped.
+      ///
+      /// @param decoder supplies the error handler.
+      /// @param[in,out] value the previous value, replaced by the new one.
+      /// @param delta as decoded from the wire.
+      void applyDelta(
+        Codecs::Decoder & decoder, INTEGER_TYPE & value, int64 delta) const
+      {
+        const uint64 sum = uint64(value) + uint64(delta);
+        const INTEGER_TYPE narrowed = INTEGER_TYPE(sum);
+        if(uint64(narrowed) != sum)
+        {
+          decoder.reportError("[ERR D2]",
+            "Applying delta leaves the range of the field.", identity_);
+          return;
+        }
+        value = narrowed;
+      }
+
+    private:
       FieldInstructionInteger(const FieldInstructionInteger<INTEGER_TYPE, VALUE_TYPE, SIGNED> &);
       FieldInstructionInteger<INTEGER_TYPE, VALUE_TYPE, SIGNED> & operator=(const FieldInstructionInteger<INTEGER_TYPE, VALUE_TYPE, SIGNED> &);
 
@@ -189,7 +270,7 @@ namespace QuickFAST{
       {
         if(SIGNED)
         {
-          int64 v = boost::lexical_cast<int64>(value);
+          int64 v = QuickFAST::lexical_cast<int64>(value);
           typedValue_ = INTEGER_TYPE(v);
           if(v != int64(typedValue_))
           {
@@ -199,7 +280,7 @@ namespace QuickFAST{
         }
         else
         {
-          uint64 v = boost::lexical_cast<uint64>(value);
+          uint64 v = QuickFAST::lexical_cast<uint64>(value);
           typedValue_ = INTEGER_TYPE(v);
           if(v != uint64(typedValue_))
           {
@@ -208,6 +289,60 @@ namespace QuickFAST{
           typedValueIsDefined_ = true;
         }
       }
+    }
+
+    template<typename INTEGER_TYPE, ValueType::Type VALUE_TYPE, bool SIGNED>
+    bool
+    FieldInstructionInteger<INTEGER_TYPE, VALUE_TYPE, SIGNED>::
+    decodeNullableValue(
+      Codecs::DataSource & source,
+      Codecs::Decoder & decoder,
+      INTEGER_TYPE & value) const
+    {
+      if(isMandatory())
+      {
+        if constexpr(SIGNED)
+        {
+          decodeSignedInteger(source, decoder, value, identity_.name(), false, ignoreOverflow_);
+        }
+        else
+        {
+          decodeUnsignedInteger(source, decoder, value, identity_.name(), ignoreOverflow_);
+        }
+        return true;
+      }
+
+      if constexpr(SIGNED)
+      {
+        int64 wide = 0;
+        decodeSignedInteger(source, decoder, wide, identity_.name(), true, ignoreOverflow_);
+        if(checkNullInteger(wide))
+        {
+          return false;
+        }
+        if(!ignoreOverflow_ &&
+          (wide < int64(std::numeric_limits<INTEGER_TYPE>::min()) ||
+           wide > int64(std::numeric_limits<INTEGER_TYPE>::max())))
+        {
+          decoder.reportError("[ERR D2]", "Signed Integer Field overflow.", identity_);
+        }
+        value = static_cast<INTEGER_TYPE>(wide);
+      }
+      else
+      {
+        uint64 wide = 0;
+        decodeUnsignedInteger(source, decoder, wide, identity_.name(), ignoreOverflow_);
+        if(checkNullInteger(wide))
+        {
+          return false;
+        }
+        if(!ignoreOverflow_ && wide > uint64(std::numeric_limits<INTEGER_TYPE>::max()))
+        {
+          decoder.reportError("[ERR D2]", "Unsigned Integer Field overflow.", identity_);
+        }
+        value = static_cast<INTEGER_TYPE>(wide);
+      }
+      return true;
     }
 
     template<typename INTEGER_TYPE, ValueType::Type VALUE_TYPE, bool SIGNED>
@@ -224,31 +359,12 @@ namespace QuickFAST{
       // note NOP never uses pmap.  It uses a null value instead for optional fields
       // so it's always safe to do the basic decode.
       INTEGER_TYPE value = 0;
-      if(SIGNED) // expect compile-time optimization here
-      {
-        decodeSignedInteger(source, decoder, value, identity_.name(), false, ignoreOverflow_);
-      }
-      else
-      {
-        decodeUnsignedInteger(source, decoder, value, identity_.name(), ignoreOverflow_);
-      }
-      if(isMandatory())
+      if(decodeNullableValue(source, decoder, value))
       {
         builder.addValue(
           identity_,
           VALUE_TYPE,
           value);
-      }
-      else
-      {
-        // not mandatory means it's nullable
-        if(!checkNullInteger(value))
-        {
-          builder.addValue(
-            identity_,
-            VALUE_TYPE,
-            value);
-        }
       }
     }
 
@@ -301,16 +417,7 @@ namespace QuickFAST{
       {
         INTEGER_TYPE value = typedValue_;
         // present in stream
-        if(SIGNED) // expect compile-time optimization here
-        {
-          decodeSignedInteger(source, decoder, value, identity_.name(), false, ignoreOverflow_);
-        }
-        else
-        {
-          decodeUnsignedInteger(source, decoder, value, identity_.name(), ignoreOverflow_);
-        }
-
-        if(isMandatory())
+        if(decodeNullableValue(source, decoder, value))
         {
           builder.addValue(
             identity_,
@@ -320,21 +427,8 @@ namespace QuickFAST{
         }
         else
         {
-          // not mandatory means it's nullable
-          if(checkNullInteger(value))
-          {
-            fieldOp_->setDictionaryValueNull(decoder);
-          }
-          else
-          {
-            builder.addValue(
-              identity_,
-              VALUE_TYPE,
-              value);
-            fieldOp_->setDictionaryValue(decoder, value);
-          }
+          fieldOp_->setDictionaryValueNull(decoder);
         }
-
       }
       else // pmap says not present, use copy
       {
@@ -409,31 +503,13 @@ namespace QuickFAST{
       {
         PROFILE_POINT("int::decodeDefault:present");
         INTEGER_TYPE value = 0;
-        if(SIGNED)
+        if(decodeNullableValue(source, decoder, value))
         {
-          decodeSignedInteger(source, decoder, value, identity_.name(), false,  ignoreOverflow_);
-        }
-        else
-        {
-          decodeUnsignedInteger(source, decoder, value, identity_.name(), ignoreOverflow_);
-        }
-        if(isMandatory())
-        {
+          PROFILE_POINT("int::decodeDefault:,addexplicit");
           builder.addValue(
             identity_,
             VALUE_TYPE,
             value);
-        }
-        else
-        {
-          if(!checkNullInteger(value))
-          {
-            PROFILE_POINT("int::decodeDefault:,addexplicit");
-            builder.addValue(
-              identity_,
-              VALUE_TYPE,
-              value);
-          }
         }
       }
       else // field not in stream
@@ -483,7 +559,7 @@ namespace QuickFAST{
         }
       }
       // Apply delta
-      value = INTEGER_TYPE(value + delta);
+      applyDelta(decoder, value, delta);
       // Save the results
       builder.addValue(
         identity_,
@@ -519,15 +595,7 @@ namespace QuickFAST{
       {
         //PROFILE_POINT("int::decodeIncrement::present");
         INTEGER_TYPE value = 0;
-        if(SIGNED) // expect compile-time optimization here
-        {
-          decodeSignedInteger(source, decoder, value, identity_.name(), false, ignoreOverflow_);
-        }
-        else
-        {
-          decodeUnsignedInteger(source, decoder, value, identity_.name(), ignoreOverflow_);
-        }
-        if(isMandatory())
+        if(decodeNullableValue(source, decoder, value))
         {
           builder.addValue(
             identity_,
@@ -537,20 +605,7 @@ namespace QuickFAST{
         }
         else
         {
-          //PROFILE_POINT("int::decodeIncrement::optional");
-          // not mandatory means it's nullable
-          if(checkNullInteger(value))
-          {
-            fieldOp_->setDictionaryValueNull(decoder);
-          }
-          else
-          {
-            builder.addValue(
-              identity_,
-              VALUE_TYPE,
-              value);
-            fieldOp_->setDictionaryValue(decoder, value);
-          }
+          fieldOp_->setDictionaryValueNull(decoder);
         }
       }
       else
@@ -560,7 +615,17 @@ namespace QuickFAST{
         Context::DictionaryStatus previousStatus = fieldOp_->getDictionaryValue(decoder, value);
         if(previousStatus == Context::OK_VALUE)
         {
-          value += 1;
+          // The increment operator exists for monotonically rising fields, so
+          // a sequence number reaching the type maximum is where a
+          // long-running feed ends up rather than an attack. It used to
+          // continue at zero, or invoke undefined behaviour for the signed
+          // instantiations.
+          if(value == std::numeric_limits<INTEGER_TYPE>::max())
+          {
+            decoder.reportError("[ERR D2]",
+              "Increment leaves the range of the field.", identity_);
+          }
+          value = INTEGER_TYPE(uint64(value) + 1);
         }
         else if(previousStatus == Context::UNDEFINED_VALUE)
         {
@@ -606,6 +671,53 @@ namespace QuickFAST{
     template<typename INTEGER_TYPE, ValueType::Type VALUE_TYPE, bool SIGNED>
     void
     FieldInstructionInteger<INTEGER_TYPE, VALUE_TYPE, SIGNED>::
+    encodeNullableValue(
+      Codecs::DataDestination & destination,
+      Codecs::Encoder & encoder,
+      INTEGER_TYPE value) const
+    {
+      if(SIGNED)
+      {
+        int64 wire = static_cast<int64>(value);
+        if(!isMandatory() && wire >= 0)
+        {
+          if(wire == std::numeric_limits<int64>::max())
+          {
+            encoder.reportError("[ERR D2]",
+              "Value too large to encode in an optional signed integer field.",
+              identity_);
+            // Only reached when the application asked to continue past errors.
+            // An explicit null keeps the stream well formed and says "no value"
+            // rather than quietly substituting the value's own negation.
+            destination.putByte(nullInteger);
+            return;
+          }
+          ++wire;
+        }
+        encodeSignedInteger(destination, encoder.getWorkingBuffer(), wire);
+      }
+      else
+      {
+        uint64 wire = static_cast<uint64>(value);
+        if(!isMandatory())
+        {
+          if(wire == std::numeric_limits<uint64>::max())
+          {
+            encoder.reportError("[ERR D2]",
+              "Value too large to encode in an optional unsigned integer field.",
+              identity_);
+            destination.putByte(nullInteger);
+            return;
+          }
+          ++wire;
+        }
+        encodeUnsignedInteger(destination, encoder.getWorkingBuffer(), wire);
+      }
+    }
+
+    template<typename INTEGER_TYPE, ValueType::Type VALUE_TYPE, bool SIGNED>
+    void
+    FieldInstructionInteger<INTEGER_TYPE, VALUE_TYPE, SIGNED>::
     encodeNop(
       Codecs::DataDestination & destination,
       Codecs::PresenceMap & /*pmap*/,
@@ -630,23 +742,7 @@ namespace QuickFAST{
 
       if(present)
       {
-        if(!isMandatory())
-        {
-          // gcc produces bogus warning on the following line see GCC Bugzilla Bug 11856
-          // if(!SIGNED || value >= 0)
-          if(!SIGNED || value > 0 || value == 0)
-          {
-            ++value;
-          }
-        }
-        if(SIGNED)
-        {
-          encodeSignedInteger(destination, encoder.getWorkingBuffer(), value);
-        }
-        else
-        {
-          encodeUnsignedInteger(destination, encoder.getWorkingBuffer(), value);
-        }
+        encodeNullableValue(destination, encoder, value);
       }
       else // not defined in fieldset
       {
@@ -748,23 +844,7 @@ namespace QuickFAST{
         else
         {
           pmap.setNextField(true); // != default.  Send value
-          if(!isMandatory())
-          {
-            // gcc produces bogus warning on the following line see GCC Bugzilla Bug 11856
-            // if(!SIGNED || value >= 0)
-            if(!SIGNED || value > 0 || value == 0)
-            {
-              ++value;
-            }
-          }
-          if(SIGNED)
-          {
-            encodeSignedInteger(destination, encoder.getWorkingBuffer(), value);
-          }
-          else
-          {
-            encodeUnsignedInteger(destination, encoder.getWorkingBuffer(), value);
-          }
+          encodeNullableValue(destination, encoder, value);
         }
       }
       else // not defined in fieldset
@@ -838,25 +918,8 @@ namespace QuickFAST{
         }
         else
         {
-          INTEGER_TYPE nullableValue = value;
-          if(!isMandatory())
-          {
-            // gcc produces bogus warning on the following line see GCC Bugzilla Bug 11856
-            // if(!SIGNED || nullableValue >= 0)
-            if(!SIGNED || nullableValue > 0 || nullableValue == 0)
-            {
-              ++nullableValue;
-            }
-          }
           pmap.setNextField(true);// value in stream
-          if(SIGNED)
-          {
-            encodeSignedInteger(destination, encoder.getWorkingBuffer(), nullableValue);
-          }
-          else
-          {
-            encodeUnsignedInteger(destination, encoder.getWorkingBuffer(), nullableValue);
-          }
+          encodeNullableValue(destination, encoder, value);
           fieldOp_->setDictionaryValue(encoder, value);
         }
       }
@@ -923,13 +986,29 @@ namespace QuickFAST{
 
       if(present)
       {
-        int64 deltaValue = int64(value) - int64(previousValue);
-        if(!isMandatory())
+        // int64(value) - int64(previousValue) converted a uint64 above
+        // INT64_MAX to a negative int64 before subtracting, and could overflow
+        // besides. The difference taken modulo 2^64 is the exact inverse of
+        // what applyDelta does on the far side, at every width and for both
+        // signednesses, and is well defined.
+        const uint64 difference = uint64(value) - uint64(previousValue);
+        int64 deltaValue = int64(difference);
+
+        if(!isMandatory() && deltaValue >= 0)
         {
-          if(deltaValue >= 0)
+          // FAST reserves zero for null, so a non-negative delta goes out one
+          // larger. The addition used to be unguarded, and a delta already at
+          // INT64_MAX came out as INT64_MIN -- a large positive jump arriving
+          // as a large negative one.
+          if(deltaValue == std::numeric_limits<int64>::max())
           {
-            deltaValue += 1;
+            encoder.reportError("[ERR D2]",
+              "Delta between consecutive values is too large for an optional"
+              " field to encode.",
+              identity_);
+            return;
           }
+          deltaValue += 1;
         }
         encodeSignedInteger(destination, encoder.getWorkingBuffer(), deltaValue);
         if(previousStatus != Context::OK_VALUE  || value != previousValue)
@@ -968,7 +1047,12 @@ namespace QuickFAST{
       {
         // pretend the previous value was the value attribute - 1 so that
         // the increment will produce cause the initial value to be sent.
-        previousValue = typedValue_ - 1;
+        //
+        // The wrap at the type minimum is deliberate and the comparison below
+        // wraps back to match, so the optimisation still fires. Routing it
+        // through uint64 only makes that defined for the signed types, where
+        // INT32_MIN - 1 was undefined behaviour.
+        previousValue = INTEGER_TYPE(uint64(typedValue_) - 1);
 //        fieldOp_->setDictionaryValue(encoder, previousValue);
         previousStatus = Context::OK_VALUE;
       }
@@ -991,32 +1075,16 @@ namespace QuickFAST{
 
       if(present)
       {
-        INTEGER_TYPE nullableValue = value;
-        if(previousStatus == Context::OK_VALUE && previousValue + 1 == value)
+        if(previousStatus == Context::OK_VALUE &&
+          INTEGER_TYPE(uint64(previousValue) + 1) == value)
         {
           pmap.setNextField(false);
           fieldOp_->setDictionaryValue(encoder, value);
         }
         else
         {
-          if(!isMandatory())
-          {
-            // gcc produces bogus warning on the following line see GCC Bugzilla Bug 11856
-            // if(!SIGNED || value >= 0)
-            if(!SIGNED || nullableValue > 0 || nullableValue == 0)
-            {
-              ++nullableValue;
-            }
-          }
           pmap.setNextField(true);
-          if(SIGNED)
-          {
-            encodeSignedInteger(destination, encoder.getWorkingBuffer(), nullableValue);
-          }
-          else
-          {
-            encodeUnsignedInteger(destination, encoder.getWorkingBuffer(), nullableValue);
-          }
+          encodeNullableValue(destination, encoder, value);
         }
         fieldOp_->setDictionaryValue(encoder, value);
       }

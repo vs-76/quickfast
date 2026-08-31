@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -6,13 +7,6 @@
 #endif
 #ifndef MESSAGEFIELD_H
 #define MESSAGEFIELD_H
-
-///@todo: think about how to get the performance improvement without compromising safety
-/// The problem is that copying the identity is expensive (15% on the profiler) but keeping
-/// a pointer to the identity gets into object lifetime issues.  The identity was not
-/// originally designed to be heap-allocated, counted ptr managed, but maybe it should have
-/// been because it's immutable at encode/decode time.
-#define SAFE_BUT_SLOW
 
 #include "MessageField_fwd.h"
 #include <Common/QuickFAST_Export.h>
@@ -22,11 +16,25 @@
 namespace QuickFAST{
   namespace Messages{
     /// @brief the representation of a field within a message.
+    ///
+    /// @warning A MessageField borrows its FieldIdentity; it does not own one.
+    /// For a decoded message the identity belongs to a FieldInstruction inside
+    /// the Codecs::TemplateRegistry, so the registry must outlive every Message
+    /// decoded from it, and every Field, FieldSet and Sequence reached through
+    /// one. Callers that build messages by hand are equally responsible for
+    /// keeping their identities alive.
+    ///
+    /// Storing the identity by value would make this safe, but it costs about
+    /// 15% of decode time; the identity was never designed for shared
+    /// ownership even though it is immutable at encode and decode time.
     class QuickFAST_Export MessageField
     {
     public:
       /// @brief Construct from an identity and a typed value.
-      MessageField(const FieldIdentity & identity, const FieldCPtr & field)
+      ///
+      /// Binds a reference and copies a shared_ptr, neither of which can
+      /// throw. FieldSet manages its storage in place and depends on that.
+      MessageField(const FieldIdentity & identity, const FieldCPtr & field) noexcept
         : identity_(identity)
         , field_(field)
       {
@@ -34,11 +42,13 @@ namespace QuickFAST{
 
       /// @brief copy constructor
       /// @param rhs the source from which to copy
-      MessageField(const MessageField & rhs)
+      MessageField(const MessageField & rhs) noexcept
         : identity_(rhs.identity_)
         , field_(rhs.field_)
       {
       }
+
+      MessageField & operator=(const MessageField &) = delete;
 
     public:
 

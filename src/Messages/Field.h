@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -13,11 +14,36 @@
 #include <Common/StringBuffer.h>
 #include <Messages/Group_fwd.h>
 #include <Messages/Sequence_fwd.h>
+
+#include <mutex>
 namespace QuickFAST{
   namespace Messages{
     /// @brief The value of a field -- for use in Message and Dictionary.
     ///
     /// An abstract class intended to be specialized into the particular field type.
+    ///
+    /// @par Shared instances
+    /// Fields are immutable, so the create() factories are free to hand back a
+    /// shared instance instead of allocating. Every createNull() returns a
+    /// per-type singleton, and these values are interned as well:
+    /// - FieldInt8: the whole range
+    /// - FieldInt32: -128 through 255
+    /// - FieldUInt32: 0 through 255
+    /// - FieldAscii: the empty string (distinct from NULL)
+    ///
+    /// Callers therefore must not assume a create() result is unique, must not
+    /// use pointer identity to tell two fields apart, and must not cast away
+    /// const to modify one -- an interned instance is visible to every holder,
+    /// on every thread. Interned instances live until process exit.
+    ///
+    /// @par Example
+    /// @code
+    /// FieldCPtr a = FieldInt32::create(7);
+    /// FieldCPtr b = FieldInt32::create(7);
+    /// // a.get() == b.get() is likely true, and is not part of the contract
+    /// // either way. Compare values, not pointers:
+    /// bool same = (*a == *b);
+    /// @endcode
     class QuickFAST_Export Field
     {
     protected:
@@ -26,6 +52,15 @@ namespace QuickFAST{
     public:
       /// @brief a typical virtual destructor.
       virtual ~Field() = 0;
+
+#if defined(QUICKFAST_ENABLE_TEST_HOOKS)
+      /// @brief Reset the process-wide heap Field::create allocation counter.
+      static void resetHeapCreateCount();
+      /// @brief How many non-interned Field instances create() has heap-allocated.
+      static uint64_t heapCreateCount();
+      /// @brief Record one heap allocation from a Field::create path.
+      static void noteHeapCreate();
+#endif
 
       /// @brief compare to field for type and value
       ///
@@ -42,11 +77,27 @@ namespace QuickFAST{
       }
 
       /// @brief display the value as a string.  Low performance
+      ///
+      /// Safe to call concurrently on a shared field, which matters because
+      /// fields travel as FieldCPtr -- shared_ptr<const Field> -- and that
+      /// conventionally means shareable. The cache fill mutates a mutable
+      /// StringBuffer from a const method, so two threads formatting the same
+      /// decoded field used to race on its pointer, size and capacity.
       virtual const StringBuffer & displayString() const
       {
-        if(valid_ && !isString() && string_.empty())
+        if(valid_ && !isString())
         {
-          valueToStringBuffer();
+          // One lock for all fields: formatting is documented low performance,
+          // and a per-field mutex would grow an object the decoder creates
+          // millions of.
+          std::lock_guard<std::mutex> guard(displayStringMutex());
+          if(!stringCached_)
+          {
+            valueToStringBuffer();
+            // Keyed on a flag rather than on string_.empty(), so a value that
+            // formats to nothing is not re-rendered on every call.
+            stringCached_ = true;
+          }
         }
         return string_;
       }
@@ -325,39 +376,21 @@ namespace QuickFAST{
       // extra memory allocations.
 
       ///@brief Data for any of the unsigned integral types.
-      unsigned long long unsignedInteger_;
+      unsigned long long unsignedInteger_ = 0;
       ///@brief Data for any of the signed integral types. Also Decimal mantissa.
-      signed long long signedInteger_;
+      signed long long signedInteger_ = 0;
       ///@brief Exponent for Decimal types (mantissa is in signedInteger_)
-      QuickFAST::exponent_t exponent_;
+      QuickFAST::exponent_t exponent_ = 0;
       ///@brief Length of locally allocated string_ buffer
-      size_t stringLength_;
+      size_t stringLength_ = 0;
       ///@brief Buffer containing string value. Owned by this object
       mutable StringBuffer string_;
+      ///@brief Has displayString() already rendered a non-string value?
+      mutable bool stringCached_ = false;
 
-    private:
-      friend void QuickFAST_Export intrusive_ptr_add_ref(const Field * ptr);
-      friend void QuickFAST_Export intrusive_ptr_release(const Field * ptr);
-      virtual void freeField()const;
-      mutable unsigned long refcount_;
+      /// @brief Guards the displayString() cache fill for every Field.
+      static std::mutex & displayStringMutex();
     };
-
-    inline
-    void
-    intrusive_ptr_add_ref(const Field * ptr)
-    {
-      ++ptr->refcount_;
-    }
-
-    inline
-    void
-    intrusive_ptr_release(const Field * ptr)
-    {
-      if(--ptr->refcount_ == 0)
-      {
-        ptr->freeField();
-      }
-    }
   }
 }
 #endif // FIELD_H

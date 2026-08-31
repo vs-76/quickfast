@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
@@ -7,6 +8,8 @@
 
 using namespace ::QuickFAST;
 using namespace ::QuickFAST::Messages;
+
+FieldCPtr FieldUInt64::nullField_ = FieldCPtr(new FieldUInt64);
 
 FieldUInt64::FieldUInt64(uint64 value)
   : Field(ValueType::UINT64, true)
@@ -28,7 +31,7 @@ FieldUInt64::toUInt64() const
 {
   if(!valid_)
   {
-    FieldNotPresent ex("Field not present");
+    throw FieldNotPresent("Field not present");
   }
   return unsignedInteger_;
 }
@@ -36,13 +39,13 @@ FieldUInt64::toUInt64() const
 FieldCPtr
 FieldUInt64::create(uint64 value)
 {
-  return new FieldUInt64(value);
+  return FieldCPtr(new FieldUInt64(value));
 }
 
 FieldCPtr
 FieldUInt64::createNull()
 {
-  return new FieldUInt64;
+  return nullField_;
 }
 
 void

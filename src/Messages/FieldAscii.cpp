@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
@@ -7,6 +8,9 @@
 
 using namespace ::QuickFAST;
 using namespace ::QuickFAST::Messages;
+
+FieldCPtr FieldAscii::nullField_ = FieldCPtr(new FieldAscii);
+FieldCPtr FieldAscii::emptyField_ = FieldCPtr(new FieldAscii(std::string()));
 
 FieldAscii::FieldAscii(const std::string & value)
   : Field(ValueType::ASCII, true)
@@ -44,18 +48,31 @@ FieldAscii::toAscii() const
 FieldCPtr
 FieldAscii::create(const std::string & value)
 {
-  return new FieldAscii(value);
+  if(value.empty())
+  {
+    return emptyField_;
+  }
+#if defined(QUICKFAST_ENABLE_TEST_HOOKS)
+  Field::noteHeapCreate();
+#endif
+  return FieldCPtr(new FieldAscii(value));
 }
 
 FieldCPtr
 FieldAscii::create(const uchar * buffer, size_t length)
 {
-  return new FieldAscii(buffer, length);
+  if(length == 0)
+  {
+    return emptyField_;
+  }
+#if defined(QUICKFAST_ENABLE_TEST_HOOKS)
+  Field::noteHeapCreate();
+#endif
+  return FieldCPtr(new FieldAscii(buffer, length));
 }
 
 FieldCPtr
 FieldAscii::createNull()
 {
-  return new FieldAscii;
+  return nullField_;
 }
-

@@ -30,14 +30,17 @@ namespace QuickFAST{
       /// @brief Construct the field from a value in a std::string
       /// @param value the value to be stored in the field
       /// @returns a constant pointer to the immutable field
+      /// @note An empty value returns a shared instance; see Field.
       static FieldCPtr create(const std::string & value);
       /// @brief Construct the field from a value in byte buffer
       /// @param buffer the start of the value to be stored in the field
       /// @param length how many bytes (not characters) are in the value
       /// @returns a constant pointer to the immutable field
+      /// @note A zero length returns a shared instance; see Field.
       static FieldCPtr create(const uchar * buffer, size_t length);
       /// @brief Construct a NULL field (not an empty string)
       /// @returns a constant pointer to the immutable field
+      /// @note Returns a shared singleton, distinct from the empty string.
       static FieldCPtr createNull();
 
       /// @brief a typical virtual destructor.
@@ -47,6 +50,8 @@ namespace QuickFAST{
       virtual bool isString() const;
       virtual const StringBuffer & toAscii() const;
     private:
+      static FieldCPtr nullField_;
+      static FieldCPtr emptyField_;
     };
   }
 }

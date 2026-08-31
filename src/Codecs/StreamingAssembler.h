@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010, 2011 Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -69,6 +70,13 @@ namespace QuickFAST
       }
 
     private:
+      /// @brief Report a framing failure and abandon the stream.
+      /// @param receiver owns the buffer that has to be handed back.
+      /// @param what describes the failure for the message builder.
+      void reportHeaderFailure(
+        Communication::Receiver & receiver,
+        const std::string & what);
+
       StreamingAssembler & operator = (const StreamingAssembler &);
       StreamingAssembler(const StreamingAssembler &);
       StreamingAssembler();
@@ -76,7 +84,7 @@ namespace QuickFAST
     private:
       HeaderAnalyzer & headerAnalyzer_;
       Messages::ValueMessageBuilder & builder_;
-      bool stopping_;
+      std::atomic<bool> stopping_;
       bool waitForCompleteMessage_;
 
       // Nonzero during call to consumeBuffer ->decoder
@@ -92,8 +100,6 @@ namespace QuickFAST
 
       bool inDecoder_;
 
-      size_t messageCount_;
-      size_t byteCount_;
       size_t messageLimit_;
     };
   }

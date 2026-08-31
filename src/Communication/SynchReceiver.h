@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010, 2011 Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -26,12 +27,20 @@ namespace QuickFAST
 
       ~SynchReceiver()
       {
-        stop();
+        Receiver::stop();
         if(bool(thread_))
         {
           thread_->join();
           thread_.reset();
         }
+      }
+
+      /// @brief End of file stops reading, not servicing.
+      ///
+      /// The queued packets are still there and still wanted. tryServiceQueue
+      /// calls stop() once it has drained them.
+      virtual void endOfInput()
+      {
       }
 
       /// @brief Accept a buffer from a synchronous receiver
@@ -48,7 +57,7 @@ namespace QuickFAST
       bool acceptFullBuffer(
         LinkedBuffer * buffer,
         size_t bytesReceived,
-        boost::mutex::scoped_lock & lock
+        std::unique_lock<std::mutex> & lock
         )
       {
         bool needService = false;
@@ -57,8 +66,9 @@ namespace QuickFAST
         if(bytesReceived > 0)
         {
           ++packetsQueued_;
-          largestPacket_ = std::max(largestPacket_, bytesReceived);
+          largestPacket_ = std::max<size_t>(largestPacket_, bytesReceived);
           buffer->setUsed(bytesReceived);
+          buffer->stampReceiveTime();
           needService = queue_.push(buffer, lock);
         }
         else
@@ -76,13 +86,21 @@ namespace QuickFAST
         size_t count = 0;
         bool service = false;
         { // Scope for lock
-          boost::mutex::scoped_lock lock(bufferMutex_);
+          std::unique_lock<std::mutex> lock(bufferMutex_);
           service = queue_.startService(lock);
         }
         while(service && !stopping_)
         {
           service = serviceQueue();
           ++count;
+        }
+        if(inputComplete())
+        {
+          // The queue is drained, so end of input can finally become a stop.
+          // Doing it here rather than where the read failed is the whole of
+          // the fix: a file with fewer packets than buffers is read to EOF
+          // inside start(), before the caller's event loop has run once.
+          stop();
         }
         return count;
       }
@@ -128,7 +146,7 @@ namespace QuickFAST
         return count;
       }
 
-      virtual void runThreads(size_t threadCount = 0, bool useThisThread = true)
+      virtual void runThreads([[maybe_unused]] size_t threadCount = 0, bool useThisThread = true)
       {
         if(useThisThread)
         {
@@ -142,7 +160,7 @@ namespace QuickFAST
           // more than one thread servicing a synchronous data source,
           // so only start the one.
           thread_.reset(
-            new boost::thread(boost::bind(&SynchReceiver::run, this)));
+            new std::thread([this]{ this->run(); }));
         }
       }
 
@@ -161,7 +179,7 @@ namespace QuickFAST
       }
 
     private:
-      boost::scoped_ptr<boost::thread> thread_;
+      std::unique_ptr<std::thread> thread_;
     };
   }
 }

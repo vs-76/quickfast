@@ -1,0 +1,1 @@
+<templates><template name="fuzz" id="1"><typeRef name="fuzz"/><uInt32 name="u"/><int32 name="i" presence="optional"/><string name="s"/><decimal name="d"/><sequence name="seq"><length name="len"/><uInt32 name="item"/></sequence></template></templates>

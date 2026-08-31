@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -24,15 +25,12 @@ namespace QuickFAST
     public:
       /// @brief Wrap a PCapFileReader into a Receiver
       ///
-      /// @param filename names the PCap file
-      /// @param wordSize is the word size of the platform where the file was captured.
+      /// @param filename names the capture file
       PCapFileReceiver(
-        const std::string & filename,
-        size_t wordSize = 0
+        const std::string & filename
         )
         : SynchReceiver()
         , filename_(filename)
-        , wordSize_(wordSize)
       {
       }
 
@@ -45,32 +43,23 @@ namespace QuickFAST
       // Implement Receiver method
       virtual bool initializeReceiver()
       {
-        if(wordSize_ == 32)
-        {
-          reader_.set32bit(true);
-        }
-        else if (wordSize_ == 64)
-        {
-          reader_.set64bit(true);
-        }
-        reader_.open(filename_.c_str()); // for debugging, dump to->, &std::cout);
-        return reader_.good();
+        return reader_.open(filename_.c_str());
       }
 
       // Implement Receiver method
-      bool fillBuffer(LinkedBuffer * buffer, boost::mutex::scoped_lock& lock)
+      bool fillBuffer(LinkedBuffer * buffer, std::unique_lock<std::mutex>& lock)
       {
         const unsigned char * pcapBuffer;
         size_t pcapSize;
         bool result = reader_.read(pcapBuffer, pcapSize);
         if(result)
         {
-          if(pcapSize <= buffer->capacity())
+          if(pcapSize > buffer->capacity())
           {
-            memcpy(buffer->get(), pcapBuffer, pcapSize);
-            acceptFullBuffer(buffer, pcapSize, lock);
-            result = true;
+            return false;
           }
+          memcpy(buffer->get(), pcapBuffer, pcapSize);
+          acceptFullBuffer(buffer, pcapSize, lock);
         }
         return result;
       }
@@ -81,8 +70,7 @@ namespace QuickFAST
         return;
       }
     private:
-      std::string filename_;
-      size_t wordSize_;
+        std::string filename_;
       PCapReader reader_;
     };
   }

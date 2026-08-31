@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
@@ -82,14 +83,14 @@ ProfileAccumulator::print(std::ostream & out)
         << '\t' << ac->recursions_;
       if(ac->recursions_ > 0)
       {
-        double count = double(ac->recursions_);
-        double sum = ac->recursiveSum_;
-        double sumsq = ac->recursiveSumOfSquares_;
-        double mean = sum/ count;
-        double stdDev = std::sqrt((sumsq - sum * mean) / (count - 1.0));
-        out << '\t' << std::fixed << std::setprecision(0) << sum
-          << '\t' << std::fixed << std::setprecision(3) << mean
-          << '\t' << std::fixed << std::setprecision(3) << stdDev;
+        double rcount = double(ac->recursions_);
+        double rsum = ac->recursiveSum_;
+        double rsumsq = ac->recursiveSumOfSquares_;
+        double rmean = rsum / rcount;
+        double rstdDev = std::sqrt((rsumsq - rsum * rmean) / (rcount - 1.0));
+        out << '\t' << std::fixed << std::setprecision(0) << rsum
+          << '\t' << std::fixed << std::setprecision(3) << rmean
+          << '\t' << std::fixed << std::setprecision(3) << rstdDev;
       }
     }
     out << std::endl;

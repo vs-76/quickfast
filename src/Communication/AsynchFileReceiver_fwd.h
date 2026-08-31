@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010, 2011, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -16,7 +17,7 @@ namespace QuickFAST{
 #if defined(_WIN32)
     class AsynchFileReceiver;
     /// @brief smart pointer to a AsynchFileReceiver
-    typedef boost::shared_ptr<AsynchFileReceiver> AsynchFileReceiverPtr;
+    typedef std::shared_ptr<AsynchFileReceiver> AsynchFileReceiverPtr;
 #endif // _WIN32
   }
 }

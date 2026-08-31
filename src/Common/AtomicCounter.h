@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010, 2011 Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -25,7 +26,7 @@ namespace QuickFAST
     /// Warning, not synchronized so you know this counter had the returned
     /// value at some point, but not necessarily when.
     inline
-    operator const long()const
+    operator long()const
     {
       return counter_;
     }

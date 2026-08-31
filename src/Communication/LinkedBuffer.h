@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010, 2011, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -11,6 +12,7 @@
 //#include <Common/QuickFAST_Export.h>
 #include "LinkedBuffer_fwd.h"
 #include <Common/Types.h>
+#include <chrono>
 
 namespace QuickFAST
 {
@@ -39,6 +41,8 @@ namespace QuickFAST
         , used_(0)
         , extra_(0)
         , flags_(0)
+        , receiveTimeUs_(0)
+        , hasReceiveTime_(false)
       {
       }
 
@@ -52,6 +56,9 @@ namespace QuickFAST
         , capacity_(0)
         , used_(0)
         , extra_(0)
+        , flags_(0)
+        , receiveTimeUs_(0)
+        , hasReceiveTime_(false)
       {
       }
 
@@ -65,6 +72,9 @@ namespace QuickFAST
         , capacity_(0)
         , used_(used)
         , extra_(extra)
+        , flags_(0)
+        , receiveTimeUs_(0)
+        , hasReceiveTime_(false)
       {
       }
 
@@ -93,7 +103,7 @@ namespace QuickFAST
       /// @brief Support indexing
       unsigned char & operator[](size_t index)
       {
-        if((capacity_ == 0 && index >= used_) || index >= capacity_)
+        if(index >= indexLimit())
         {
           throw std::range_error("LinkedBuffer: Index out of bounds.");
         }
@@ -103,7 +113,7 @@ namespace QuickFAST
       /// @brief Support indexing constant
       const unsigned char & operator[](size_t index) const
       {
-        if(index >= used_)
+        if(index >= indexLimit())
         {
           throw std::range_error("LinkedBuffer (const): Index out of bounds.");
         }
@@ -209,13 +219,67 @@ namespace QuickFAST
         return flags_;
       }
 
+      /// @brief Stamp UTC microseconds since the Unix epoch as the receive time.
+      ///
+      /// Call from the receive completion path (ASIO callback or synchronous
+      /// accept) so the time reflects buffer arrival, not decode latency.
+      void stampReceiveTime()
+      {
+        const auto now = std::chrono::system_clock::now().time_since_epoch();
+        receiveTimeUs_ = static_cast<uint64>(
+          std::chrono::duration_cast<std::chrono::microseconds>(now).count());
+        hasReceiveTime_ = true;
+      }
+
+      /// @brief Store a previously captured receive time.
+      /// @param receiveTimeUs UTC microseconds since the Unix epoch
+      void setReceiveTime(uint64 receiveTimeUs)
+      {
+        receiveTimeUs_ = receiveTimeUs;
+        hasReceiveTime_ = true;
+      }
+
+      /// @brief Clear any stored receive time.
+      void clearReceiveTime()
+      {
+        receiveTimeUs_ = 0;
+        hasReceiveTime_ = false;
+      }
+
+      /// @brief Whether stampReceiveTime() or setReceiveTime() has been called.
+      bool hasReceiveTime() const
+      {
+        return hasReceiveTime_;
+      }
+
+      /// @brief UTC microseconds since the Unix epoch when this buffer was received.
+      ///
+      /// Valid only when hasReceiveTime() is true.
+      uint64 receiveTime() const
+      {
+        return receiveTimeUs_;
+      }
+
+    private:
+      /// @brief How far operator[] may index.
+      ///
+      /// An owned buffer bounds against its allocation; an external one has no
+      /// allocation of its own (capacity_ == 0) and bounds against the bytes
+      /// the supplier said were present.
+      size_t indexLimit() const
+      {
+        return (capacity_ != 0) ? capacity_ : used_;
+      }
+
     private:
       LinkedBuffer * link_;
       unsigned char * buffer_;
       size_t capacity_;
       size_t used_;
       void * extra_;
-      uint32 flags_;
+      uint32 flags_ = 0;
+      uint64 receiveTimeUs_;
+      bool hasReceiveTime_;
     };
 
   }

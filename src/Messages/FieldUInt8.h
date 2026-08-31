@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -29,6 +30,7 @@ namespace QuickFAST{
       static FieldCPtr create(uchar value);
       /// @brief Construct a NULL field
       /// @returns a constant pointer to the immutable field
+      /// @note Returns a shared singleton; see Field.
       static FieldCPtr createNull();
 
       /// @brief a typical virtual destructor.
@@ -38,8 +40,6 @@ namespace QuickFAST{
       virtual uchar toUInt8() const;
       virtual void valueToStringBuffer()const;
       virtual bool isUnsignedInteger()const;
-    private:
-      virtual void freeField()const;
     private:
       static FieldCPtr nullField_;
     };

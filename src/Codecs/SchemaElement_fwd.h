@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2011 Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 
@@ -17,7 +18,7 @@ namespace QuickFAST
   {
     class SchemaElement;
     /// A smart pointer to a SchemaElement
-    typedef boost::shared_ptr<SchemaElement> SchemaElementPtr;
+    typedef std::shared_ptr<SchemaElement> SchemaElementPtr;
   }
 }
 

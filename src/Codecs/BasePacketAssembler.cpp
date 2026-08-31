@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -21,7 +22,7 @@ BasePacketAssembler::BasePacketAssembler(
   , messageHeaderAnalyzer_(messageHeaderAnalyzer)
   , builder_(builder)
   , messageCount_(0)
-  , byteCount_(0)
+  , receivedByteCount_(0)
   , messageLimit_(0)
 {
 }
@@ -35,7 +36,9 @@ BasePacketAssembler::decodeBuffer(const unsigned char * buffer, size_t size)
 {
   bool result = true;
   ++messageCount_;
-  ++byteCount_ += size;
+  // Was "++receivedByteCount_ += size", which adds one byte per packet to the
+  // figure throughput reporting is computed from.
+  receivedByteCount_ += size;
   if(builder_.wantLog(Common::Logger::QF_LOG_VERBOSE))
   {
     std::stringstream message;
@@ -66,6 +69,24 @@ BasePacketAssembler::decodeBuffer(const unsigned char * buffer, size_t size)
       currentSize_ = 0;
       currentBuffer_ = 0;
     }
+    else if(bytesAvailable() < 0 || blockSize > size_t(bytesAvailable()))
+    {
+      // The declared length used to be parsed and then never read again, here
+      // and for messageSize below, so a block claiming more bytes than the
+      // packet carries was not detected at the framing layer at all: the
+      // decoders were left to discover it by hitting EOF part way through a
+      // value. That is also why findings #38 to #40 went unnoticed, since in
+      // this path the block size was computed wrongly and then discarded.
+      std::stringstream message;
+      message << "Packet declares a block of " << blockSize
+        << " bytes but carries " << bytesAvailable()
+        << ". Ignoring packet.";
+      builder_.reportDecodingError(message.str());
+      packetHeaderAnalyzer_.reset();
+      DataSource::reset();
+      currentSize_ = 0;
+      currentBuffer_ = 0;
+    }
     else
     {
       if(skipBlock)
@@ -90,6 +111,18 @@ BasePacketAssembler::decodeBuffer(const unsigned char * buffer, size_t size)
           {
             // header must be complete in one packet
             builder_.reportDecodingError("Invalid message header.  Ignoring remainder of packet.");
+            messageHeaderAnalyzer_.reset();
+            DataSource::reset();
+            currentSize_ = 0;
+            currentBuffer_ = 0;
+          }
+          else if(bytesAvailable() < 0 || messageSize > size_t(bytesAvailable()))
+          {
+            std::stringstream message;
+            message << "Message declares " << messageSize
+              << " bytes but " << bytesAvailable()
+              << " remain in the packet. Ignoring remainder of packet.";
+            builder_.reportDecodingError(message.str());
             messageHeaderAnalyzer_.reset();
             DataSource::reset();
             currentSize_ = 0;

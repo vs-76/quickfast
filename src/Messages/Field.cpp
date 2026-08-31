@@ -1,9 +1,11 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
 #include "Field.h"
 #include <Common/Exceptions.h>
+#include <atomic>
 
 using namespace ::QuickFAST;
 using namespace ::QuickFAST::Messages;
@@ -11,7 +13,6 @@ using namespace ::QuickFAST::Messages;
 Field::Field(ValueType::Type type, bool valid)
 : type_(type)
 , valid_(valid)
-, refcount_(0)
 {
 }
 
@@ -131,10 +132,19 @@ Field::isSignedInteger()const
 const StringBuffer &
 Field::toString()const
 {
-  if(!valid_ || !isString())
+  // Absence and a wrong-type request are different complaints, and folding
+  // them together made an absent ascii field report "ascii cannot be converted
+  // to String" -- which reads as a type error for a conversion that is in fact
+  // supported. The typed accessors signal absence with FieldNotPresent, so
+  // strings do too.
+  if(!isString())
   {
     UnsupportedConversion ex(ValueType::typeName(getType()), "String");
     throw ex;
+  }
+  if(!valid_)
+  {
+    throw FieldNotPresent("Field not present");
   }
   return string_;
 }
@@ -184,11 +194,37 @@ Field::toSequence() const
   throw ex;
 }
 
-void
-Field::freeField()const
+std::mutex &
+Field::displayStringMutex()
 {
-  delete this;
+  static std::mutex mutex;
+  return mutex;
 }
+
+#if defined(QUICKFAST_ENABLE_TEST_HOOKS)
+namespace
+{
+  std::atomic<uint64_t> fieldHeapCreateCount(0);
+}
+
+void
+Field::resetHeapCreateCount()
+{
+  fieldHeapCreateCount.store(0);
+}
+
+uint64_t
+Field::heapCreateCount()
+{
+  return fieldHeapCreateCount.load();
+}
+
+void
+Field::noteHeapCreate()
+{
+  fieldHeapCreateCount.fetch_add(1);
+}
+#endif
 
 void
 Field::valueToStringBuffer() const
@@ -205,14 +241,26 @@ Field::operator == (const Field & rhs)const
   {
     return false;
   }
+  // "Absent" and "zero" are different answers in FAST, and every value member
+  // is default initialized, so an undefined field carries the same zero an
+  // ordinary zero-valued field does. Comparing only the values called them
+  // equal.
+  if(valid_ != rhs.valid_)
+  {
+    return false;
+  }
+  if(!valid_)
+  {
+    // Both absent, and the values behind them mean nothing.
+    return true;
+  }
   if(isString())
   {
     return string_ == rhs.string_;
   }
   else
   {
-    // compare integral or decimal values.  Unused fields
-    // will compare equal.
+    // compare integral or decimal values.
     return unsignedInteger_ == rhs.unsignedInteger_
         && signedInteger_ == rhs.signedInteger_
         && exponent_ == rhs.exponent_;

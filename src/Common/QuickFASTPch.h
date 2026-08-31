@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010, 2011 Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -34,133 +35,193 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include <cassert>
 
-// If building for .NET, must link boost threads dynamically
-#define BOOST_THREAD_USE_DLL
-// This reports at compile time which boost libraries will be used
-// #define BOOST_LIB_DIAGNOSTIC
-
+#include <cstdint>
+#include <memory>
+#include <functional>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <chrono>
 #include <sstream>
 #include <string>
 #include <vector>
 #include <map>
 #include <stack>
 #include <stdexcept>
-#include <math.h>
+#include <cmath>
 #include <iostream>
 #include <iomanip>
 #include <fstream>
 #include <cstdlib>
-
-#include <boost/date_time/gregorian/gregorian_types.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/weak_ptr.hpp>
-#include <boost/shared_array.hpp>
-#include <boost/enable_shared_from_this.hpp>
-#include <boost/scoped_ptr.hpp>
-#include <boost/intrusive_ptr.hpp>
-#include <boost/scoped_array.hpp>
-#include <boost/function.hpp>
-#include <boost/lexical_cast.hpp>
-#include <boost/operators.hpp>
-#include <boost/thread.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/cstdint.hpp>
-#include <boost/bind.hpp>
+#include <algorithm>
+#include <utility>
+#include <limits>
+#include <cstdio>
+#include <cstring>
 
 ////////////////////////
 // Doxygen documentation
 
 /// @mainpage
-/// This project is an implementation of the FAST Protcol.
-///  http://www.fixprotocol.org/fast
+/// QuickFAST is a native C++ implementation of the FIX Adapted for STreaming
+/// (FAST) protocol, with an optional .NET wrapper.
 ///
-/// The home page for this project is
-///  http://quickfast.org/
+/// The protocol specification is published by the FIX Trading Community:
+/// <a href="https://www.fixtrading.org/standards/fast/">
+/// fixtrading.org/standards/fast</a>.
 ///
-/// <h3>FAST</h3>
+/// Source for this fork lives at
+/// <a href="https://github.com/vs-76/quickfast-ng">github.com/vs-76/quickfast-ng</a>.
+/// See BUILD.md in the source tree for build instructions (CMake with either
+/// Conan 2 or vcpkg).
+///
+/// <h3>FAST in one page</h3>
 /// FAST is a standard for serializing an <b><i>application data type</i></b>
 /// into a <b><i>message</i></b>.
-/// The goal is to minimize the size of the encoded message thereby minimizing the
-/// bandwidth required to transmit the information.  Ideally this should be done
-/// without requiring excessive CPU useage.
+/// The goal is to minimize the size of the encoded message, and so the
+/// bandwidth needed to transmit it, without spending excessive CPU to do so.
 ///
-/// This is achieved by creating a custom encoding/decoding compression strategy
-/// for each type of messsage using a set of basic codec instructions.  This strategy
-/// is called a <b><i>template</i></b>.   More than one template can be (and usually
-/// is) defined.
-/// There is a many-to-many correspondence between application data types and templates.
-/// The encoder is free to choose the most effect template to apply to each message that
-/// it encodes.
+/// This is achieved by defining a custom encoding/decoding strategy per message
+/// type out of a set of basic codec instructions. That strategy is called a
+/// <b><i>template</i></b>, and more than one is usually defined.
+/// The correspondence between application data types and templates is
+/// many-to-many: an encoder may choose whichever template encodes a given
+/// message most effectively.
 ///
-/// Templates are most commonly represented as XML documents.  See the specification
-/// available from the URL above for details about the XML schema.
+/// Much of the compression comes from operators (copy, delta, increment, tail)
+/// that describe a field relative to the previous message. Encoder and decoder
+/// therefore each carry <i>dictionary</i> state, and a stream must be decoded in
+/// order by a single decoder. Datagram transports (UDP, multicast) normally
+/// reset that state per packet; see QuickFAST::Codecs::Context::reset.
 ///
-/// The template file is shared between both counterparties via out-of-band
-/// communication. It is vital that both counterparties be using the same set of templates.
+/// Templates are most commonly written as XML documents; see
+/// QuickFAST::Codecs::XMLTemplateParser for the element-to-object mapping.
+/// The template file is shared between counterparties out of band, and it is
+/// vital that both sides use the same set of templates.
 ///
-/// <h3>Using QuickFAST in an application that receives FAST data.</h3>
+/// <h3>Receiving FAST data</h3>
 ///
-/// Two example applications that are bundled with QuickFAST will help you to get started
-/// quickly using QuickFAST to decode incoming FAST data for your application:<ul>
-///  <li><b>TutorialApplication</b> is a simple application that shows QuickFAST configured
-///         for one particular use-case.  Source for this application is in
-///          .../src/Examples/TutorialApplication<br>
-///         There is  <a href="http://code.google.com/p/quickfast/wiki/TutorialApplication">
-///         a more detailed discription of this application on the QuickFAST web site.</a></li>
-///  <li><b>InterpretApplication</b> is an application that uses command line options to configure
-///         the QuickFAST for a variety of situations.  It supports all of the options available in
-///         QuickFAST except those requiring custom code.  Source for this application is in
-///         .../src/Examples/InterpretApplication.</li>
+/// QuickFAST::Application::DecoderConnection is the recommended entry point: one
+/// instance supports one source of FAST data (a multicast group, a TCP session, a
+/// capture file), configured by a
+/// QuickFAST::Application::DecoderConfiguration.
+///
+/// @code
+/// #include <Application/QuickFAST.h>
+/// #include <Application/DecoderConnection.h>
+/// #include <Codecs/GenericMessageBuilder.h>
+/// #include <Examples/JsonMessageConsumer.h>
+///
+/// using namespace QuickFAST;
+///
+/// Application::DecoderConfiguration configuration;
+/// configuration.setTemplateFileName("templates.xml");
+/// configuration.setFastFileName("data.fast");
+/// configuration.setReceiverType(
+///   Application::DecoderConfiguration::RAWFILE_RECEIVER);
+/// configuration.setAssemblerType(
+///   Application::DecoderConfiguration::STREAMING_ASSEMBLER);
+///
+/// // The consumer receives each decoded message; the builder assembles one.
+/// // Both must outlive the decoding run.
+/// Examples::JsonMessageConsumer consumer(std::cout);
+/// Codecs::GenericMessageBuilder builder(consumer);
+///
+/// Application::DecoderConnection connection;
+/// connection.configure(builder, configuration);
+/// connection.run();   // returns when the receiver stops
+/// @endcode
+///
+/// To take the data somewhere other than standard out, implement
+/// QuickFAST::Codecs::MessageConsumer (working with an assembled
+/// QuickFAST::Messages::Message, as above) or, for the lowest overhead,
+/// implement QuickFAST::Messages::ValueMessageBuilder and skip the intermediate
+/// Message entirely.
+///
+/// Two bundled applications are worth reading before writing your own:<ul>
+///  <li><b>TutorialApplication</b> (src/Examples/TutorialApplication) shows
+///         QuickFAST hard-configured for one use case.</li>
+///  <li><b>InterpretApplication</b> (src/Examples/InterpretApplication) drives
+///         every option that does not require custom code from the command
+///         line, and is the quickest way to inspect an unfamiliar feed.</li>
 /// </ul>
 ///
-/// <h4>Other decoding techiniques</h4>
-/// Earlier versions of QuickFAST simpler, less flexiable techinques to configuring QuickFAST.
-/// These techinques are still supported; however, it is suggested that future development
-/// be done by starting with one of the applications described above.
+/// <h4>Decoding without a connection</h4>
+/// When the data is already in hand, drive the decoder directly:
+/// QuickFAST::Codecs::Decoder for one message,
+/// QuickFAST::Codecs::SynchronousDecoder to loop over a
+/// QuickFAST::Codecs::DataSource, or QuickFAST::Codecs::MulticastDecoder for a
+/// self-contained multicast reader. Each of those pages carries an example.
 ///
-/// For details on this lower level support see: <ul>
-/// <li>QuickFAST::Codecs::SynchronousDecoder, and</li>
-/// <li>QuickFAST::Codecs::MulticastDecoder.</li>
+/// <h3>Sending FAST data</h3>
+/// @code
+/// #include <Application/QuickFAST.h>
+/// #include <Codecs/XMLTemplateParser.h>
+/// #include <Codecs/Encoder.h>
+/// #include <Codecs/DataDestination.h>
+/// #include <Messages/Message.h>
+/// #include <Messages/FieldUInt32.h>
+///
+/// using namespace QuickFAST;
+///
+/// std::ifstream templateFile("templates.xml");
+/// Codecs::XMLTemplateParser parser;
+/// Codecs::TemplateRegistryPtr registry = parser.parse(templateFile);
+///
+/// Codecs::Encoder encoder(registry);
+///
+/// const Messages::FieldIdentity quantity("quantity");
+/// Messages::Message message(registry->maxFieldCount());
+/// message.addField(quantity, Messages::FieldUInt32::create(100));
+///
+/// Codecs::DataDestination destination;
+/// encoder.encodeMessage(destination, 1, message);   // 1 == template id
+/// @endcode
+///
+/// The encoder writes to the DataDestination and then calls
+/// QuickFAST::Codecs::DataDestination::endMessage(), which is the destination's
+/// cue to transmit. Catch exceptions from the encoder and tell the destination
+/// to discard the partially encoded message.
+///
+/// <h3>Working with decoded data</h3>
+/// A decoded QuickFAST::Messages::Message is a collection of
+/// QuickFAST::Messages::Field values, each identified by a
+/// QuickFAST::Messages::FieldIdentity. Two formatters are provided:<ul>
+/// <li>QuickFAST::Messages::MessageToJson emits JSON (see
+///     QuickFAST::Messages::JsonOptions for key naming and byte vector
+///     encoding).</li>
+/// <li>QuickFAST::Messages::MessageFormatter emits human readable text.</li>
 /// </ul>
+/// FAST decimals arrive as QuickFAST::Decimal, which keeps mantissa and exponent
+/// separate so prices stay exact.
 ///
-/// <h3>Using QuickFAST in an application that sends FAST data.</h3>
-/// To send FAST encoded data, a typical application would:<ul>
-/// <li>Use a QuickFAST::Codecs::XMLTemplateParser to read a template file and produce
-/// a QuickFAST::Codecs::TemplateRegistry.</li>
-/// <li>Create a QuickFAST::Codecs::Encoder and supply it with the template registry to use.</li>
-/// <li>Create an object that implements the QuickFAST::Codecs::DataDestination interface to handle
-/// the FAST encoded data that will be generated.</li>
-/// <li>Whenever data is available to be sent:<ul>
-///  <li>Create an empty QuickFAST::Messages::Message</li>
-///  <li>Add fields to the message by <ul>
-///   <li>creating a QuickFAST::Messages::FieldIdentity to identify the field, and</li>
-///   <li>creating the appropriate implementation of QuickFAST::Messages::Field to represent the field value.</li>
-///   <li>adding the field to the message using the addField() method.</li></ul></li>
-///  <li>Pass the populated message and the data destination to the encoders encodeMessage() method.</li>
-/// </ul></ul>
+/// <h3>Logging</h3>
+/// QuickFAST reports decoding and communication problems through
+/// QuickFAST::Common::Logger. When built with QUICKFAST_USE_SPDLOG,
+/// QuickFAST::Common::SpdlogLogger forwards those reports to an application
+/// spdlog logger, and QuickFAST::Common::managed_file_sink_mt provides a file
+/// sink with size and scheduled rotation, gzip, and retention.
 ///
-/// The encoder will send the encoded data to the DataDestination, then call the DataDestination::endMessage()
-/// method.  This call is a signal for the destination to actually transmit or otherwise process the encoded
-/// message.
+/// <h3>Supporting applications</h3>
+/// The Examples directory also holds tools that do not use the codec themselves
+/// but help in testing QuickFAST-based applications:
+/// @see QuickFAST::Examples::FileToTCP
+/// @see QuickFAST::Examples::FileToMulticast
 ///
-/// The application should catch exceptions thrown by the encoder and tell the the data destination
-/// to discard any partially encoded information.
-///
-/// The Examples directory also includes some support applications that do not explictly use QuickFAST but
-/// that can be helpful in testing QuickFAST-based application:
-/// @see QuickFAST::FileToTCP
-/// @see QuickFAST::FileToMulticast
-///
-/// This page was generated from comments in src/common/QuickFASTPCH.h
+/// This page was generated from comments in src/Common/QuickFASTPch.h
 
 /// @brief General utility/overhead classes used throughout the rest of the
 /// system are in the ::QuickFAST namespace.
 ///
 /// Source files for elements in this namespace are in the src/Common directory.
+/// They include QuickFAST::Decimal, the exceptions QuickFAST throws
+/// (QuickFAST::EncodingError, QuickFAST::OverflowError,
+/// QuickFAST::TemplateDefinitionError, QuickFAST::UsageError and their
+/// siblings), and the logging support in QuickFAST::Common.
 ///
-/// <i>This page was generated from comments in src/common/QuickFASTPCH.h</i>
+/// <i>This page was generated from comments in src/Common/QuickFASTPch.h</i>
 namespace QuickFAST{
 
   /// @brief A FAST encoder and decoder.
@@ -176,7 +237,7 @@ namespace QuickFAST{
   ///
   /// Source files for elements in this namespace are in the src/Codecs directory.
   ///
-  /// <i>This page was generated from comments in src/common/QuickFASTPCH.h</i>
+  /// <i>This page was generated from comments in src/Common/QuickFASTPch.h</i>
   namespace Codecs{}
   /// @brief Classes for managing FAST application data: messages and fields.
   ///
@@ -190,7 +251,7 @@ namespace QuickFAST{
   ///
   /// Source files for elements in this namespace are in src/Messages directory.
   ///
-  /// <i>This page was generated from comments in src/common/QuickFASTPCH.h</i>
+  /// <i>This page was generated from comments in src/Common/QuickFASTPch.h</i>
   namespace Messages{}
 
   /// @brief Classes involved in passing data to/from the Decoder/Encoder from/to the outside world.
@@ -209,16 +270,32 @@ namespace QuickFAST{
   /// Source files for elements in this namespace are in src/Communication directory.
   namespace Communication{}
 
-  /// @ brief Wrapper classes that provide high-level support to Applications using QuickFAST for decoding.
+  /// @brief Wrapper classes that provide high-level support to Applications using QuickFAST for decoding.
   ///
   /// This namespace contains: <dl>
   ///
   /// <dt>DecoderConfiguration</dt>
-  ///   <dd>Contains all the information necessary to configure a DecoderConnection. </dd>
+  ///   <dd>Contains all the information necessary to configure a DecoderConnection.
+  ///       It can also parse its own command line options. </dd>
   /// <dt>DecoderConnection</dt>
-  ///  <dd>Supports a single source of FAST encoded input.</dd>
+  ///  <dd>Supports a single source of FAST encoded input. Start here; see the
+  ///      example on QuickFAST::Application::DecoderConnection.</dd>
+  /// <dt>CommandArgParser</dt>
+  ///  <dd>Dispatches command line arguments to CommandArgHandler implementations.</dd>
   /// </dl>
+  ///
+  /// Source files for elements in this namespace are in the src/Application directory.
   namespace Application{}
+
+  /// @brief Sample applications and reusable sample components.
+  ///
+  /// Nothing in the QuickFAST libraries depends on this namespace; it exists to
+  /// be read and copied. QuickFAST::Examples::JsonMessageConsumer and
+  /// QuickFAST::Examples::MessageInterpreter are the message consumers the
+  /// bundled applications use, and are usable as-is.
+  ///
+  /// Source files for elements in this namespace are in the src/Examples directory.
+  namespace Examples{}
 
 }
 #endif // QUICKFASTPCH_H

@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
@@ -15,6 +16,13 @@
 #include <Messages/SingleValueBuilder.h>
 
 #include <Common/Profiler.h>
+
+namespace
+{
+  /// The FAST specification confines a decimal exponent to this range.
+  const QuickFAST::int64 minExponent = -63;
+  const QuickFAST::int64 maxExponent = 63;
+}
 
 using namespace QuickFAST;
 using namespace QuickFAST::Codecs;
@@ -268,8 +276,36 @@ FieldInstructionDecimal::decodeDelta(
 
   Decimal value(typedValue_);
   (void)fieldOp_->getDictionaryValue(decoder, value);
-  value.setExponent(exponent_t(value.getExponent() + exponentDelta));
-  value.setMantissa(mantissa_t(value.getMantissa() + mantissaDelta));
+
+  // Both deltas arrive from the wire and both sums used to be applied without
+  // a range check. The exponent narrowed through an explicit exponent_t cast,
+  // which is well-defined modular conversion, so a delta of 200 silently
+  // became -56 and no sanitizer could ever report it. The mantissa was added
+  // as two int64 values before its cast, so the cast could not rescue it and
+  // the addition was plain signed overflow.
+  const int64 exponent = int64(value.getExponent()) + exponentDelta;
+  if(exponent < minExponent || exponent > maxExponent)
+  {
+    decoder.reportError(
+      "[ERR R1]",
+      "Decimal exponent delta produces an exponent outside the legal range.",
+      identity_);
+    return;
+  }
+
+  const int64 mantissa = value.getMantissa();
+  if((mantissaDelta > 0 && mantissa > LLONG_MAX - mantissaDelta)
+    || (mantissaDelta < 0 && mantissa < LLONG_MIN - mantissaDelta))
+  {
+    decoder.reportError(
+      "[ERR R1]",
+      "Decimal mantissa delta overflows the mantissa.",
+      identity_);
+    return;
+  }
+
+  value.setExponent(exponent_t(exponent));
+  value.setMantissa(mantissa_t(mantissa + mantissaDelta));
   accessor.addValue(
     identity_,
     ValueType::DECIMAL,
@@ -280,24 +316,55 @@ FieldInstructionDecimal::decodeDelta(
 void
 FieldInstructionDecimal::encodeNullableDecimal(
   Codecs::DataDestination & destination,
+  Context & context,
   WorkingBuffer & buffer,
   exponent_t exponent,
   mantissa_t mantissa) const
 {
-  if(exponent >= 0)
+  checkExponentRange(context, exponent);
+  // The adjustment used to be made in exponent_t, an int8, so an exponent of
+  // 127 wrapped to -128: the mantissa arrived intact and the value came out
+  // multiplied by 10^-255, in silence. Same shape as the integer fields in
+  // #61, and it needs the same wider intermediate. The range check above
+  // keeps this away from the boundary, but the arithmetic should not depend
+  // on the check to be defined.
+  int64 adjusted = exponent;
+  if(adjusted >= 0)
   {
-    exponent += 1;
+    adjusted += 1;
   }
-  encodeDecimal(destination, buffer, exponent, mantissa);
+  encodeSignedInteger(destination, buffer, adjusted);
+  encodeSignedInteger(destination, buffer, mantissa);
+}
+
+void
+FieldInstructionDecimal::checkExponentRange(
+  Context & context,
+  exponent_t exponent) const
+{
+  // decodeDelta has always enforced this, so a delta field refused an
+  // out-of-range exponent while nop, copy and default encoded it and left the
+  // decoder to make of it what it could. The four operators should agree, and
+  // the specification says which way.
+  if(exponent < minExponent || exponent > maxExponent)
+  {
+    std::stringstream message;
+    message << "Decimal exponent " << int(exponent)
+      << " is outside the legal range of " << minExponent
+      << " to " << maxExponent << '.';
+    context.reportError("[ERR R1]", message.str(), identity_);
+  }
 }
 
 void
 FieldInstructionDecimal::encodeDecimal(
   Codecs::DataDestination & destination,
+  Context & context,
   WorkingBuffer & buffer,
   exponent_t exponent,
   mantissa_t mantissa) const
 {
+  checkExponentRange(context, exponent);
   encodeSignedInteger(destination, buffer, exponent);
   encodeSignedInteger(destination, buffer, mantissa);
 }
@@ -343,6 +410,7 @@ FieldInstructionDecimal::encodeNop(
       {
         encodeNullableDecimal(
           destination,
+          encoder,
           encoder.getWorkingBuffer(),
           value.getExponent(),
           value.getMantissa());
@@ -351,6 +419,7 @@ FieldInstructionDecimal::encodeNop(
       {
         encodeDecimal(
           destination,
+          encoder,
           encoder.getWorkingBuffer(),
           value.getExponent(),
           value.getMantissa());
@@ -428,11 +497,11 @@ FieldInstructionDecimal::encodeDefault(
 
       if(isMandatory())
       {
-        encodeDecimal(destination, encoder.getWorkingBuffer(), value.getExponent(), value.getMantissa());
+        encodeDecimal(destination, encoder, encoder.getWorkingBuffer(), value.getExponent(), value.getMantissa());
       }
       else
       {
-        encodeNullableDecimal(destination, encoder.getWorkingBuffer(), value.getExponent(), value.getMantissa());
+        encodeNullableDecimal(destination, encoder, encoder.getWorkingBuffer(), value.getExponent(), value.getMantissa());
       }
     }
   }
@@ -496,11 +565,11 @@ FieldInstructionDecimal::encodeCopy(
       pmap.setNextField(true);// value in stream
       if(isMandatory())
       {
-        encodeDecimal(destination, encoder.getWorkingBuffer(), value.getExponent(), value.getMantissa());
+        encodeDecimal(destination, encoder, encoder.getWorkingBuffer(), value.getExponent(), value.getMantissa());
       }
       else
       {
-        encodeNullableDecimal(destination, encoder.getWorkingBuffer(), value.getExponent(), value.getMantissa());
+        encodeNullableDecimal(destination, encoder, encoder.getWorkingBuffer(), value.getExponent(), value.getMantissa());
       }
       fieldOp_->setDictionaryValue(encoder, value);
     }
@@ -518,7 +587,7 @@ FieldInstructionDecimal::encodeCopy(
     {
       // Missing optional field.  If we have a previous, non-null value
       // we need to explicitly null it out.  Otherwise just don't send it.
-      if(previousValue != Context::NULL_VALUE)
+      if(previousStatus != Context::NULL_VALUE)
       {
         pmap.setNextField(true);// value in stream
         destination.putByte(nullDecimal);

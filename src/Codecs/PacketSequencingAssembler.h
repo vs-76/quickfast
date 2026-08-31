@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -37,15 +38,39 @@ namespace QuickFAST
 
       virtual ~PacketSequencingAssembler();
 
+      /// @brief Give up on a gap after this many consecutive recovery timeouts.
+      ///
+      /// Zero, the default, means never give up, which is the historical
+      /// behaviour: a gap the feed keeps promising to fill is re-polled every
+      /// ten milliseconds for as long as it says so.
+      ///
+      /// @param limit is the number of consecutive timeouts to tolerate.
+      ///
+      /// @par Example
+      /// @code
+      /// assembler.setGapTimeoutLimit(100); // escalate after about a second
+      /// @endcode
+      void setGapTimeoutLimit(size_t limit)
+      {
+        gapTimeoutLimit_ = limit;
+      }
+
+      /// @brief How many consecutive recovery timeouts the current gap has seen.
+      /// @returns the count, reset to zero whenever recovery data arrives.
+      size_t consecutiveGapTimeouts() const
+      {
+        return consecutiveGapTimeouts_;
+      }
+
       ///////////////////////////////////////
       // Implement Remaining Assembler method
       virtual bool serviceQueue(Communication::Receiver & receiver);
 
     private:
       /// @brief Initial processing of incoming packet from any source.
-      void capturePacket(Communication::LinkedBuffer * buffer);
+      bool capturePacket(Communication::LinkedBuffer * buffer);
       /// @brief Ready to decode a packet
-      void processPacket(Communication::LinkedBuffer * buffer);
+      bool processPacket(Communication::LinkedBuffer * buffer);
       /// @brief Packet is no longer needed.  Return it to from whence it came.
       void releasePacket(Communication::LinkedBuffer * buffer);
       /// @brief Packet is beyond the look-ahead array.   Hang on to it for later.
@@ -68,11 +93,13 @@ namespace QuickFAST
 
     private:
       size_t lookAheadCount_;
-      boost::scoped_array<Communication::LinkedBuffer *> lookAhead_;
+      std::unique_ptr<Communication::LinkedBuffer *[]> lookAhead_;
       bool first_;
       sequence_t nextSequenceNumber_;
       bool gapWait_;
       sequence_t gapEnd_;
+      size_t gapTimeoutLimit_ = 0;
+      size_t consecutiveGapTimeouts_ = 0;
 
       Communication::BufferQueue deferredQueue_;
       Communication::BufferQueue recoveryIncoming_;

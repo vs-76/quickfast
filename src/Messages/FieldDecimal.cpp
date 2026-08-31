@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
@@ -7,6 +8,8 @@
 
 using namespace ::QuickFAST;
 using namespace ::QuickFAST::Messages;
+
+FieldCPtr FieldDecimal::nullField_ = FieldCPtr(new FieldDecimal);
 
 FieldDecimal::FieldDecimal()
   : Field(ValueType::DECIMAL, false)
@@ -36,7 +39,7 @@ FieldDecimal::toDecimal() const
 {
   if(!valid_)
   {
-    FieldNotPresent ex("Field not present");
+    throw FieldNotPresent("Field not present");
   }
   return Decimal(signedInteger_, exponent_);
 }
@@ -44,19 +47,19 @@ FieldDecimal::toDecimal() const
 FieldCPtr
 FieldDecimal::create(const Decimal & value)
 {
-  return new FieldDecimal(value);
+  return FieldCPtr(new FieldDecimal(value));
 }
 
 FieldCPtr
 FieldDecimal::create(mantissa_t mantissa, exponent_t exponent)
 {
-  return new FieldDecimal(mantissa, exponent);
+  return FieldCPtr(new FieldDecimal(mantissa, exponent));
 }
 
 FieldCPtr
 FieldDecimal::createNull()
 {
-  return new FieldDecimal;
+  return nullField_;
 }
 
 void

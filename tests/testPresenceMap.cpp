@@ -1,0 +1,235 @@
+// Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
+// All rights reserved.
+// See the file license.txt for licensing information.
+#include <Common/QuickFASTPch.h>
+#include <gtest/gtest.h>
+#include <Common/Types.h>
+#include <Codecs/PresenceMap.h>
+#include <Codecs/DataSourceString.h>
+#include <Codecs/DataDestination.h>
+#include <Common/Exceptions.h>
+
+using namespace QuickFAST;
+
+TEST(QuickFAST, testPmapDecoding)
+{
+  Codecs::PresenceMap pmap(1);
+  for(size_t n = 0; n < 10; ++n) // more than 7 anyway
+  {
+    EXPECT_TRUE(!pmap.checkNextField());
+  }
+
+  uchar oneBytePMAP[] = {static_cast<uchar>(0xFFu)};
+  pmap.setRaw(oneBytePMAP, 1);
+
+  for(size_t n = 0; n < 7; ++n) // The first 7 should be present
+  {
+    EXPECT_TRUE(pmap.checkNextField());
+  }
+
+  for(size_t n = 0; n < 10; ++n) // after 7; MIA
+  {
+    EXPECT_TRUE(!pmap.checkNextField());
+  }
+  pmap.rewind();
+  // Results should be reproducable
+  for(size_t n = 0; n < 7; ++n) // The first 7 should be present
+  {
+    EXPECT_TRUE(pmap.checkNextField());
+  }
+
+  for(size_t n = 0; n < 10; ++n) // after 7; MIA
+  {
+    EXPECT_TRUE(!pmap.checkNextField());
+  }
+
+  uchar everyOtherOne[] = {static_cast<uchar>(0x55u), static_cast<uchar>(0xAAu)};
+  EXPECT_EQ((sizeof(everyOtherOne)), (2));
+  pmap.setRaw(everyOtherOne, sizeof(everyOtherOne));
+  size_t ones = 0;
+  for(size_t n = 0; n < 20; ++n)
+  {
+    if(pmap.checkNextField())
+    {
+      ++ones;
+    }
+  }
+  EXPECT_EQ((7), (ones));
+
+  // had a problem in calculating the buffer size
+  Codecs::PresenceMap pmap197(197);
+  const size_t needed197 = 29;
+  const uchar * raw197 = 0;
+  size_t size197 = 0;
+  pmap197.getRaw(raw197, size197);
+  EXPECT_EQ((needed197), (size197));
+  for(size_t n = 0; n < 197; ++n)
+  {
+    pmap197.setNextField(true);
+  }
+  EXPECT_EQ((needed197), (pmap197.encodeBytesNeeded()));
+  pmap197.getRaw(raw197, size197);
+  EXPECT_EQ((needed197), (size197));
+
+
+  // This case caused a failure
+  std::string testString("\x6f\x62\xa0");
+  Codecs::DataSourceString source(testString);
+  Codecs::PresenceMap p1(1); // make it grow
+  p1.decode(source);
+  EXPECT_TRUE(p1.checkNextField()); // 6 110
+  EXPECT_TRUE(p1.checkNextField());
+  EXPECT_TRUE(!p1.checkNextField());
+
+  EXPECT_TRUE(p1.checkNextField()); // F 1111
+  EXPECT_TRUE(p1.checkNextField());
+  EXPECT_TRUE(p1.checkNextField());
+  EXPECT_TRUE(p1.checkNextField());
+
+  EXPECT_TRUE(p1.checkNextField()); // 6 110
+  EXPECT_TRUE(p1.checkNextField());
+  EXPECT_TRUE(!p1.checkNextField());
+
+  EXPECT_TRUE(!p1.checkNextField()); // 2 0010
+  EXPECT_TRUE(!p1.checkNextField());
+  EXPECT_TRUE(p1.checkNextField());
+  EXPECT_TRUE(!p1.checkNextField());
+
+  EXPECT_TRUE(!p1.checkNextField()); // A 010
+  EXPECT_TRUE(p1.checkNextField());
+  EXPECT_TRUE(!p1.checkNextField());
+
+  EXPECT_TRUE(!p1.checkNextField()); // 0
+  EXPECT_TRUE(!p1.checkNextField());
+  EXPECT_TRUE(!p1.checkNextField());
+  EXPECT_TRUE(!p1.checkNextField());
+
+  EXPECT_TRUE(!p1.checkNextField()); // and to be sure: check past the end
+  EXPECT_TRUE(!p1.checkNextField());
+  EXPECT_TRUE(!p1.checkNextField());
+  EXPECT_TRUE(!p1.checkNextField());
+
+}
+
+TEST(QuickFAST, testPmapEncoding1)
+{
+  Codecs::PresenceMap pmap(10);
+  for(size_t nbit = 0; nbit < 10; ++nbit)
+  {
+    pmap.setNextField(true);
+  }
+  Codecs::DataDestination destination;
+  pmap.encode(destination);
+  destination.endMessage();
+  std::string result;
+  destination.toString(result);
+  destination.clear();
+  EXPECT_EQ((result.length()), (2));
+  const char expected[] = "\x7F\xF0";
+  EXPECT_TRUE(result == expected);
+}
+
+TEST(QuickFAST, testPmapEncoding2)
+{
+  Codecs::PresenceMap pmap(10);
+  for(size_t nbit = 0; nbit < 10; ++nbit)
+  {
+    pmap.setNextField(false);
+  }
+  Codecs::DataDestination destination;
+  pmap.encode(destination);
+  destination.endMessage();
+  std::string result;
+  destination.toString(result);
+  destination.clear();
+  EXPECT_EQ((result.length()), (1));
+  const char expected[] = "\x80";
+  EXPECT_TRUE(result == expected);
+}
+
+TEST(QuickFAST, testPresenceMapBufferDecodeIsBounded)
+{
+  // The buffer overload scans for a stop bit with no idea how long the buffer
+  // is, so input without one runs off the end.  Run under -fsanitize=address.
+  const uchar noStopBit[] = {0x6f, 0x62, 0x20};
+  Codecs::PresenceMap pmap(1);
+  size_t offset = 0;
+  EXPECT_THROW(
+    pmap.decode(noStopBit, sizeof(noStopBit), offset),
+    EncodingError);
+
+  // A well formed map still decodes, and reports where it stopped.
+  const uchar withStopBit[] = {0x6f, 0x62, 0xa0};
+  Codecs::PresenceMap good(1);
+  size_t goodOffset = 0;
+  good.decode(withStopBit, sizeof(withStopBit), goodOffset);
+  EXPECT_EQ((goodOffset), (sizeof(withStopBit)));
+  EXPECT_TRUE(good.checkNextField());
+  EXPECT_TRUE(good.checkNextField());
+  EXPECT_TRUE(!good.checkNextField());
+
+  // Decoding is allowed to start part way into a larger buffer.
+  const uchar embedded[] = {0xff, 0x6f, 0x62, 0xa0, 0xff};
+  Codecs::PresenceMap partial(1);
+  size_t partialOffset = 1;
+  partial.decode(embedded, sizeof(embedded), partialOffset);
+  EXPECT_EQ((partialOffset), (4u));
+}
+
+TEST(QuickFAST, testPresenceMapGrowsGeometrically)
+{
+  // grow() extended capacity by exactly one byte and copied the whole buffer
+  // each time, so decoding an n-byte presence map cost O(n^2).  Growth has to
+  // be geometric, which shows up as capacity overshooting the bytes stored.
+  const size_t pmapBytes = 200;
+  std::string encoded(pmapBytes - 1, '\x7F');
+  encoded += '\xFF';
+
+  Codecs::DataSourceString source(encoded);
+  Codecs::PresenceMap pmap(1);
+  pmap.decode(source);
+
+  const uchar * raw = 0;
+  size_t capacity = 0;
+  pmap.getRaw(raw, capacity);
+  EXPECT_GE((capacity), (pmapBytes));
+  EXPECT_GT((capacity), (pmapBytes));
+
+  // Growing must not corrupt what was already stored: every data bit is set.
+  for(size_t bit = 0; bit < (pmapBytes * 7); ++bit)
+  {
+    EXPECT_TRUE(pmap.checkNextField());
+  }
+}
+
+TEST(QuickFAST, testPresenceMapResetClearsEveryByte)
+{
+  // decode() leaves bytePosition_ at zero, and reset() skipped its memset in
+  // exactly that case, clearing only the first byte.  Every later byte kept
+  // the previous message's bits, so a template asking for more bits than the
+  // wire pmap carried would read stale bits as "field present".
+  const std::string threeFullBytes("\x7F\x7F\xFF", 3);
+
+  // Sanity: this map really does set bits beyond the first byte.
+  {
+    Codecs::PresenceMap populated(1);
+    Codecs::DataSourceString source(threeFullBytes);
+    populated.decode(source);
+    for(size_t bit = 0; bit < 21; ++bit)
+    {
+      ASSERT_TRUE(populated.checkNextField());
+    }
+  }
+
+  Codecs::PresenceMap pmap(1);
+  Codecs::DataSourceString source(threeFullBytes);
+  pmap.decode(source);
+  // No checkNextField() in between, so bytePosition_ is still zero here.
+  pmap.reset();
+
+  for(size_t bit = 0; bit < 21; ++bit)
+  {
+    EXPECT_TRUE(!pmap.checkNextField());
+  }
+}

@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010, 2011 Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -18,7 +19,7 @@ namespace QuickFAST
     class MessagePerPacketAssembler;
 
     ///@brief smart pointer to MessagePerPacketAssembler
-    typedef boost::shared_ptr<MessagePerPacketAssembler> MessagePerPacketAssemblerPtr;
+    typedef std::shared_ptr<MessagePerPacketAssembler> MessagePerPacketAssemblerPtr;
   }
 }
 #endif // MESSAGEPERPACKETASSEMBLER_FWD_H

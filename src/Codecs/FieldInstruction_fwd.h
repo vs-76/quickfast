@@ -1,4 +1,5 @@
 // Copyright (c) 2009, 2010, 2011 Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #ifdef _MSC_VER
@@ -14,9 +15,9 @@ namespace QuickFAST{
   namespace Codecs{
     class FieldInstruction;
     /// @brief A smart pointer to a FieldInstruction
-    typedef boost::shared_ptr<FieldInstruction> FieldInstructionPtr;
+    typedef std::shared_ptr<FieldInstruction> FieldInstructionPtr;
     /// @brief A smart pointer to a const FieldInstruction
-    typedef boost::shared_ptr<const FieldInstruction> FieldInstructionCPtr;
+    typedef std::shared_ptr<const FieldInstruction> FieldInstructionCPtr;
   }
 }
 #endif // FIELDINSTRUCTION_FWD_H

@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
@@ -32,6 +33,7 @@
 #include <Codecs/FieldOpTail.h>
 
 #include <Common/Exceptions.h>
+#include <Common/LexicalCast.h>
 
 #include <xercesc/framework/MemBufInputSource.hpp>
 #include <xercesc/util/PlatformUtils.hpp>
@@ -92,10 +94,10 @@ namespace
     {
       for (size_t index = 0; index < attributes.getLength(); ++index)
       {
-        boost::shared_array<char> nameRaw(XMLString::transcode(attributes.getQName(index)),
+        std::shared_ptr<char[]> nameRaw(XMLString::transcode(attributes.getQName(index)),
           XMLStringReleaser());
         std::string name(nameRaw.get());
-        boost::shared_array<char> valueRaw(XMLString::transcode(attributes.getValue(index)),
+        std::shared_ptr<char[]> valueRaw(XMLString::transcode(attributes.getValue(index)),
           XMLStringReleaser());
         std::string value(valueRaw.get());
         attrs[name] = value;
@@ -123,7 +125,7 @@ namespace
       makeAttrs(attributes, attributeMap);
 
       // then switch on element tag
-      boost::shared_array<char> tagRaw(XMLString::transcode(localname),
+      std::shared_ptr<char[]> tagRaw(XMLString::transcode(localname),
           XMLStringReleaser());
       std::string tag(tagRaw.get());
       if(out_)
@@ -259,12 +261,15 @@ namespace
       const XMLCh* const qname
       )
     {
-      boost::shared_array<char> tagRaw(XMLString::transcode(localname),
+      std::shared_ptr<char[]> tagRaw(XMLString::transcode(localname),
           XMLStringReleaser());
       std::string tag(tagRaw.get());
 
       // Don't pop <templates>.  It's optional and has been forcibly pushed
-      if(tag != "templates")
+      // (in fact it is not: the push is commented out in
+      // parseTemplateRegistry, which is why the empty check below is needed
+      // rather than merely defensive).
+      if(tag != "templates" && !schemaElements_.empty())
       {
         if(schemaElements_.top().first == tag)
         {
@@ -308,7 +313,7 @@ namespace
       )
     {
       std::stringstream msg;
-      boost::shared_array<char> msgRaw(XMLString::transcode(exc.getMessage()),
+      std::shared_ptr<char[]> msgRaw(XMLString::transcode(exc.getMessage()),
           XMLStringReleaser());
       msg << "[ERR S1] Template file warning at line " << exc.getLineNumber()
           << " column " << exc.getColumnNumber()
@@ -321,7 +326,7 @@ namespace
       )
     {
       std::stringstream msg;
-      boost::shared_array<char> msgRaw(XMLString::transcode(exc.getMessage()),
+      std::shared_ptr<char[]> msgRaw(XMLString::transcode(exc.getMessage()),
           XMLStringReleaser());
       msg << "[ERR S1] Template file error at line " << exc.getLineNumber()
           << " column " << exc.getColumnNumber()
@@ -334,7 +339,7 @@ namespace
       )
     {
       std::stringstream msg;
-      boost::shared_array<char> msgRaw(XMLString::transcode(exc.getMessage()),
+      std::shared_ptr<char[]> msgRaw(XMLString::transcode(exc.getMessage()),
           XMLStringReleaser());
       msg << "[ERR S1] Template file fatal error at line " << exc.getLineNumber()
           << " column " << exc.getColumnNumber()
@@ -343,6 +348,28 @@ namespace
     }
 
   private:
+    /// @brief The element that encloses the one being parsed.
+    ///
+    /// Nearly every handler begins by reaching for this, and std::stack::top()
+    /// on an empty stack is undefined. The stack can be empty: the sentinel
+    /// push in parseTemplateRegistry is commented out, and the reader runs
+    /// without core validation, so nothing rejects a field or operator
+    /// appearing outside a <template>. A release build followed the
+    /// out-of-bounds read with a virtual call through a garbage pointer and
+    /// died without a word, which for a hand-maintained configuration file is
+    /// the least useful thing it could do.
+    const SchemaElementPtr & enclosingElement(const std::string & tag)
+    {
+      if(schemaElements_.empty())
+      {
+        std::stringstream msg;
+        msg << "[ERR S1] <" << tag
+            << "> is not valid here: it must appear inside a <template>.";
+        throw TemplateDefinitionError(msg.str());
+      }
+      return schemaElements_.top().second;
+    }
+
     TemplateRegistryPtr registry_;
 
     const std::string & getRequiredAttribute(
@@ -480,8 +507,13 @@ TemplateBuilder::getOptionalBooleanAttribute(
   AttributeMap::const_iterator it = attributes.find(name);
   if(it != attributes.end())
   {
-    char yn = it->second[0];
-    yn = (char)toupper(yn);
+    // char is signed here, so any attribute value beginning with a byte at or
+    // above 0x80 -- which is every non-ASCII value, and template files are
+    // UTF-8 -- used to hand toupper a negative int. That is outside its
+    // domain: glibc indexes a table offset by 128, so a negative argument
+    // reads before the table's intended start.
+    char yn = static_cast<char>(
+      std::toupper(static_cast<unsigned char>(it->second[0])));
     if(yn != 'Y' && yn != 'N' && yn != 'T' && yn != 'F')
     {
       std::stringstream msg;
@@ -538,7 +570,7 @@ TemplateBuilder::parseTemplate(const std::string & tag, const AttributeMap& attr
   if (getOptionalAttribute(attributes, "id", id))
   {
     target->setId(
-      boost::lexical_cast<template_id_t>(id)
+      QuickFAST::lexical_cast<template_id_t>(id)
       );
   }
 
@@ -560,7 +592,7 @@ TemplateBuilder::parseTemplate(const std::string & tag, const AttributeMap& attr
   bool ignore = getOptionalBooleanAttribute(attributes, "ignore", false);
   target->setIgnore(ignore);
   registry_->addTemplate(target);
-//  schemaElements_.top().second->addTemplate(target);
+//  enclosingElement(tag)->addTemplate(target);
   schemaElements_.push(StackEntry(tag, target));
 }
 
@@ -570,7 +602,7 @@ TemplateBuilder::parseTypeRef(const std::string & tag, const AttributeMap& attri
   std::string name = getRequiredAttribute(attributes, "name");
   std::string ns;
   getOptionalAttribute(attributes, "ns", ns);
-  schemaElements_.top().second->setApplicationType(name, ns);
+  enclosingElement(tag)->setApplicationType(name, ns);
 }
 void
 TemplateBuilder::parseInt8(const std::string & tag, const AttributeMap& attributes)
@@ -589,7 +621,13 @@ TemplateBuilder::parseInt8(const std::string & tag, const AttributeMap& attribut
   {
     field->setPresence(presence == "mandatory");
   }
-  schemaElements_.top().second->addInstruction(field);
+  // ignore_overflows reached parseInt32 and nowhere else, so on the other
+  // seven integer types the attribute was read from the file and thrown
+  // away. It also skipped the validation every other boolean attribute
+  // gets: ignore_overflows="ture" quietly meant false.
+  field->setIgnoreOverflow(
+    getOptionalBooleanAttribute(attributes, "ignore_overflows", false));
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -610,7 +648,13 @@ TemplateBuilder::parseUInt8(const std::string & tag, const AttributeMap& attribu
   {
     field->setPresence(presence == "mandatory");
   }
-  schemaElements_.top().second->addInstruction(field);
+  // ignore_overflows reached parseInt32 and nowhere else, so on the other
+  // seven integer types the attribute was read from the file and thrown
+  // away. It also skipped the validation every other boolean attribute
+  // gets: ignore_overflows="ture" quietly meant false.
+  field->setIgnoreOverflow(
+    getOptionalBooleanAttribute(attributes, "ignore_overflows", false));
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -631,7 +675,13 @@ TemplateBuilder::parseInt16(const std::string & tag, const AttributeMap& attribu
   {
     field->setPresence(presence == "mandatory");
   }
-  schemaElements_.top().second->addInstruction(field);
+  // ignore_overflows reached parseInt32 and nowhere else, so on the other
+  // seven integer types the attribute was read from the file and thrown
+  // away. It also skipped the validation every other boolean attribute
+  // gets: ignore_overflows="ture" quietly meant false.
+  field->setIgnoreOverflow(
+    getOptionalBooleanAttribute(attributes, "ignore_overflows", false));
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -652,7 +702,13 @@ TemplateBuilder::parseUInt16(const std::string & tag, const AttributeMap& attrib
   {
     field->setPresence(presence == "mandatory");
   }
-  schemaElements_.top().second->addInstruction(field);
+  // ignore_overflows reached parseInt32 and nowhere else, so on the other
+  // seven integer types the attribute was read from the file and thrown
+  // away. It also skipped the validation every other boolean attribute
+  // gets: ignore_overflows="ture" quietly meant false.
+  field->setIgnoreOverflow(
+    getOptionalBooleanAttribute(attributes, "ignore_overflows", false));
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -673,12 +729,13 @@ TemplateBuilder::parseInt32(const std::string & tag, const AttributeMap& attribu
   {
     field->setPresence(presence == "mandatory");
   }
-  std::string allowOverflow;
-  if(getOptionalAttribute(attributes, "ignore_overflows", allowOverflow))
-  {
-    field->setIgnoreOverflow(std::tolower(allowOverflow[0]) == 'y');
-  }
-  schemaElements_.top().second->addInstruction(field);
+  // ignore_overflows reached parseInt32 and nowhere else, so on the other
+  // seven integer types the attribute was read from the file and thrown
+  // away. It also skipped the validation every other boolean attribute
+  // gets: ignore_overflows="ture" quietly meant false.
+  field->setIgnoreOverflow(
+    getOptionalBooleanAttribute(attributes, "ignore_overflows", false));
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -699,7 +756,13 @@ TemplateBuilder::parseUInt32(const std::string & tag, const AttributeMap& attrib
   {
     field->setPresence(presence == "mandatory");
   }
-  schemaElements_.top().second->addInstruction(field);
+  // ignore_overflows reached parseInt32 and nowhere else, so on the other
+  // seven integer types the attribute was read from the file and thrown
+  // away. It also skipped the validation every other boolean attribute
+  // gets: ignore_overflows="ture" quietly meant false.
+  field->setIgnoreOverflow(
+    getOptionalBooleanAttribute(attributes, "ignore_overflows", false));
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -720,7 +783,13 @@ TemplateBuilder::parseInt64(const std::string & tag, const AttributeMap& attribu
   {
     field->setPresence(presence == "mandatory");
   }
-  schemaElements_.top().second->addInstruction(field);
+  // ignore_overflows reached parseInt32 and nowhere else, so on the other
+  // seven integer types the attribute was read from the file and thrown
+  // away. It also skipped the validation every other boolean attribute
+  // gets: ignore_overflows="ture" quietly meant false.
+  field->setIgnoreOverflow(
+    getOptionalBooleanAttribute(attributes, "ignore_overflows", false));
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -741,7 +810,13 @@ TemplateBuilder::parseUInt64(const std::string & tag, const AttributeMap& attrib
   {
     field->setPresence(presence == "mandatory");
   }
-  schemaElements_.top().second->addInstruction(field);
+  // ignore_overflows reached parseInt32 and nowhere else, so on the other
+  // seven integer types the attribute was read from the file and thrown
+  // away. It also skipped the validation every other boolean attribute
+  // gets: ignore_overflows="ture" quietly meant false.
+  field->setIgnoreOverflow(
+    getOptionalBooleanAttribute(attributes, "ignore_overflows", false));
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -762,7 +837,7 @@ TemplateBuilder::parseDecimal(const std::string & tag, const AttributeMap& attri
   {
     field->setPresence(presence == "mandatory");
   }
-  schemaElements_.top().second->addInstruction(field);
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -775,7 +850,7 @@ TemplateBuilder::parseExponent(const std::string & tag, const AttributeMap& attr
   {
     field->setPresence(presence == "mandatory");
   }
-  schemaElements_.top().second->setExponentInstruction(field);
+  enclosingElement(tag)->setExponentInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -788,7 +863,7 @@ TemplateBuilder::parseMantissa(const std::string & tag, const AttributeMap& attr
   {
     field->setPresence(presence == "mandatory");
   }
-  schemaElements_.top().second->setMantissaInstruction(field);
+  enclosingElement(tag)->setMantissaInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -820,7 +895,7 @@ TemplateBuilder::parseString(const std::string & tag, const AttributeMap& attrib
   {
     field->setPresence(presence == "mandatory");
   }
-  schemaElements_.top().second->addInstruction(field);
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -841,7 +916,7 @@ TemplateBuilder::parseByteVector(const std::string & tag, const AttributeMap& at
   {
     field->setPresence(presence == "mandatory");
   }
-  schemaElements_.top().second->addInstruction(field);
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, field));
 }
 
@@ -871,7 +946,7 @@ TemplateBuilder::parseGroup(const std::string & tag, const AttributeMap& attribu
   SegmentBodyPtr body(new SegmentBody);
   field->setSegmentBody(body);
 
-  schemaElements_.top().second->addInstruction(field);
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, body));
 }
 
@@ -904,7 +979,7 @@ TemplateBuilder::parseSequence(const std::string & tag, const AttributeMap& attr
   body->allowLengthField();
   body->setMandatoryLength(mandatory);
 
-  schemaElements_.top().second->addInstruction(field);
+  enclosingElement(tag)->addInstruction(field);
   schemaElements_.push(StackEntry(tag, body));
 }
 
@@ -930,7 +1005,7 @@ TemplateBuilder::parseLength(const std::string & tag, const AttributeMap& attrib
       field->setPresence(mandatory);
     }
   }
-  schemaElements_.top().second->addLengthInstruction(field);
+  enclosingElement(tag)->addLengthInstruction(field);
   // Is this push necessary?
   schemaElements_.push(StackEntry(tag, field));
 }
@@ -950,7 +1025,7 @@ TemplateBuilder::parseTemplateRef(const std::string & tag, const AttributeMap& a
   {
     field.reset(new FieldInstructionDynamicTemplateRef);
   }
-  schemaElements_.top().second->addInstruction(field);
+  enclosingElement(tag)->addInstruction(field);
   // Is this push necessary?
   schemaElements_.push(StackEntry(tag, field));
 }
@@ -966,9 +1041,10 @@ TemplateBuilder::parseNop(const std::string & tag, const AttributeMap& attribute
 void
 TemplateBuilder::parseConstant(const std::string & tag, const AttributeMap& attributes)
 {
-  getRequiredAttribute(attributes, "value");
   FieldOpPtr op(new FieldOpConstant);
-  parseInitialValue(tag, attributes, op);
+  op->setValue(getRequiredAttribute(attributes, "value"));
+  enclosingElement(tag)->setFieldOp(op);
+  schemaElements_.push(StackEntry(tag, op));
 }
 
 void
@@ -1014,7 +1090,7 @@ TemplateBuilder::parseInitialValue(const std::string & tag, const AttributeMap& 
   {
     op->setValue(value);
   }
-  schemaElements_.top().second->setFieldOp(op);
+  enclosingElement(tag)->setFieldOp(op);
   // is this push necessary?
   schemaElements_.push(StackEntry(tag, op));
 }
@@ -1046,10 +1122,25 @@ TemplateBuilder::parseOp(const std::string & tag, const AttributeMap& attributes
   std::string pmapBitStr;
   if(getOptionalAttribute(attributes, "pmap", pmapBitStr))
   {
-    size_t pmapBit = atoi(pmapBitStr.c_str());
+    // atoi cannot report failure, so pmap="abc" silently meant bit zero -- a
+    // perfectly valid index, and a template accepted with a meaning its author
+    // did not write -- while pmap="-1" became SIZE_MAX. That was never a
+    // memory-safety problem, because checkSpecificField bounds-checks the bit
+    // and refuses it, but a field that is always absent is a stranger failure
+    // than a rejected template.
+    size_t pmapBit = 0;
+    const char * begin = pmapBitStr.c_str();
+    const char * end = begin + pmapBitStr.size();
+    const std::from_chars_result parsed = std::from_chars(begin, end, pmapBit);
+    if(parsed.ec != std::errc() || parsed.ptr != end)
+    {
+      std::stringstream msg;
+      msg << "[ERR S1] Invalid pmap bit \"" << pmapBitStr << "\"";
+      throw TemplateDefinitionError(msg.str());
+    }
     op->setPMapBit(pmapBit);
   }
-  schemaElements_.top().second->setFieldOp(op);
+  enclosingElement(tag)->setFieldOp(op);
   // is this push necessary?
   schemaElements_.push(StackEntry(tag, op));
 }
@@ -1086,7 +1177,7 @@ XMLTemplateParser::parse(
     );
 
   TemplateBuilder templateBuilder(templateRegistry, out_, nonstandard_);
-  boost::shared_ptr<SAX2XMLReader> reader(XMLReaderFactory::createXMLReader());
+  std::shared_ptr<SAX2XMLReader> reader(XMLReaderFactory::createXMLReader());
   reader->setContentHandler(&templateBuilder);
   reader->setErrorHandler(&templateBuilder);
   reader->setFeature(xercesc::XMLUni::fgXercesSchema, true);
@@ -1101,7 +1192,7 @@ XMLTemplateParser::parse(
   int length = int(xmlData.tellg());
   xmlData.seekg(0, std::ios::beg);
 
-  boost::scoped_array<char> data(new char[length]);
+  std::unique_ptr<char[]> data(new char[length]);
   xmlData.read(data.get(), length);
 
   // Adapt the stream to what Xerces wants to see

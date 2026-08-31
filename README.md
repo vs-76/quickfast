@@ -8,6 +8,53 @@ Because FAST not specific to market data or the financial industry, there are op
 QuickFAST is written to be portable to many platforms. It is routinely tested on Windows and Linux. The project also includes a .NET wrapper 
 which supports using QuickFAST in the .NET environment. Ask if you want support for other platforms.
 
+### Linux build (CMake + C++20)
+
+See **[BUILD.md](BUILD.md)** for g++ / clang++ recipes and **Conan 2** / **vcpkg**
+dependency install (required — Conan 2 or vcpkg only; no system or FetchContent deps).
+
+Native library, examples, and tests no longer depend on Boost. Dependencies
+(installed via Conan or vcpkg):
+
+- C++20 or later (CMake enforces `CMAKE_CXX_STANDARD >= 20`; verified with g++ 15/16 and clang++ 22)
+- [Xerces-C++](https://xerces.apache.org/xerces-c/) ≥ 3.2.5 (pinned 3.3.0; ICU transcoder — Conan `icu/78.2`, vcpkg `78.3#2`)
+
+- Standalone [Asio](https://github.com/chriskohlhoff/asio) and [GoogleTest](https://github.com/google/googletest) / GoogleMock
+- [spdlog](https://github.com/gabime/spdlog) + zlib (default ON; `-DQUICKFAST_USE_SPDLOG=OFF` to disable)
+- [libpcap](https://www.tcpdump.org/) (default ON)
+- [c-ares](https://c-ares.org/) (default ON; `-DQUICKFAST_USE_CARES=OFF` / Conan `with_cares=False` / omit vcpkg feature `cares`)
+
+QuickFAST defaults to a static archive (`BUILD_SHARED_LIBS=OFF`).
+
+```bash
+sudo apt-get install -y cmake build-essential
+# Conan 2: pip install conan && conan profile detect
+
+conan install . -of build/conan -s build_type=Release --build=missing
+cmake -S . -B build \
+  -DCMAKE_TOOLCHAIN_FILE="$(pwd)/build/conan/conan_toolchain.cmake" \
+  -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+ctest --test-dir build --output-on-failure
+```
+
+Dual-compiler check (re-run `conan install` if the profile compiler changes):
+
+```bash
+cmake -S . -B build-gcc16 -DCMAKE_TOOLCHAIN_FILE="$(pwd)/build/conan/conan_toolchain.cmake" \
+  -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++-16
+cmake --build build-gcc16 -j && ctest --test-dir build-gcc16 --output-on-failure
+
+cmake -S . -B build-clang22 -DCMAKE_TOOLCHAIN_FILE="$(pwd)/build/conan/conan_toolchain.cmake" \
+  -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++-22
+cmake --build build-clang22 -j && ctest --test-dir build-clang22 --output-on-failure
+```
+
+Optional flags: `-DQUICKFAST_BUILD_TESTS=OFF`, `-DQUICKFAST_BUILD_EXAMPLES=OFF`,
+`-DQUICKFAST_USE_LIBCXX=ON` (Clang only), `-DQUICKFAST_ENABLE_PVS_STUDIO=OFF`.
+
+Build and dependency install are **CMake + Conan 2 or vcpkg only**.
+
 Instructions for [getting started with QuickFAST are here](https://github.com/objectcomputing/quickfast/wiki/GettingStarted)
 
 QuickFAST was developed by Object Computing Inc.(OCI) St. Louis Missouri USA. OCI has made QuickFAST available as open source software 

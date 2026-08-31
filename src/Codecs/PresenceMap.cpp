@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
@@ -42,17 +43,23 @@ PresenceMap::PresenceMap(size_t bits)
 }
 
 void
-PresenceMap::decode(const unsigned char * buffer, size_t &offset)
+PresenceMap::decode(const unsigned char * buffer, size_t bufferLength, size_t &offset)
 {
   memset(bits_, 0, byteCapacity_);
-  uchar byte = buffer[offset++];
   size_t pos = 0;
-  while((byte & stopBit) == 0)
+  for(;;)
   {
+    if(offset >= bufferLength)
+    {
+      throw EncodingError("[ERR U03] End of buffer while decoding presence map.");
+    }
+    const uchar byte = buffer[offset++];
     appendByte(pos, byte);
-    byte = buffer[offset++];
+    if((byte & stopBit) != 0)
+    {
+      return;
+    }
   }
-  appendByte(pos, byte);
 }
 
 
@@ -80,13 +87,19 @@ PresenceMap::getRaw(const uchar *& buffer, size_t &byteLength)const
 void
 PresenceMap::grow()
 {
-  // todo: consider reporting this as a recoverable error due to performance impact
-  boost::scoped_array<uchar> newBuffer(new uchar [byteCapacity_+1]);
-  newBuffer[byteCapacity_] = 0;
+  // Extending by a single byte made decoding an n byte presence map cost
+  // O(n^2) in copying, which a peer controls the size of.
+  size_t newCapacity = byteCapacity_ * 2;
+  if(newCapacity <= byteCapacity_)
+  {
+    newCapacity = byteCapacity_ + 1;
+  }
+  std::unique_ptr<uchar[]> newBuffer(new uchar [newCapacity]);
   std::copy(bits_, bits_ + byteCapacity_, newBuffer.get());
+  std::memset(newBuffer.get() + byteCapacity_, 0, newCapacity - byteCapacity_);
   bits_ = newBuffer.get();
   externalBuffer_.swap(newBuffer);
-  byteCapacity_ += 1;
+  byteCapacity_ = newCapacity;
 }
 
 void
@@ -240,11 +253,9 @@ PresenceMap::reset(size_t bitCount)
       bytePosition_ = bytes;
     }
   }
-  bits_[0] = 0;
-  if(bytePosition_ != 0)
-  {
-    memset(bits_ + 1, 0, byteCapacity_ - 1);
-  }
+  // decode() leaves bytePosition_ at zero, so keying the clear off it left
+  // every byte but the first holding the previous message's bits.
+  memset(bits_, 0, byteCapacity_);
   rewind();
 
 }

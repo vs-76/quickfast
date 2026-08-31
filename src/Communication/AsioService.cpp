@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 #include <Common/QuickFASTPch.h>
@@ -8,7 +9,7 @@
 using namespace QuickFAST;
 using namespace Communication;
 
-boost::asio::io_service AsioService::sharedIoService_;
+asio::io_context AsioService::sharedIoService_;
 AtomicCounter AsioService::sharedRunningThreadCount_;
 
 AsioService::AsioService()
@@ -22,7 +23,7 @@ AsioService::AsioService()
 //  std::cout << "Create ASIO service(shared): " << (void *) this << std::endl;
 }
 
-AsioService::AsioService(boost::asio::io_service & ioService)
+AsioService::AsioService(asio::io_context & ioService)
   : stopping_(false)
   , threadCount_(0)
   , threadCapacity_(0)
@@ -68,18 +69,18 @@ AsioService::runThreads(size_t threadCount /*= 0*/, bool useThisThread /* = true
 {
   if(threadCount > threadCapacity_)
   {
-    boost::scoped_array<ThreadPtr> newThreads(new ThreadPtr[threadCount]);
+    auto newThreads = std::make_unique<ThreadPtr[]>(threadCount);
     for(size_t nThread = 0; nThread < threadCount_; ++nThread)
     {
       newThreads[nThread] = threads_[nThread];
     }
-    threads_.swap(newThreads);
+    threads_ = std::move(newThreads);
     threadCapacity_ = threadCount;
   }
   while(threadCount_ < threadCount)
   {
-    threads_[threadCount_].reset(
-      new boost::thread(boost::bind(&AsioService::run, this)));
+    threads_[threadCount_] = std::make_shared<std::thread>(
+      [this]{ this->run(); });
     ++threadCount_;
   }
   if(useThisThread)
@@ -92,18 +93,14 @@ AsioService::runThreads(size_t threadCount /*= 0*/, bool useThisThread /* = true
 void
 AsioService::run()
 {
-  long tc = 0;
   if(usingSharedService_)
   {
-    tc = ++sharedRunningThreadCount_;
+    ++sharedRunningThreadCount_;
   }
   else
   {
-    tc = ++runningThreadCount_;
+    ++runningThreadCount_;
   }
-//  std::ostringstream msg;
-//  msg << '{' << (void *) this << " :: " << (void *) &ioService_ << "} Starting AsioService thread #" << tc << std::endl;
-//  std::cout << msg.str();
 
   size_t count = 1;
   while(! stopping_ && count != 0)

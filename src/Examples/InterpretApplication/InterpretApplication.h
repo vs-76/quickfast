@@ -1,4 +1,5 @@
 // Copyright (c) 2009, Object Computing, Inc.
+// Copyright (c) 2026, QuickFAST contributors.
 // All rights reserved.
 // See the file license.txt for licensing information.
 //
@@ -9,6 +10,7 @@
 #include <Communication/Receiver_fwd.h>
 #include <Application/CommandArgParser.h>
 #include <Application/DecoderConnection.h>
+#include <Messages/JsonOptions.h>
 
 namespace QuickFAST{
   namespace Examples{
@@ -41,9 +43,9 @@ namespace QuickFAST{
 
     private:
       Application::CommandArgParser commandArgParser_;
-      typedef boost::shared_ptr<Application::DecoderConfiguration> ConfigurationPtr;
+      typedef std::shared_ptr<Application::DecoderConfiguration> ConfigurationPtr;
       typedef std::vector<ConfigurationPtr> Configurations;
-      typedef boost::shared_ptr<Application::DecoderConnection> ConnectionPtr;
+      typedef std::shared_ptr<Application::DecoderConnection> ConnectionPtr;
       typedef std::vector<ConnectionPtr> Connections;
       typedef std::vector<Messages::ValueMessageBuilderPtr> Builders;
 
@@ -65,6 +67,8 @@ namespace QuickFAST{
       std::string bufferFilename_;
       bool console_;
       bool fixOutput_;
+      bool jsonOutput_;
+      Messages::JsonOptions jsonOptions_;
       size_t threads_;
       bool silent_;
     };
