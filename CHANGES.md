@@ -53,6 +53,25 @@ runtime, and hardens the decoder against malformed input.
 - **Package manager support.** Conan 2 recipe (`conanfile.py`) and vcpkg
   manifest (`vcpkg.json`) with pinned versions for Xerces-C, ICU, Asio,
   GoogleTest, spdlog, zlib, libpcap and c-ares.
+- **QuickFAST installs as a consumable package.** `cmake --install` lays down
+  the headers under their module directory, the library, and a
+  `QuickFASTConfig.cmake` that re-finds every dependency reaching the link
+  interface, so a static QuickFAST resolves libpcap and c-ares for its
+  consumers. Downstream projects use it as:
+
+  ```cmake
+  find_package(QuickFAST 2.0.0 REQUIRED)
+  target_link_libraries(my_app PRIVATE QuickFAST::QuickFAST)
+  ```
+
+  `QUICKFAST_INSTALL=OFF` suppresses the install rules for vendored builds.
+- **Distributable packages.** `conanfile.py` now builds and packages the library
+  (`conan create`, validated by `test_package/`) in addition to installing
+  dependencies for development, and `packaging/vcpkg/ports/quickfast-ng` is a
+  real vcpkg port with `pcap`, `spdlog` and `cares` features.
+- **`tests/package`**, a standalone consumer that sees QuickFAST only through
+  `find_package`, so a broken install layout fails there and not in a user's
+  tree.
 - **JSON output.** `Messages::MessageToJson` converts a decoded message to
   JSON with configurable name/id keys and exact decimal and `uInt64` rendering;
   `InterpretApplication -ojson` exposes it on the command line.
