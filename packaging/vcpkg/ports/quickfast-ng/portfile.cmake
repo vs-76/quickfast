@@ -16,7 +16,7 @@ vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO vs-76/quickfast-ng
     REF "v${VERSION}"
-    SHA512 18cbe4fb51f4e0a4fa44b39b557f4736b7e7b2d9863a7218236e55775ba7d3f91ce4b94d97b8a4d8876394f716549a88436db174ebbfb041ba029599955b3959
+    SHA512 0
     HEAD_REF develop
 )
 
