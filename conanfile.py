@@ -20,7 +20,7 @@ from conan.tools.cmake import CMakeToolchain, CMakeDeps
 
 class QuickFASTConan(ConanFile):
     name = "quickfast"
-    version = "1.5.0"
+    version = "2.0.0"
     package_type = "application"
     settings = "os", "compiler", "build_type", "arch"
     options = {

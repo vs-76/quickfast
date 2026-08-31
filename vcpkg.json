@@ -1,6 +1,6 @@
 {
   "name": "quickfast",
-  "version-string": "1.5.0",
+  "version": "2.0.0",
   "description": "FAST Protocol native C++ library (CMake consumer; deps via vcpkg)",
   "homepage": "https://github.com/vs-76/quickfast-ng",
   "license": "BSD-3-Clause",
