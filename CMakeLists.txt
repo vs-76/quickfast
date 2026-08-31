@@ -3,7 +3,7 @@
 # See the file license.txt for licensing information.
 
 cmake_minimum_required(VERSION 3.16)
-project(QuickFAST VERSION 1.5.0 LANGUAGES CXX)
+project(QuickFAST VERSION 2.0.0 LANGUAGES CXX)
 
 # QuickFAST requires ISO C++20 or later. Honor a higher value from the CMake
 # cache (e.g. -DCMAKE_CXX_STANDARD=23); raise package-manager defaults below 20.
@@ -289,7 +289,7 @@ endif()
 set_target_properties(QuickFAST PROPERTIES
   OUTPUT_NAME QuickFAST
   VERSION ${PROJECT_VERSION}
-  SOVERSION 1
+  SOVERSION 2
   LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
   RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
   ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
@@ -426,7 +426,7 @@ if(QUICKFAST_ENABLE_PVS_STUDIO)
   endif()
 endif()
 
-message(STATUS "QuickFAST ${PROJECT_VERSION}: C++${CMAKE_CXX_STANDARD}, XercesC ${XercesC_VERSION} (no Boost)")
+message(STATUS "QuickFAST-ng ${PROJECT_VERSION}")
 if(BUILD_SHARED_LIBS)
   message(STATUS "Library type: SHARED")
 else()

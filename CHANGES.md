@@ -8,7 +8,11 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Upstream history before the fork is preserved in `ChangeLog`.
 
-## [Unreleased]
+## [2.0.0] - 2026-08-31
+
+First release of the fork. The major bump reflects that this is not a
+drop-in replacement for OCI QuickFAST 1.5: the dependency set, the build
+system and several decoder behaviours changed. `SOVERSION` moves to 2.
 
 Everything below is the work done since the fork point, upstream commit
 `f9403cf` (2017-03-14), the last commit of OCI QuickFAST 1.5. That is 151
@@ -80,10 +84,13 @@ runtime, and hardens the decoder against malformed input.
 ### Changed
 
 - The repository moved to
-  [vs-76/quickfast-ng](https://github.com/vs-76/quickfast-ng).
-- Unit tests were ported from Boost.Test to GoogleTest/GoogleMock; the suite is
-  now 372 ctest cases covering codec, assembler, communication, logging and CLI
-  paths.
+  [vs-76/quickfast-ng](https://github.com/vs-76/quickfast-ng). The CMake
+  summary line and the `-V` product banner now say *QuickFAST-ng*; the library
+  target, the `QuickFAST::` namespace and the installed headers keep their
+  names.
+- Unit tests were ported from Boost.Test to GoogleTest/GoogleMock; a
+  fully-featured Release build runs 469 ctest cases covering codec, assembler,
+  communication, logging and CLI paths.
 - Builds run warning-free with `-Wall -Werror -pedantic` on g++ 16 and
   clang++ 22, and a mingw-w64 compile gate keeps the Windows code paths honest.
 - The Windows MSVC build and its tests work again.
@@ -144,3 +151,5 @@ Eighty-six fixes landed. The larger themes:
   `bin/` build-configuration scripts.
 - `src/Communication/AtomicQueue.h` and its forward header.
 - `.hgignore` and `bin/hgcle.py`, the Mercurial-era changelog tooling.
+
+[2.0.0]: https://github.com/vs-76/quickfast-ng/releases/tag/v2.0.0

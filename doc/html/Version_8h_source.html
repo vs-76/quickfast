@@ -26,7 +26,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">QuickFAST<span id="projectnumber">&#160;1.5.0</span>
+   <div id="projectname">QuickFAST<span id="projectnumber">&#160;2.0.0</span>
    </div>
    <div id="projectbrief">Native C++ (and .NET) implementation of the FAST protocol</div>
   </td>
@@ -93,29 +93,31 @@ $(function(){initNavTree('Version_8h_source.html','',''); });
 </div><!--header-->
 <div class="contents">
 <div class="fragment"><div class="line"><a id="l00001" name="l00001"></a><span class="lineno">    1</span><span class="comment">// Copyright (c) 2009, Object Computing, Inc.</span></div>
-<div class="line"><a id="l00002" name="l00002"></a><span class="lineno">    2</span><span class="comment">// All rights reserved.</span></div>
-<div class="line"><a id="l00003" name="l00003"></a><span class="lineno">    3</span><span class="comment">// See the file license.txt for licensing information.</span></div>
-<div class="line"><a id="l00004" name="l00004"></a><span class="lineno">    4</span><span class="preprocessor">#ifdef _MSC_VER</span></div>
-<div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span><span class="preprocessor"># pragma once</span></div>
-<div class="line"><a id="l00006" name="l00006"></a><span class="lineno">    6</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span><span class="preprocessor">#ifndef VERSION_H</span></div>
-<div class="line"><a id="l00008" name="l00008"></a><span class="lineno">    8</span><span class="preprocessor">#define VERSION_H</span></div>
-<div class="line"><a id="l00009" name="l00009"></a><span class="lineno">    9</span><span class="preprocessor">#include &lt;Common/QuickFAST_Export.h&gt;</span></div>
-<div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span><span class="preprocessor">#include &lt;Common/Types.h&gt;</span></div>
-<div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span><span class="keyword">namespace </span><a class="code hl_namespace" href="namespaceQuickFAST.html">QuickFAST</a></div>
-<div class="line"><a id="l00012" name="l00012"></a><span class="lineno">   12</span>{</div>
-<div class="line"><a id="l00014" name="l00014"></a><span class="lineno"><a class="line" href="namespaceQuickFAST.html#abac3d36745286be37b5ca492240ed906">   14</a></span>  <span class="keyword">const</span> <span class="keywordtype">char</span> <a class="code hl_variable" href="namespaceQuickFAST.html#abac3d36745286be37b5ca492240ed906">QuickFAST_Product</a>[] = <span class="stringliteral">&quot;QuickFAST Version &quot;</span></div>
-<div class="line"><a id="l00015" name="l00015"></a><span class="lineno">   15</span>    <span class="stringliteral">&quot;1.5.0&quot;</span></div>
-<div class="line"><a id="l00016" name="l00016"></a><span class="lineno">   16</span>    <span class="stringliteral">&quot;\n&quot;</span></div>
-<div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span>    <span class="stringliteral">&quot;Copyright (c) 2009, 2010, 2011, 2012, 2013 Object Computing, Inc.\n&quot;</span></div>
-<div class="line"><a id="l00018" name="l00018"></a><span class="lineno">   18</span>    <span class="stringliteral">&quot;All Rights Reserved\n&quot;</span></div>
-<div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span>    <span class="stringliteral">&quot;See the file license.txt for licensing information.\n&quot;</span>;</div>
-<div class="line"><a id="l00021" name="l00021"></a><span class="lineno"><a class="line" href="namespaceQuickFAST.html#abab6028330fbb4454302adb2de50369c">   21</a></span>  <span class="keyword">const</span> <span class="keywordtype">long</span> <a class="code hl_variable" href="namespaceQuickFAST.html#abab6028330fbb4454302adb2de50369c">QuickFAST_Version</a> = 0x00010500; <span class="comment">// MMMM.mmpp {M=Major, m=minor, p=patch)</span></div>
-<div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span>}</div>
-<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span><span class="preprocessor">#endif </span><span class="comment">// VERSION_H</span></div>
+<div class="line"><a id="l00002" name="l00002"></a><span class="lineno">    2</span><span class="comment">// Copyright (c) 2026, QuickFAST contributors.</span></div>
+<div class="line"><a id="l00003" name="l00003"></a><span class="lineno">    3</span><span class="comment">// All rights reserved.</span></div>
+<div class="line"><a id="l00004" name="l00004"></a><span class="lineno">    4</span><span class="comment">// See the file license.txt for licensing information.</span></div>
+<div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span><span class="preprocessor">#ifdef _MSC_VER</span></div>
+<div class="line"><a id="l00006" name="l00006"></a><span class="lineno">    6</span><span class="preprocessor"># pragma once</span></div>
+<div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00008" name="l00008"></a><span class="lineno">    8</span><span class="preprocessor">#ifndef VERSION_H</span></div>
+<div class="line"><a id="l00009" name="l00009"></a><span class="lineno">    9</span><span class="preprocessor">#define VERSION_H</span></div>
+<div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span><span class="preprocessor">#include &lt;Common/QuickFAST_Export.h&gt;</span></div>
+<div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span><span class="preprocessor">#include &lt;Common/Types.h&gt;</span></div>
+<div class="line"><a id="l00012" name="l00012"></a><span class="lineno">   12</span><span class="keyword">namespace </span><a class="code hl_namespace" href="namespaceQuickFAST.html">QuickFAST</a></div>
+<div class="line"><a id="l00013" name="l00013"></a><span class="lineno">   13</span>{</div>
+<div class="line"><a id="l00015" name="l00015"></a><span class="lineno"><a class="line" href="namespaceQuickFAST.html#abac3d36745286be37b5ca492240ed906">   15</a></span>  <span class="keyword">const</span> <span class="keywordtype">char</span> <a class="code hl_variable" href="namespaceQuickFAST.html#abac3d36745286be37b5ca492240ed906">QuickFAST_Product</a>[] = <span class="stringliteral">&quot;QuickFAST-ng Version &quot;</span></div>
+<div class="line"><a id="l00016" name="l00016"></a><span class="lineno">   16</span>    <span class="stringliteral">&quot;2.0.0&quot;</span></div>
+<div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span>    <span class="stringliteral">&quot;\n&quot;</span></div>
+<div class="line"><a id="l00018" name="l00018"></a><span class="lineno">   18</span>    <span class="stringliteral">&quot;Copyright (c) 2009, 2010, 2011, 2012, 2013 Object Computing, Inc.\n&quot;</span></div>
+<div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span>    <span class="stringliteral">&quot;Copyright (c) 2026, QuickFAST contributors.\n&quot;</span></div>
+<div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span>    <span class="stringliteral">&quot;All Rights Reserved\n&quot;</span></div>
+<div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span>    <span class="stringliteral">&quot;See the file license.txt for licensing information.\n&quot;</span>;</div>
+<div class="line"><a id="l00023" name="l00023"></a><span class="lineno"><a class="line" href="namespaceQuickFAST.html#abab6028330fbb4454302adb2de50369c">   23</a></span>  <span class="keyword">const</span> <span class="keywordtype">long</span> <a class="code hl_variable" href="namespaceQuickFAST.html#abab6028330fbb4454302adb2de50369c">QuickFAST_Version</a> = 0x00020000; <span class="comment">// MMMM.mmpp {M=Major, m=minor, p=patch)</span></div>
+<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span>}</div>
+<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span><span class="preprocessor">#endif </span><span class="comment">// VERSION_H</span></div>
 <div class="ttc" id="anamespaceQuickFAST_html"><div class="ttname"><a href="namespaceQuickFAST.html">QuickFAST</a></div><div class="ttdoc">General utility/overhead classes used throughout the rest of the system are in the QuickFAST namespac...</div><div class="ttdef"><b>Definition</b> BasePacketAssembler.h:20</div></div>
-<div class="ttc" id="anamespaceQuickFAST_html_abab6028330fbb4454302adb2de50369c"><div class="ttname"><a href="namespaceQuickFAST.html#abab6028330fbb4454302adb2de50369c">QuickFAST::QuickFAST_Version</a></div><div class="ttdeci">const long QuickFAST_Version</div><div class="ttdoc">version number</div><div class="ttdef"><b>Definition</b> Version.h:21</div></div>
-<div class="ttc" id="anamespaceQuickFAST_html_abac3d36745286be37b5ca492240ed906"><div class="ttname"><a href="namespaceQuickFAST.html#abac3d36745286be37b5ca492240ed906">QuickFAST::QuickFAST_Product</a></div><div class="ttdeci">const char QuickFAST_Product[]</div><div class="ttdoc">Product information about QuickFAST.</div><div class="ttdef"><b>Definition</b> Version.h:14</div></div>
+<div class="ttc" id="anamespaceQuickFAST_html_abab6028330fbb4454302adb2de50369c"><div class="ttname"><a href="namespaceQuickFAST.html#abab6028330fbb4454302adb2de50369c">QuickFAST::QuickFAST_Version</a></div><div class="ttdeci">const long QuickFAST_Version</div><div class="ttdoc">version number</div><div class="ttdef"><b>Definition</b> Version.h:23</div></div>
+<div class="ttc" id="anamespaceQuickFAST_html_abac3d36745286be37b5ca492240ed906"><div class="ttname"><a href="namespaceQuickFAST.html#abac3d36745286be37b5ca492240ed906">QuickFAST::QuickFAST_Product</a></div><div class="ttdeci">const char QuickFAST_Product[]</div><div class="ttdoc">Product information about QuickFAST.</div><div class="ttdef"><b>Definition</b> Version.h:15</div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 </div><!-- container -->
